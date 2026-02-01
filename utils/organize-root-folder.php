@@ -163,12 +163,12 @@ echo "</ul>";
 echo "<h4>Quick Access Links:</h4>";
 echo "<ul>";
 echo "<li><a href='utils/create-test-schedule.php'>Create Test Schedule</a></li>";
-echo "<li><a href='utils/update-schedule-table.php'>Update Schedule Table</a></li>";
+echo "<li><a href='utils/update-schedule-table.php'>UPDATE exam_schedules Table</a></li>";
 echo "<li><a href='docs/ORGANIZATION_PLAN.md'>View Organization Plan</a></li>";
 echo "</ul>";
 
-echo "<a href='index-modern.php' class='btn'>Go to Home Page</a>";
-echo "<a href='Student/index-modern.php' class='btn' style='margin-left: 10px;'>Go to Student Dashboard</a>";
+echo "<a href='index.php' class='btn'>Go to Home Page</a>";
+echo "<a href='Student/index.php' class='btn' style='margin-left: 10px;'>Go to Student Dashboard</a>";
 
 echo "</div></body></html>";
 ?>

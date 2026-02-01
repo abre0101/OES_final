@@ -4,22 +4,22 @@ if (!isset($_SESSION)) {
 }
 
 if(!isset($_SESSION['Name']) || !isset($_SESSION['ID'])){
-    header("Location: ../index-modern.php");
+    header("Location: ../index.php");
     exit();
 }
 
 $resultId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
 // Connect to database
-$con = mysqli_connect("localhost", "root", "", "oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
 
 // Try to get result from database first
 if ($resultId > 0) {
     $sql = "SELECT result.*, exam_category.exam_name, course.course_name 
-            FROM result 
-            LEFT JOIN exam_category ON result.exam_id = exam_category.exam_id
-            LEFT JOIN course ON result.course_id = course.course_id
-            WHERE result.result_id = ? AND result.Stud_ID = ?";
+            FROM exam_results 
+            LEFT JOIN exam_categories ON result.exam_id = exam_category.exam_id
+            LEFT JOIN courses ON result.course_id = course.course_id
+            WHERE result.result_id = ? AND result.student_id = ?";
 
     $stmt = $con->prepare($sql);
     $stmt->bind_param("is", $resultId, $_SESSION['ID']);
@@ -271,7 +271,7 @@ $currentDate = date('d M Y');
                 </div>
                 
                 <div class="result-actions">
-                    <a href="index-modern.php" class="btn btn-secondary">← Back to Dashboard</a>
+                    <a href="index.php" class="btn btn-secondary">← Back to Dashboard</a>
                     <a href="Result-modern.php" class="btn btn-success">📊 View All Results</a>
                 </div>
             </div>

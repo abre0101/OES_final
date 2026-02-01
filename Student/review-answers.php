@@ -4,20 +4,26 @@ if (!isset($_SESSION)) {
 }
 
 if(!isset($_SESSION['Name'])){
-    header("Location: ../index-modern.php");
+    header("Location: ../index.php");
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 $studentId = $_SESSION['ID'];
 $resultId = $_GET['result_id'] ?? 0;
 
-// Get result details
-$resultQuery = $con->prepare("SELECT r.*, ec.exam_name 
-    FROM result r
-    LEFT JOIN exam_category ec ON r.Exam_ID = ec.exam_id
-    WHERE r.Result_ID = ? AND r.Stud_ID = ?");
-$resultQuery->bind_param("is", $resultId, $studentId);
+// Get result details with exam and course info
+$resultQuery = $con->prepare("SELECT 
+    er.*, 
+    es.exam_name,
+    c.course_name,
+    ec.category_name as exam_category
+    FROM exam_results er
+    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN courses c ON es.course_id = c.course_id
+    INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
+    WHERE er.result_id = ? AND er.student_id = ?");
+$resultQuery->bind_param("ii", $resultId, $studentId);
 $resultQuery->execute();
 $result = $resultQuery->get_result()->fetch_assoc();
 $resultQuery->close();
@@ -27,43 +33,31 @@ if(!$result) {
     exit();
 }
 
-// Get course name from result
-$courseQuery = $con->prepare("SELECT course_name FROM course WHERE course_id = ?");
-$courseQuery->bind_param("i", $result['Course_ID']);
-$courseQuery->execute();
-$courseData = $courseQuery->get_result()->fetch_assoc();
-$courseQuery->close();
-$courseName = $courseData['course_name'] ?? 'N/A';
-
-// Get all questions and student's answers
-$questionsQuery = $con->prepare("SELECT qp.*, sa.selected_answer, sa.is_correct
-    FROM question_page qp
-    LEFT JOIN student_answers sa ON qp.question_id = sa.question_id AND sa.result_id = ?
-    WHERE qp.exam_id = ?
-    ORDER BY qp.question_id");
-$questionsQuery->bind_param("ii", $resultId, $result['Exam_ID']);
+// Get all questions and student's answers for this exam
+$questionsQuery = $con->prepare("SELECT 
+    q.question_id,
+    q.question_text,
+    q.option_a,
+    q.option_b,
+    q.option_c,
+    q.option_d,
+    q.correct_answer,
+    sa.selected_answer,
+    sa.is_correct
+    FROM exam_questions eq
+    INNER JOIN questions q ON eq.question_id = q.question_id
+    LEFT JOIN student_answers sa ON q.question_id = sa.question_id AND sa.result_id = ?
+    WHERE eq.schedule_id = ?
+    ORDER BY eq.question_order");
+$questionsQuery->bind_param("ii", $resultId, $result['schedule_id']);
 $questionsQuery->execute();
 $questions = $questionsQuery->get_result();
 $questionsQuery->close();
 
-$totalQuestions = $questions->num_rows;
-$correctAnswers = 0;
-$incorrectAnswers = 0;
-$unanswered = 0;
-
-// Count answers
-$questions->data_seek(0);
-while($q = $questions->fetch_assoc()) {
-    if($q['selected_answer']) {
-        if($q['is_correct']) {
-            $correctAnswers++;
-        } else {
-            $incorrectAnswers++;
-        }
-    } else {
-        $unanswered++;
-    }
-}
+$totalQuestions = $result['total_questions'];
+$correctAnswers = $result['correct_answers'];
+$incorrectAnswers = $result['wrong_answers'];
+$unanswered = $result['unanswered'];
 
 $con->close();
 ?>
@@ -247,7 +241,7 @@ $con->close();
         <nav class="main-nav">
             <div class="container">
                 <ul class="nav-menu">
-                    <li><a href="index-modern.php">Dashboard</a></li>
+                    <li><a href="index.php">Dashboard</a></li>
                     <li><a href="StartExam-modern.php">Take Exam</a></li>
                     <li><a href="Result-modern.php" class="active">Results</a></li>
                     <li><a href="Profile-modern.php">Profile</a></li>
@@ -260,11 +254,11 @@ $con->close();
         <div class="container">
             <div class="review-header">
                 <h1 style="margin: 0 0 0.5rem 0;">📝 Review Your Answers</h1>
-                <p style="margin: 0; opacity: 0.9;"><?php echo htmlspecialchars($result['exam_name']); ?> - <?php echo htmlspecialchars($courseName); ?></p>
+                <p style="margin: 0; opacity: 0.9;"><?php echo htmlspecialchars($result['exam_name']); ?> - <?php echo htmlspecialchars($result['course_name']); ?></p>
                 
                 <div class="review-stats">
                     <div class="review-stat stat-score">
-                        <div class="review-stat-value" style="color: var(--primary-color);"><?php echo $result['Result']; ?>%</div>
+                        <div class="review-stat-value" style="color: var(--primary-color);"><?php echo round($result['percentage_score'], 1); ?>%</div>
                         <div class="review-stat-label">Your Score</div>
                     </div>
                     <div class="review-stat stat-correct">
@@ -288,11 +282,10 @@ $con->close();
             </div>
 
             <?php 
-            $questions->data_seek(0);
             $qNum = 1;
             while($q = $questions->fetch_assoc()): 
                 $studentAnswer = $q['selected_answer'];
-                $correctAnswer = $q['Answer'];
+                $correctAnswer = $q['correct_answer'];
                 $isCorrect = $q['is_correct'];
                 
                 $questionClass = 'unanswered';
@@ -313,13 +306,20 @@ $con->close();
                 </div>
                 
                 <p style="font-size: 1.1rem; line-height: 1.6; margin: 1rem 0;">
-                    <?php echo htmlspecialchars($q['question']); ?>
+                    <?php echo htmlspecialchars($q['question_text']); ?>
                 </p>
                 
                 <div style="margin-top: 1.5rem;">
                     <?php
-                    $options = ['A' => $q['Option1'], 'B' => $q['Option2'], 'C' => $q['Option3'], 'D' => $q['Option4']];
+                    $options = [
+                        'A' => $q['option_a'], 
+                        'B' => $q['option_b'], 
+                        'C' => $q['option_c'], 
+                        'D' => $q['option_d']
+                    ];
                     foreach($options as $letter => $text):
+                        if(empty($text)) continue; // Skip empty options
+                        
                         $optionClass = '';
                         $indicator = '';
                         

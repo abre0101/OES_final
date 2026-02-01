@@ -17,7 +17,7 @@ $con = new mysqli("localhost","root");
 // Select Database
 $con->select_db("oes");
 // Specify the query to execute
-$sql = "Update instructor set instructor.username='".$UserName."',instructor.password='".$Password."' where Inst_ID='".$Id."'";
+$sql = "UPDATE instructors set instructor.username='".$UserName."',instructor.password='".$Password."' where instructor_id='".$Id."'";
 // Execute query
 $result = $con->query($sql);
 // Close The Connection

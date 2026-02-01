@@ -1,11 +1,11 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 
 // Create security_logs table if it doesn't exist
 $createTableSQL = "CREATE TABLE IF NOT EXISTS `security_logs` (
@@ -15,7 +15,7 @@ $createTableSQL = "CREATE TABLE IF NOT EXISTS `security_logs` (
     `action` VARCHAR(100),
     `ip_address` VARCHAR(45),
     `user_agent` TEXT,
-    `status` VARCHAR(20),
+    `is_active` VARCHAR(20),
     `details` TEXT,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_user` (`user_id`),
@@ -26,7 +26,7 @@ $con->query($createTableSQL);
 
 // Get filter parameters
 $filterType = $_GET['type'] ?? 'all';
-$filterStatus = $_GET['status'] ?? 'all';
+$filterStatus = $_GET['is_active'] ?? 'all';
 $filterDate = $_GET['date'] ?? '';
 $searchUser = $_GET['search'] ?? '';
 
@@ -36,7 +36,7 @@ if($filterType != 'all') {
     $whereConditions[] = "user_type = '" . $con->real_escape_string($filterType) . "'";
 }
 if($filterStatus != 'all') {
-    $whereConditions[] = "status = '" . $con->real_escape_string($filterStatus) . "'";
+    $whereConditions[] = "is_active = '" . $con->real_escape_string($filterStatus) . "'";
 }
 if($filterDate) {
     $whereConditions[] = "DATE(created_at) = '" . $con->real_escape_string($filterDate) . "'";
@@ -53,27 +53,59 @@ $perPage = 50;
 $offset = ($page - 1) * $perPage;
 
 $logsQuery = "SELECT * FROM security_logs $whereClause ORDER BY created_at DESC LIMIT $perPage OFFSET $offset";
-$logs = $con->query($logsQuery);
+$logsResult = $con->query($logsQuery);
+$logsData = [];
+if($logsResult && $logsResult->num_rows > 0) {
+    while($row = $logsResult->fetch_assoc()) {
+        $logsData[] = $row;
+    }
+}
 
 // Get total count
 $countQuery = "SELECT COUNT(*) as total FROM security_logs $whereClause";
 $totalResult = $con->query($countQuery);
-$totalLogs = $totalResult->fetch_assoc()['total'];
+$totalLogs = $totalResult ? $totalResult->fetch_assoc()['total'] : 0;
 $totalPages = ceil($totalLogs / $perPage);
 
 // Get statistics
 $stats = array(
-    'total' => $con->query("SELECT COUNT(*) as count FROM security_logs")->fetch_assoc()['count'],
-    'today' => $con->query("SELECT COUNT(*) as count FROM security_logs WHERE DATE(created_at) = CURDATE()")->fetch_assoc()['count'],
-    'failed' => $con->query("SELECT COUNT(*) as count FROM security_logs WHERE status = 'failed'")->fetch_assoc()['count'],
-    'success' => $con->query("SELECT COUNT(*) as count FROM security_logs WHERE status = 'success'")->fetch_assoc()['count']
+    'total' => 0,
+    'today' => 0,
+    'failed' => 0,
+    'success' => 0
 );
+
+$totalQuery = $con->query("SELECT COUNT(*) as count FROM security_logs");
+if($totalQuery) {
+    $stats['total'] = $totalQuery->fetch_assoc()['count'];
+}
+
+$todayQuery = $con->query("SELECT COUNT(*) as count FROM security_logs WHERE DATE(created_at) = CURDATE()");
+if($todayQuery) {
+    $stats['today'] = $todayQuery->fetch_assoc()['count'];
+}
+
+$failedQuery = $con->query("SELECT COUNT(*) as count FROM security_logs WHERE is_active = 'failed'");
+if($failedQuery) {
+    $stats['failed'] = $failedQuery->fetch_assoc()['count'];
+}
+
+$successQuery = $con->query("SELECT COUNT(*) as count FROM security_logs WHERE is_active = 'success'");
+if($successQuery) {
+    $stats['success'] = $successQuery->fetch_assoc()['count'];
+}
 
 // Get recent suspicious activities
 $suspiciousQuery = "SELECT * FROM security_logs 
-    WHERE status = 'failed' OR action LIKE '%failed%' 
+    WHERE is_active = 'failed' OR action LIKE '%failed%' 
     ORDER BY created_at DESC LIMIT 10";
-$suspicious = $con->query($suspiciousQuery);
+$suspiciousResult = $con->query($suspiciousQuery);
+$suspiciousData = [];
+if($suspiciousResult && $suspiciousResult->num_rows > 0) {
+    while($row = $suspiciousResult->fetch_assoc()) {
+        $suspiciousData[] = $row;
+    }
+}
 
 $con->close();
 ?>
@@ -83,15 +115,52 @@ $con->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Security Logs & Monitoring - Admin</title>
-    <link href="../assets/css/modern-v2.css" rel="stylesheet">
-    <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
-    <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
+    <link href="../assets/css/modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-sidebar.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        .page-header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            gap: 2rem;
+            background: linear-gradient(135deg, rgba(0, 51, 102, 0.05) 0%, rgba(0, 85, 170, 0.05) 100%);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 2px solid rgba(0, 51, 102, 0.1);
+        }
+        
+        .page-title-section h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .page-title-section h1 span {
+            -webkit-text-fill-color: initial;
+            background: none;
+        }
+        
+        .page-subtitle {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+        
         .log-entry {
-            padding: 1rem;
+            padding: 1.5rem;
             border-left: 4px solid #e0e0e0;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
             background: white;
             border-radius: var(--radius-md);
             transition: all 0.3s ease;
@@ -115,19 +184,36 @@ $con->close();
             border-left-color: #ffc107;
         }
         
+        .log-entry strong {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        
         .log-meta {
             display: flex;
             gap: 1.5rem;
-            font-size: 0.85rem;
+            font-size: 1rem;
             color: var(--text-secondary);
-            margin-top: 0.5rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+        }
+        
+        .log-meta span {
+            font-size: 1rem;
+        }
+        
+        .log-entry .details-text {
+            margin-top: 0.75rem;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
         }
         
         .status-badge {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
+            padding: 0.5rem 1rem;
             border-radius: var(--radius-sm);
-            font-size: 0.75rem;
+            font-size: 0.9rem;
             font-weight: 700;
             text-transform: uppercase;
         }
@@ -155,9 +241,11 @@ $con->close();
         <?php include 'header-component.php'; ?>
 
         <div class="admin-content">
-            <div class="page-header">
-                <h1>🔒 Security Logs & Monitoring</h1>
-                <p>Monitor system security and user activities</p>
+            <div class="page-header-actions">
+                <div class="page-title-section">
+                    <h1><span>🔒</span> Security Logs & Monitoring</h1>
+                    <p class="page-subtitle">Monitor system security and user activities</p>
+                </div>
             </div>
 
             <!-- Statistics -->
@@ -200,9 +288,9 @@ $con->close();
                 <div class="card-header">
                     <h3 class="card-title">🔍 Filter Logs</h3>
                 </div>
-                <div style="padding: 1.5rem;">
-                    <form method="GET" class="form-row">
-                        <div class="form-group">
+                <div class="card-body">
+                    <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+                        <div class="form-group" style="margin-bottom: 0;">
                             <label>User Type</label>
                             <select name="type" class="form-control">
                                 <option value="all" <?php echo $filterType == 'all' ? 'selected' : ''; ?>>All Types</option>
@@ -213,9 +301,9 @@ $con->close();
                             </select>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group" style="margin-bottom: 0;">
                             <label>Status</label>
-                            <select name="status" class="form-control">
+                            <select name="is_active" class="form-control">
                                 <option value="all" <?php echo $filterStatus == 'all' ? 'selected' : ''; ?>>All Status</option>
                                 <option value="success" <?php echo $filterStatus == 'success' ? 'selected' : ''; ?>>Success</option>
                                 <option value="failed" <?php echo $filterStatus == 'failed' ? 'selected' : ''; ?>>Failed</option>
@@ -223,19 +311,19 @@ $con->close();
                             </select>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group" style="margin-bottom: 0;">
                             <label>Date</label>
-                            <input type="date" name="date" class="form-control" value="<?php echo $filterDate; ?>">
+                            <input type="date" name="date" class="form-control" value="<?php echo htmlspecialchars($filterDate); ?>">
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group" style="margin-bottom: 0;">
                             <label>Search User</label>
                             <input type="text" name="search" class="form-control" placeholder="User ID..." value="<?php echo htmlspecialchars($searchUser); ?>">
                         </div>
                         
-                        <div class="form-group" style="display: flex; align-items: flex-end;">
+                        <div style="display: flex; gap: 0.5rem;">
                             <button type="submit" class="btn btn-primary">🔍 Filter</button>
-                            <a href="SecurityLogs.php" class="btn btn-secondary" style="margin-left: 0.5rem;">Clear</a>
+                            <a href="SecurityLogs.php" class="btn btn-secondary">Clear</a>
                         </div>
                     </form>
                 </div>
@@ -247,10 +335,10 @@ $con->close();
                     <div class="card-header">
                         <h3 class="card-title">📋 Security Logs</h3>
                     </div>
-                    <div style="padding: 1.5rem;">
-                        <?php if($logs && $logs->num_rows > 0): ?>
-                            <?php while($log = $logs->fetch_assoc()): ?>
-                            <div class="log-entry <?php echo $log['status']; ?>">
+                    <div class="card-body">
+                        <?php if(count($logsData) > 0): ?>
+                            <?php foreach($logsData as $log): ?>
+                            <div class="log-entry <?php echo $log['is_active']; ?>">
                                 <div style="display: flex; justify-content: space-between; align-items: start;">
                                     <div style="flex: 1;">
                                         <strong style="color: var(--primary-color);"><?php echo htmlspecialchars($log['action']); ?></strong>
@@ -261,23 +349,23 @@ $con->close();
                                             <span>🕐 <?php echo date('M j, Y - g:i A', strtotime($log['created_at'])); ?></span>
                                         </div>
                                         <?php if($log['details']): ?>
-                                        <div style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                                        <div class="details-text">
                                             <?php echo htmlspecialchars($log['details']); ?>
                                         </div>
                                         <?php endif; ?>
                                     </div>
-                                    <span class="status-badge status-<?php echo $log['status']; ?>">
-                                        <?php echo $log['status']; ?>
+                                    <span class="status-badge status-<?php echo $log['is_active']; ?>">
+                                        <?php echo $log['is_active']; ?>
                                     </span>
                                 </div>
                             </div>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                             
                             <!-- Pagination -->
                             <?php if($totalPages > 1): ?>
                             <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem;">
                                 <?php if($page > 1): ?>
-                                <a href="?page=<?php echo $page-1; ?>&type=<?php echo $filterType; ?>&status=<?php echo $filterStatus; ?>&date=<?php echo $filterDate; ?>&search=<?php echo $searchUser; ?>" class="btn btn-secondary">← Previous</a>
+                                <a href="?page=<?php echo $page-1; ?>&type=<?php echo $filterType; ?>&is_active=<?php echo $filterStatus; ?>&date=<?php echo $filterDate; ?>&search=<?php echo $searchUser; ?>" class="btn btn-secondary">← Previous</a>
                                 <?php endif; ?>
                                 
                                 <span style="padding: 0.5rem 1rem; background: var(--bg-light); border-radius: var(--radius-md);">
@@ -285,7 +373,7 @@ $con->close();
                                 </span>
                                 
                                 <?php if($page < $totalPages): ?>
-                                <a href="?page=<?php echo $page+1; ?>&type=<?php echo $filterType; ?>&status=<?php echo $filterStatus; ?>&date=<?php echo $filterDate; ?>&search=<?php echo $searchUser; ?>" class="btn btn-secondary">Next →</a>
+                                <a href="?page=<?php echo $page+1; ?>&type=<?php echo $filterType; ?>&is_active=<?php echo $filterStatus; ?>&date=<?php echo $filterDate; ?>&search=<?php echo $searchUser; ?>" class="btn btn-secondary">Next →</a>
                                 <?php endif; ?>
                             </div>
                             <?php endif; ?>
@@ -304,16 +392,16 @@ $con->close();
                     <div class="card-header">
                         <h3 class="card-title">⚠️ Recent Suspicious Activities</h3>
                     </div>
-                    <div style="padding: 1.5rem;">
-                        <?php if($suspicious && $suspicious->num_rows > 0): ?>
-                            <?php while($sus = $suspicious->fetch_assoc()): ?>
-                            <div style="padding: 1rem; background: rgba(220, 53, 69, 0.05); border-left: 3px solid #dc3545; border-radius: var(--radius-md); margin-bottom: 0.75rem;">
-                                <strong style="color: #dc3545;"><?php echo htmlspecialchars($sus['action']); ?></strong>
-                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                    <div class="card-body">
+                        <?php if(count($suspiciousData) > 0): ?>
+                            <?php foreach($suspiciousData as $sus): ?>
+                            <div style="padding: 1.25rem; background: rgba(220, 53, 69, 0.05); border-left: 3px solid #dc3545; border-radius: var(--radius-md); margin-bottom: 0.75rem;">
+                                <strong style="color: #dc3545; font-size: 1.05rem;"><?php echo htmlspecialchars($sus['action']); ?></strong>
+                                <div style="font-size: 1rem; color: var(--text-secondary); margin-top: 0.5rem;">
                                     <?php echo htmlspecialchars($sus['user_id']); ?> - <?php echo date('M j, g:i A', strtotime($sus['created_at'])); ?>
                                 </div>
                             </div>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <div style="text-align: center; padding: 2rem;">
                                 <div style="font-size: 3rem; margin-bottom: 0.5rem;">✅</div>
@@ -328,8 +416,8 @@ $con->close();
                     <div class="card-header">
                         <h3 class="card-title">💡 Security Tips</h3>
                     </div>
-                    <div style="padding: 1.5rem;">
-                        <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-secondary); line-height: 1.8;">
+                    <div class="card-body">
+                        <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-secondary); line-height: 2; font-size: 1rem;">
                             <li>Monitor failed login attempts regularly</li>
                             <li>Review suspicious IP addresses</li>
                             <li>Check for unusual activity patterns</li>

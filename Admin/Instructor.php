@@ -1,12 +1,12 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
-$con = mysqli_connect("localhost","root","","oes");
-$query_Recordsetd = "SELECT * From department ORDER BY dept_name ASC";
+$con = require_once(__DIR__ . "/../Connections/OES.php");
+$query_Recordsetd = "SELECT * FROM departments ORDER BY department_name ASC";
 $Recordsetd = mysqli_query($con,$query_Recordsetd) or die(mysqli_error($con));
 $departments = [];
 if(mysqli_num_rows($Recordsetd) > 0) {
@@ -32,22 +32,35 @@ if(mysqli_num_rows($Recordsetd) > 0) {
             align-items: center;
             margin-bottom: 2rem;
             gap: 2rem;
+            background: linear-gradient(135deg, rgba(0, 51, 102, 0.05) 0%, rgba(0, 85, 170, 0.05) 100%);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 2px solid rgba(0, 51, 102, 0.1);
         }
         
         .page-title-section h1 {
             margin: 0 0 0.5rem 0;
             font-size: 2rem;
             font-weight: 800;
-            color: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             display: flex;
             align-items: center;
             gap: 0.75rem;
+        }
+        
+        .page-title-section h1 span {
+            -webkit-text-fill-color: initial;
+            background: none;
         }
         
         .page-title-section p {
             margin: 0;
             color: var(--text-secondary);
             font-size: 1.05rem;
+            font-weight: 500;
         }
         
         .btn-create-new {
@@ -471,18 +484,21 @@ if(mysqli_num_rows($Recordsetd) > 0) {
             <!-- Instructors Display Grid -->
             <div class="instructors-grid">
                 <?php
-                $con2 = mysqli_connect("localhost","root","","oes");
-                $sql = "SELECT * FROM instructor ORDER BY Inst_Name ASC";
-                $result = mysqli_query($con2,$sql);
+                $sql = "SELECT i.*, d.department_name 
+                        FROM instructors i 
+                        LEFT JOIN departments d ON i.department_id = d.department_id 
+                        ORDER BY i.full_name ASC";
+                $result = mysqli_query($con,$sql);
 
                 if(mysqli_num_rows($result) > 0) {
                     while($row = mysqli_fetch_array($result)) {
-                        $Id = $row['Inst_ID'];
-                        $Name = $row['Inst_Name'];
-                        $Email = $row['email'];
+                        $Id = $row['instructor_id'];
+                        $Name = $row['full_name'];
+                        $Email = $row['email'] ?? 'N/A';
+                        $Department = $row['department_name'] ?? 'N/A';
                         $UserName = $row['username'];
-                        $Department = $row['dept_name'];
-                        $Status = $row['Status'];
+                        $is_active = $row['is_active'];
+                        $Status = $is_active == 1 ? 'Active' : 'Inactive';
                         $initial = strtoupper(substr($Name, 0, 1));
                 ?>
                 <div class="instructor-card">
@@ -531,7 +547,6 @@ if(mysqli_num_rows($Recordsetd) > 0) {
                 </div>
                 <?php
                 }
-                mysqli_close($con2);
                 ?>
             </div>
         </div>
@@ -577,7 +592,7 @@ if(mysqli_num_rows($Recordsetd) > 0) {
                         <?php
                         foreach($departments as $dept) {
                         ?>
-                        <option value="<?php echo $dept['deptno']?>"><?php echo $dept['dept_name']?></option>
+                        <option value="<?php echo $dept['deptno']?>"><?php echo $dept['department_name']?></option>
                         <?php
                         }
                         ?>
@@ -628,6 +643,3 @@ if(mysqli_num_rows($Recordsetd) > 0) {
     </script>
 </body>
 </html>
-<?php 
-mysqli_close($con);
-?>

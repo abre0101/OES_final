@@ -1,7 +1,7 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
@@ -12,13 +12,13 @@ $Sem = $_POST['cmbSem'];
 $Dept = $_POST['cmbDept'];
 $Inst = $_POST['cmbInst'];
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-$stmt = $con->prepare("UPDATE course SET course_name=?, credit_hr=?, semister=?, dept_name=(SELECT dept_name FROM department WHERE deptno=?), Inst_Name=(SELECT Inst_Name FROM instructor WHERE Inst_ID=?) WHERE course_id=?");
+$stmt = $con->prepare("UPDATE courses SET course_name=?, credit_hr=?, semester=?, department_name=(SELECT department_name FROM departments WHERE deptno=?), full_name=(SELECT full_name FROM instructors WHERE instructor_id=?) WHERE course_id=?");
 $stmt->bind_param("ssisss", $Name, $Credit, $Sem, $Dept, $Inst, $Id);
 $stmt->execute();
 $stmt->close();

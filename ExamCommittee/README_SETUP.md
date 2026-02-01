@@ -44,7 +44,7 @@ The migration adds the following:
 ### Step 3: Verify Installation
 
 After running the migration:
-1. Visit http://localhost:8000/ExamCommittee/index-modern.php
+1. Visit http://localhost:8000/ExamCommittee/index.php
 2. Login with an exam committee account
 3. You should see the dashboard without errors
 

@@ -5,7 +5,7 @@ if (!isset($_SESSION)) {
 
 // If already logged in, redirect to dashboard
 if(isset($_SESSION['Name'])){
-    header("Location: ../Student/index-modern.php");
+    header("Location: ../Student/index.php");
     exit();
 }
 ?>
@@ -38,7 +38,7 @@ if(isset($_SESSION['Name'])){
         <nav class="main-nav">
             <div class="container">
                 <ul class="nav-menu">
-                    <li><a href="../index-modern.php">Home</a></li>
+                    <li><a href="../index.php">Home</a></li>
                     <li><a href="../AboutUs-modern.php">About Us</a></li>
                     <li><a href="../Help-modern.php">Help</a></li>
                 </ul>
@@ -79,13 +79,15 @@ if(isset($_SESSION['Name'])){
                                        required>
                             </div>
 
-                            <div class="form-group" style="text-align: right; margin-top: -0.5rem; margin-bottom: 1.5rem;">
-                                <a href="forgot-password.php" style="color: var(--secondary-color); font-weight: 600; font-size: 0.9rem;">Forgot Your Password?</a>
-                            </div>
-
                             <button type="submit" name="logined" class="btn btn-success btn-block">
                                 Login to Student Portal
                             </button>
+
+                            <div style="text-align: center; margin-top: 1rem;">
+                                <a href="../forgot-password-request.php" style="color: var(--primary-color); font-weight: 600;">
+                                    🔐 Forgot Password?
+                                </a>
+                            </div>
 
                             <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">
                                 <p style="color: var(--text-secondary); margin: 0;">

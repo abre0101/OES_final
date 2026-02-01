@@ -1,24 +1,24 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 // Database connection
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
 // Get department data
 $ID = $_GET['ID'];
-$sql = "select * from department where deptno='".$ID."'";
+$sql = "select * FROM departments where deptno='".$ID."'";
 $result = $con->query($sql);
 
 if($row = $result->fetch_array()) {
     $Id = $row['deptno'];
-    $Name = $row['dept_name'];
+    $Name = $row['department_name'];
     $Faculty = $row['faculty_name'];
 } else {
     header("Location: Department.php");
@@ -26,7 +26,7 @@ if($row = $result->fetch_array()) {
 }
 
 // Get faculties for dropdown
-$query_faculty = "SELECT * From faculty";
+$query_faculty = "SELECT * FROM faculties";
 $result_faculty = $con->query($query_faculty);
 ?>
 <!DOCTYPE html>
@@ -143,7 +143,7 @@ $result_faculty = $con->query($query_faculty);
         <div class="admin-content">
             <div class="page-header">
                 <h1>✏️ Edit Department Information</h1>
-                <p>Update department details</p>
+                <p>UPDATE departments details</p>
             </div>
 
             <div class="edit-container">
@@ -187,7 +187,7 @@ $result_faculty = $con->query($query_faculty);
                         
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">
-                                ✓ Update Department
+                                ✓ UPDATE departments
                             </button>
                             <a href="Department.php" class="btn btn-secondary">
                                 ← Back to Departments

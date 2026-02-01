@@ -1,38 +1,38 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 // Database connection
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
 // Get course data
 $CourseId = $_GET['CourseId'];
-$sql = "select * from course where course_id='".$CourseId."'";
+$sql = "select * FROM courses where course_id='".$CourseId."'";
 $result = $con->query($sql);
 
 if($row = $result->fetch_array()) {
     $Id = $row['course_id'];
     $Name = $row['course_name'];
     $Credit = $row['credit_hr'];
-    $Sem = $row['semister'];
-    $Dept = $row['dept_name'];
-    $Instructor = $row['Inst_Name'];
+    $Sem = $row['semester'];
+    $Dept = $row['department_name'];
+    $Instructor = $row['full_name'];
 } else {
     header("Location: Course.php");
     exit();
 }
 
 // Get departments and instructors for dropdowns
-$query_dept = "SELECT * From department";
+$query_dept = "SELECT * FROM departments";
 $result_dept = $con->query($query_dept);
 
-$query_inst = "SELECT * From instructor";
+$query_inst = "SELECT * FROM instructors";
 $result_inst = $con->query($query_inst);
 ?>
 <!DOCTYPE html>
@@ -158,7 +158,7 @@ $result_inst = $con->query($query_inst);
         <div class="admin-content">
             <div class="page-header">
                 <h1>✏️ Edit Course Information</h1>
-                <p>Update course details</p>
+                <p>UPDATE courses details</p>
             </div>
 
             <div class="edit-container">
@@ -224,8 +224,8 @@ $result_inst = $con->query($query_inst);
                                 <option value="<?php echo $Dept; ?>"><?php echo $Dept; ?> (Current)</option>
                                 <?php
                                 while($row_dept = $result_dept->fetch_array()) {
-                                    if($row_dept['dept_name'] != $Dept) {
-                                        echo '<option value="'.$row_dept['deptno'].'">'.$row_dept['dept_name'].'</option>';
+                                    if($row_dept['department_name'] != $Dept) {
+                                        echo '<option value="'.$row_dept['deptno'].'">'.$row_dept['department_name'].'</option>';
                                     }
                                 }
                                 ?>
@@ -238,8 +238,8 @@ $result_inst = $con->query($query_inst);
                                 <option value="<?php echo $Instructor; ?>"><?php echo $Instructor; ?> (Current)</option>
                                 <?php
                                 while($row_inst = $result_inst->fetch_array()) {
-                                    if($row_inst['Inst_Name'] != $Instructor) {
-                                        echo '<option value="'.$row_inst['Inst_ID'].'">'.$row_inst['Inst_Name'].'</option>';
+                                    if($row_inst['full_name'] != $Instructor) {
+                                        echo '<option value="'.$row_inst['instructor_id'].'">'.$row_inst['full_name'].'</option>';
                                     }
                                 }
                                 ?>
@@ -248,7 +248,7 @@ $result_inst = $con->query($query_inst);
                         
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">
-                                ✓ Update Course
+                                ✓ UPDATE courses
                             </button>
                             <a href="Course.php" class="btn btn-secondary">
                                 ← Back to Courses

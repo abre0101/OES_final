@@ -5,8 +5,8 @@ $UserName = $_POST['txtUserName'];
 $Password = $_POST['txtPassword'];
 
 // Try Administrator first
-$con = new mysqli("localhost", "root", "", "oes");
-$stmt = $con->prepare("SELECT * FROM admin WHERE username=? AND password=?");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
+$stmt = $con->prepare("SELECT * FROM administrators WHERE username=? AND password=?");
 $stmt->bind_param("ss", $UserName, $Password);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -14,17 +14,17 @@ $row = $result->fetch_array();
 $num_row = $result->num_rows;
 
 if ($num_row > 0) {
-    $_SESSION['ID'] = $row['Admin_ID'];
+    $_SESSION['ID'] = $row['admin_id'];
     $_SESSION['username'] = $row['username'];
     $stmt->close();
     $con->close();
-    header("location:../Admin/index-modern.php");
+    header("location:../Admin/index.php");
     exit();
 }
 $stmt->close();
 
 // Try Instructor
-$stmt = $con->prepare("SELECT * FROM instructor WHERE username=? AND password=? AND Status='Active'");
+$stmt = $con->prepare("SELECT * FROM instructors WHERE username=? AND password=? AND is_active=1");
 $stmt->bind_param("ss", $UserName, $Password);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -32,10 +32,10 @@ $row = $result->fetch_array();
 $records = $result->num_rows;
 
 if ($records > 0) {
-    $_SESSION['ID'] = $row['Inst_ID'];
-    $_SESSION['Name'] = $row['Inst_Name'];
-    $_SESSION['Dept'] = $row['dept_name'];
-    $_SESSION['Course'] = $row['course_name'];
+    $_SESSION['ID'] = $row['instructor_id'];
+    $_SESSION['Name'] = $row['full_name'];
+    $_SESSION['Dept'] = 'Not Set'; // Set default since table doesn't have department_name
+    $_SESSION['Course'] = 'Not Set'; // Set default since table doesn't have course_name
     $_SESSION['Email'] = $row['email'];
     $stmt->close();
     $con->close();
@@ -45,7 +45,7 @@ if ($records > 0) {
 $stmt->close();
 
 // Try Exam Committee
-$stmt = $con->prepare("SELECT * FROM exam_committee WHERE username=? AND password=? AND Status='Active'");
+$stmt = $con->prepare("SELECT * FROM exam_committee_members WHERE username=? AND password=? AND is_active=1");
 $stmt->bind_param("ss", $UserName, $Password);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -53,9 +53,9 @@ $row = $result->fetch_array();
 $records = $result->num_rows;
 
 if ($records > 0) {
-    $_SESSION['ID'] = $row['EC_ID'];
-    $_SESSION['Name'] = $row['EC_Name'];
-    $_SESSION['Dept'] = $row['dept_name'];
+    $_SESSION['ID'] = $row['committee_member_id'];
+    $_SESSION['Name'] = $row['full_name'];
+    $_SESSION['Dept'] = 'Not Set'; // Set default
     $stmt->close();
     $con->close();
     header("location:../ExamCommittee/index.php");

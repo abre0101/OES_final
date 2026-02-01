@@ -3,14 +3,14 @@ $StudentName = $_POST['txtStudentName'];
 $StudentEmail = $_POST['txtStudentEmail'];
 
 // Connect to database
-$con = new mysqli("localhost", "root", "", "oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
 // Check if student exists with matching name and email
-$stmt = $con->prepare("SELECT * FROM student WHERE Name=? AND email=?");
+$stmt = $con->prepare("SELECT * FROM students WHERE Name=? AND email=?");
 $stmt->bind_param("ss", $StudentName, $StudentEmail);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -32,21 +32,21 @@ if ($records > 0) {
     $message .= "Your login credentials are:\n";
     $message .= "Username: " . $username . "\n";
     $message .= "Password: " . $password . "\n\n";
-    $message .= "Please login at: http://yoursite.com/index-modern.php\n\n";
+    $message .= "Please login at: http://yoursite.com/index.php\n\n";
     $message .= "Best regards,\n";
     $message .= "Debre Markos University Health Campus";
     
     $headers = "From: noreply@dmu.edu.et";
     
     if(mail($to, $subject, $message, $headers)) {
-        echo '<script type="text/javascript">alert("Password has been sent to your email address!");window.location=\'index-modern.php\';</script>';
+        echo '<script type="text/javascript">alert("Password has been sent to your email address!");window.location=\'index.php\';</script>';
     } else {
         echo '<script type="text/javascript">alert("Failed to send email. Please contact administrator.");window.location=\'forgot-password.php\';</script>';
     }
     */
     
     // For demonstration purposes (remove in production):
-    echo '<script type="text/javascript">alert("Password recovery successful!\\n\\nUsername: ' . $username . '\\nPassword: ' . $password . '\\n\\nIn production, this would be sent to your email: ' . $StudentEmail . '");window.location=\'index-modern.php\';</script>';
+    echo '<script type="text/javascript">alert("Password recovery successful!\\n\\nUsername: ' . $username . '\\nPassword: ' . $password . '\\n\\nIn production, this would be sent to your email: ' . $StudentEmail . '");window.location=\'index.php\';</script>';
     
 } else {
     echo '<script type="text/javascript">alert("No account found with that name and email address. Please check your details and try again.");window.location=\'forgot-password.php\';</script>';

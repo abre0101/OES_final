@@ -103,7 +103,7 @@ echo "<p><strong>Folders failed:</strong> $failedFolders</p>";
 
 if ($failedFiles == 0 && $failedFolders == 0) {
     echo "<p style='color: green; font-weight: bold;'>✅ Cleanup completed successfully!</p>";
-    echo "<p><a href='Student/index-modern.php' style='padding: 10px 20px; background: #1a2b4a; color: white; text-decoration: none; border-radius: 5px; display: inline-block;'>Go to Student Dashboard</a></p>";
+    echo "<p><a href='Student/index.php' style='padding: 10px 20px; background: #1a2b4a; color: white; text-decoration: none; border-radius: 5px; display: inline-block;'>Go to Student Dashboard</a></p>";
 } else {
     echo "<p style='color: orange; font-weight: bold;'>⚠️ Cleanup completed with some errors.</p>";
 }

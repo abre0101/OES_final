@@ -16,13 +16,13 @@
         $UserName=$_POST['txtUserName'];
         $Password=$_POST['txtPassword'];
         $Sex=$_POST['gender'];
-        $Status=$_POST['cmbStatus'];
+        $is_active=$_POST['cmbStatus'];
 
 	// Establish Connection with MYSQL
-	$con = new mysqli("localhost","root","","oes");
+	$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 	// Specify the query to Insert Record
-	$stmt = $con->prepare("Insert into student(Id,Name,dept_name,year,semister,Sex,username,password,Status) values(?,?,?,?,?,?,?,?,?)");
-	$stmt->bind_param("ssssissss", $ID, $Name, $StudDept, $StudYear, $StudSem, $Sex, $UserName, $Password, $Status);
+	$stmt = $con->prepare("Insert INTO students(Id,Name,department_name,year,semester,Sex,username,password,is_active) values(?,?,?,?,?,?,?,?,?)");
+	$stmt->bind_param("ssssissss", $ID, $Name, $StudDept, $StudYear, $StudSem, $Sex, $UserName, $Password, $is_active);
 	// execute query
 	$stmt->execute();
 	$stmt->close();

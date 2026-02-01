@@ -8,7 +8,7 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 $pageTitle = "Change Password";
 
 $message = '';
@@ -24,7 +24,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $instId = $_SESSION['ID'];
     
     // Verify current password
-    $stmt = $con->prepare("SELECT password FROM instructor WHERE Inst_ID = ?");
+    $stmt = $con->prepare("SELECT password FROM instructors WHERE instructor_id = ?");
     $stmt->bind_param("s", $instId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -35,7 +35,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Check if new passwords match
         if($newPassword == $confirmPassword) {
             // Update password
-            $updateStmt = $con->prepare("UPDATE instructor SET password = ? WHERE Inst_ID = ?");
+            $updateStmt = $con->prepare("UPDATE instructors SET password = ? WHERE instructor_id = ?");
             $updateStmt->bind_param("ss", $newPassword, $instId);
             
             if($updateStmt->execute()) {

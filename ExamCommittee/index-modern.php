@@ -7,335 +7,333 @@ if(!isset($_SESSION['Name'])){
     header("Location:../auth/institute-login.php");
     exit();
 }
+
+$con = require_once(__DIR__ . "/../Connections/OES.php");
+
+// Get statistics
+$pending_count = $con->query("SELECT COUNT(*) as count FROM exam_schedules WHERE approval_status = 'pending' AND submitted_for_approval = TRUE")->fetch_assoc()['count'] ?? 0;
+$approved_today = $con->query("SELECT COUNT(*) as count FROM exam_schedules WHERE approval_status = 'approved' AND DATE(approval_date) = CURDATE()")->fetch_assoc()['count'] ?? 0;
+$approved_month = $con->query("SELECT COUNT(*) as count FROM exam_schedules WHERE approval_status = 'approved' AND MONTH(approval_date) = MONTH(CURDATE()) AND YEAR(approval_date) = YEAR(CURDATE())")->fetch_assoc()['count'] ?? 0;
+$revision_count = $con->query("SELECT COUNT(*) as count FROM exam_schedules WHERE approval_status = 'revision'")->fetch_assoc()['count'] ?? 0;
+$total_submitted = $con->query("SELECT COUNT(*) as count FROM exam_schedules WHERE submitted_for_approval = TRUE")->fetch_assoc()['count'] ?? 0;
+
+// Get recent pending exams
+$recent_pending = $con->query("SELECT es.*, c.course_name, c.course_code, ec.category_name
+    FROM exam_schedules es
+    LEFT JOIN courses c ON es.course_id = c.course_id
+    LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
+    WHERE es.approval_status = 'pending' AND es.submitted_for_approval = TRUE
+    ORDER BY es.submitted_at DESC
+    LIMIT 5");
+
+// Get recent approvals
+$recent_approvals = $con->query("SELECT eah.*, es.exam_name, c.course_code, c.course_name
+    FROM exam_approval_history eah
+    INNER JOIN exam_schedules es ON eah.schedule_id = es.schedule_id
+    LEFT JOIN courses c ON es.course_id = c.course_id
+    WHERE eah.performed_by_type = 'committee'
+    ORDER BY eah.created_at DESC
+    LIMIT 5");
+
+// Get upcoming exam dates
+$upcoming_exams = $con->query("SELECT es.*, c.course_name, c.course_code, ec.category_name
+    FROM exam_schedules es
+    LEFT JOIN courses c ON es.course_id = c.course_id
+    LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
+    WHERE es.approval_status = 'approved' AND es.exam_date >= CURDATE()
+    ORDER BY es.exam_date ASC
+    LIMIT 5");
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam Committee Dashboard - Debre Markos University</title>
+    <title>Exam Committee Dashboard</title>
     <link href="../assets/css/modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .compact-stat {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .compact-stat:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .compact-stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            flex-shrink: 0;
+        }
+        .compact-stat-content {
+            flex: 1;
+        }
+        .compact-stat-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.35rem;
+        }
+        .compact-stat-label {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .exam-item {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+        .exam-item:last-child {
+            border-bottom: none;
+        }
+        .exam-item:hover {
+            background: var(--bg-light);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-approved { background: #d4edda; color: #155724; }
+        .status-revision { background: #fff3cd; color: #856404; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
+    </style>
 </head>
 <body class="admin-layout">
-    <!-- Sidebar -->
-    <aside class="admin-sidebar" id="adminSidebar">
-        <div class="sidebar-header">
-            <img src="../images/logo1.png" alt="Logo" class="sidebar-logo" onerror="this.style.display='none'">
-            <h2 class="sidebar-title">Exam Committee</h2>
-            <p class="sidebar-subtitle">Debre Markos University</p>
-            <button class="sidebar-toggle-btn" onclick="toggleSidebarMinimize()" title="Toggle Sidebar">
-                <span id="toggleIcon">◀</span>
-            </button>
-        </div>
+    <?php include 'sidebar-component.php'; ?>
 
-        <nav class="sidebar-nav">
-            <a href="index-modern.php" class="sidebar-nav-item active">
-                <span class="sidebar-nav-icon">📊</span>
-                <span>Dashboard</span>
-            </a>
-            <a href="CheckQuestions.php" class="sidebar-nav-item">
-                <span class="sidebar-nav-icon">🔍</span>
-                <span>Check Questions</span>
-            </a>
-            <a href="PendingApprovals.php" class="sidebar-nav-item">
-                <span class="sidebar-nav-icon">⏳</span>
-                <span>Pending Approvals</span>
-            </a>
-            <a href="ApprovedExams.php" class="sidebar-nav-item">
-                <span class="sidebar-nav-icon">✅</span>
-                <span>Approved Exams</span>
-            </a>
-            <a href="DepartmentExams.php" class="sidebar-nav-item">
-                <span class="sidebar-nav-icon">🏛️</span>
-                <span>Department Exams</span>
-            </a>
-            <a href="ChangePassword.php" class="sidebar-nav-item">
-                <span class="sidebar-nav-icon">🔒</span>
-                <span>Change Password</span>
-            </a>
-            <a href="../Help-modern.php" class="sidebar-nav-item">
-                <span class="sidebar-nav-icon">❓</span>
-                <span>Help</span>
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <div class="sidebar-user">
-                <div class="sidebar-user-avatar">
-                    <?php echo strtoupper(substr($_SESSION['Name'], 0, 1)); ?>
-                </div>
-                <div class="sidebar-user-info">
-                    <div class="sidebar-user-name"><?php echo $_SESSION['Name']; ?></div>
-                    <div class="sidebar-user-role">Exam Committee</div>
-                </div>
-            </div>
-            <a href="Logout.php" class="btn btn-danger btn-block">
-                🚪 Logout
-            </a>
-        </div>
-    </aside>
-
-    <!-- Main Content -->
     <div class="admin-main-content">
-        <!-- Header -->
-        <header class="admin-header">
-            <div class="header-left">
-                <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
-                <div class="header-breadcrumb">
-                    <span class="breadcrumb-item">Exam Committee</span>
-                    <span class="breadcrumb-separator">/</span>
-                    <span class="breadcrumb-item active">Dashboard</span>
-                </div>
-            </div>
-            
-            <div class="header-center">
-                <div class="header-search">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" placeholder="Search questions, exams..." class="search-input">
-                </div>
-            </div>
-            
-            <div class="header-right">
-                <div class="header-datetime">
-                    <div class="header-time" id="currentTime"></div>
-                    <div class="header-date"><?php echo date('D, M d, Y'); ?></div>
-                </div>
-                
-                <div class="header-notifications">
-                    <button class="header-icon-btn" title="Notifications">
-                        <span class="notification-icon">🔔</span>
-                        <span class="notification-badge">2</span>
-                    </button>
-                </div>
-                
-                <div class="header-profile" onclick="toggleProfileDropdown(event)">
-                    <div class="header-profile-avatar">
-                        <?php echo strtoupper(substr($_SESSION['Name'], 0, 1)); ?>
-                    </div>
-                    <div class="header-profile-info">
-                        <div class="header-profile-name"><?php echo $_SESSION['Name']; ?></div>
-                        <div class="header-profile-role">Exam Committee</div>
-                    </div>
-                    <button class="header-dropdown-btn">▼</button>
-                    
-                    <div class="profile-dropdown">
-                        <a href="Profile.php" class="dropdown-item">
-                            <span class="dropdown-icon">👤</span>
-                            <span>My Profile</span>
-                        </a>
-                        <a href="EditProfile.php" class="dropdown-item">
-                            <span class="dropdown-icon">⚙️</span>
-                            <span>Settings</span>
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <a href="Logout.php" class="dropdown-item logout">
-                            <span class="dropdown-icon">🚪</span>
-                            <span>Logout</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </header>
+        <?php include 'header-component.php'; ?>
 
-        <!-- Content -->
         <div class="admin-content">
-            <!-- Welcome Banner -->
-            <div class="welcome-banner">
-                <div class="welcome-content">
-                    <h1>👋 Welcome, <?php echo $_SESSION['Name']; ?>!</h1>
-                    <p>Exam Committee Dashboard - <?php echo $_SESSION['Dept']; ?> Department</p>
-                    <p style="font-size: 0.95rem; margin-top: 0.5rem; opacity: 0.9;">
-                        Last login: <?php echo date('D, M d, Y - h:i A'); ?>
+            <!-- Compact Header -->
+            <div style="margin-bottom: 2rem;">
+                <h1 style="font-size: 2rem; margin: 0 0 0.35rem 0; color: var(--primary-color); font-weight: 700;">Exam Committee Dashboard</h1>
+                <p style="margin: 0; color: var(--text-secondary); font-size: 1.05rem;">
+                    <?php echo $_SESSION['Dept']; ?> Department • <?php echo date('l, F j, Y'); ?>
+                </p>
+            </div>
+
+            <!-- Urgent Alert -->
+            <?php if($pending_count > 0): ?>
+            <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); color: white; padding: 1.5rem 2rem; border-radius: var(--radius-lg); margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4); border: 2px solid rgba(255, 255, 255, 0.2);">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                        <span style="font-size: 1.75rem; animation: pulse 2s infinite;">⚠️</span>
+                        <strong style="font-size: 1.25rem; font-weight: 700; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <?php echo $pending_count; ?> Exam<?php echo $pending_count > 1 ? 's' : ''; ?> Awaiting Review
+                        </strong>
+                    </div>
+                    <p style="margin: 0; font-size: 1rem; color: #ffffff; opacity: 0.95; font-weight: 500;">
+                        Action required to keep exam schedule on track
                     </p>
                 </div>
-                <div class="welcome-image">
-                    <img src="images/EC.jpg" alt="Exam Committee" onerror="this.style.display='none'">
-                </div>
+                <a href="PendingApprovals.php" class="btn" style="background: white; color: #ff6b35; font-weight: 700; white-space: nowrap; padding: 0.75rem 1.75rem; font-size: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: none; transition: all 0.3s;">
+                    Review Now →
+                </a>
             </div>
-
-            <!-- Notifications -->
-            <?php
-            $con = new mysqli("localhost","root","","oes");
-            // Using question_page table (the actual table name in database)
-            $pending_count = 0; // Will be implemented after migration
-            ?>
-            <?php if($pending_count > 0): ?>
-            <div style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: white; padding: 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);">
-                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem;">⚠️ Urgent: <?php echo $pending_count; ?> Question(s) Awaiting Your Review</h3>
-                <p style="margin: 0; opacity: 0.95;">Please review and approve pending questions to keep exams on schedule.</p>
-                <a href="PendingApprovals.php" class="btn btn-light" style="margin-top: 1rem; background: white; color: #ff9800;">Review Now →</a>
-            </div>
+            <style>
+                @keyframes pulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                }
+            </style>
             <?php endif; ?>
 
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card stat-warning">
-                    <div class="stat-icon">⏳</div>
-                    <div class="stat-details">
-                        <div class="stat-value">
-                            <?php
-                            // Count from question_page table
-                            $result = $con->query("SELECT COUNT(*) as count FROM question_page WHERE exam_id IN (SELECT exam_id FROM exam_category WHERE exam_name LIKE '%".$_SESSION['Dept']."%')");
-                            $row = $result ? $result->fetch_assoc() : ['count' => 0];
-                            echo $row['count'] ?? 0;
-                            ?>
-                        </div>
-                        <div class="stat-label">Pending Approvals</div>
+            <!-- Compact Stats Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div class="compact-stat">
+                    <div class="compact-stat-icon" style="background: rgba(255, 152, 0, 0.1); color: #ff9800;">⏳</div>
+                    <div class="compact-stat-content">
+                        <div class="compact-stat-value" style="color: #ff9800;"><?php echo $pending_count; ?></div>
+                        <div class="compact-stat-label">Pending Review</div>
                     </div>
                 </div>
-
-                <div class="stat-card stat-success">
-                    <div class="stat-icon">✅</div>
-                    <div class="stat-details">
-                        <div class="stat-value">
-                            <?php
-                            // Approved this month - placeholder
-                            echo "0";
-                            ?>
-                        </div>
-                        <div class="stat-label">Approved This Month</div>
+                
+                <div class="compact-stat">
+                    <div class="compact-stat-icon" style="background: rgba(40, 167, 69, 0.1); color: var(--success-color);">✅</div>
+                    <div class="compact-stat-content">
+                        <div class="compact-stat-value" style="color: var(--success-color);"><?php echo $approved_today; ?></div>
+                        <div class="compact-stat-label">Approved Today</div>
                     </div>
                 </div>
-
-                <div class="stat-card stat-primary">
-                    <div class="stat-icon">📝</div>
-                    <div class="stat-details">
-                        <div class="stat-value">
-                            <?php
-                            // Reviewed today - placeholder
-                            echo "0";
-                            ?>
-                        </div>
-                        <div class="stat-label">Reviewed Today</div>
+                
+                <div class="compact-stat">
+                    <div class="compact-stat-icon" style="background: rgba(0, 123, 255, 0.1); color: var(--primary-color);">📊</div>
+                    <div class="compact-stat-content">
+                        <div class="compact-stat-value" style="color: var(--primary-color);"><?php echo $approved_month; ?></div>
+                        <div class="compact-stat-label">Approved This Month</div>
                     </div>
                 </div>
-
-                <div class="stat-card stat-info">
-                    <div class="stat-icon">📊</div>
-                    <div class="stat-details">
-                        <div class="stat-value">
-                            <?php
-                            // Total questions from question_page
-                            $total_q = $con->query("SELECT COUNT(*) as count FROM question_page")->fetch_assoc()['count'];
-                            echo $total_q ?? 0;
-                            ?>
-                        </div>
-                        <div class="stat-label">Total Questions</div>
+                
+                <div class="compact-stat">
+                    <div class="compact-stat-icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;">✏️</div>
+                    <div class="compact-stat-content">
+                        <div class="compact-stat-value" style="color: #ffc107;"><?php echo $revision_count; ?></div>
+                        <div class="compact-stat-label">Needs Revision</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent Activity & Upcoming Deadlines -->
-            <div class="grid grid-2 mt-4">
+            <!-- Main Content Grid -->
+            <div class="grid grid-2" style="gap: 1.5rem;">
+                <!-- Pending Exams -->
+                <div class="card">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 class="card-title" style="margin: 0;">⏳ Pending Approvals</h3>
+                        <a href="PendingApprovals.php" style="font-size: 0.85rem; color: var(--primary-color); text-decoration: none; font-weight: 600;">View All →</a>
+                    </div>
+                    <div>
+                        <?php if($recent_pending && $recent_pending->num_rows > 0): ?>
+                            <?php while($exam = $recent_pending->fetch_assoc()): ?>
+                            <div class="exam-item">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                    <div style="flex: 1;">
+                                        <strong style="color: var(--primary-color); font-size: 1.05rem;">
+                                            <?php echo htmlspecialchars($exam['exam_name']); ?>
+                                        </strong>
+                                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.35rem;">
+                                            <?php echo htmlspecialchars($exam['course_code']); ?> - <?php echo htmlspecialchars($exam['course_name']); ?>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge status-pending">Pending</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary);">
+                                    <span>� <?php echo htmlspecialchars($exam['category_name'] ?? 'Exam'); ?></span>
+                                    <span><?php echo date('M d, Y', strtotime($exam['submitted_at'])); ?></span>
+                                </div>
+                            </div>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">✓</div>
+                                <p style="margin: 0;">No pending approvals</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <!-- Recent Activity -->
                 <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">📋 Recent Activity</h3>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 class="card-title" style="margin: 0;">📋 Recent Activity</h3>
+                        <a href="ApprovalHistory.php" style="font-size: 0.85rem; color: var(--primary-color); text-decoration: none; font-weight: 600;">View All →</a>
                     </div>
-                    <div class="activity-list">
-                        <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">
-                            <p>Recent activity will appear here</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Upcoming Deadlines -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">⏰ Upcoming Exam Deadlines</h3>
-                    </div>
-                    <div style="padding: 1.5rem;">
-                        <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">
-                            <p>Upcoming deadlines will appear here</p>
-                        </div>
+                    <div>
+                        <?php if($recent_approvals && $recent_approvals->num_rows > 0): ?>
+                            <?php while($activity = $recent_approvals->fetch_assoc()): ?>
+                            <div class="exam-item">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                    <div style="flex: 1;">
+                                        <strong style="font-size: 1.05rem;">
+                                            <?php echo htmlspecialchars($activity['exam_name']); ?>
+                                        </strong>
+                                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.35rem;">
+                                            <?php echo htmlspecialchars($activity['course_code']); ?>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge status-<?php echo $activity['action']; ?>">
+                                        <?php echo ucfirst($activity['action']); ?>
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                    <?php echo date('M d, Y - h:i A', strtotime($activity['created_at'])); ?>
+                                </div>
+                            </div>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📋</div>
+                                <p style="margin: 0;">No recent activity</p>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
 
-            <?php $con->close(); ?>
+            <!-- Upcoming Exams -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 class="card-title" style="margin: 0;">📅 Upcoming Approved Exams</h3>
+                    <a href="ApprovedExams.php" style="font-size: 0.85rem; color: var(--primary-color); text-decoration: none; font-weight: 600;">View All →</a>
+                </div>
+                <div>
+                    <?php if($upcoming_exams && $upcoming_exams->num_rows > 0): ?>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; padding: 1.25rem;">
+                            <?php while($exam = $upcoming_exams->fetch_assoc()): ?>
+                            <div style="padding: 1.25rem; background: var(--bg-light); border-radius: var(--radius-md); border-left: 3px solid var(--success-color);">
+                                <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 0.5rem; font-size: 1.05rem;">
+                                    <?php echo htmlspecialchars($exam['exam_name']); ?>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                    <?php echo htmlspecialchars($exam['course_code']); ?> - <?php echo htmlspecialchars($exam['course_name']); ?>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+                                    <span style="font-size: 0.9rem; color: var(--text-secondary);">
+                                        📅 <?php echo date('M d, Y', strtotime($exam['exam_date'])); ?>
+                                    </span>
+                                    <span class="status-badge status-approved">Approved</span>
+                                </div>
+                            </div>
+                            <?php endwhile; ?>
+                        </div>
+                    <?php else: ?>
+                        <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📅</div>
+                            <p style="margin: 0;">No upcoming exams scheduled</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
 
             <!-- Quick Actions -->
-            <div class="content-wrapper mt-4">
-                <h2>⚡ Quick Actions</h2>
-                <div class="quick-actions-grid">
-                    <a href="CheckQuestions.php" class="action-card">
-                        <div class="action-icon">🔍</div>
-                        <div class="action-title">Check Questions</div>
-                        <div class="action-desc">Review and approve questions</div>
+            <div style="margin-top: 1.5rem;">
+                <h3 style="font-size: 1.25rem; margin-bottom: 1rem; color: var(--text-primary); font-weight: 600;">⚡ Quick Actions</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                    <a href="PendingApprovals.php" style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.2s; display: block;">
+                        <div style="font-size: 2.25rem; margin-bottom: 0.5rem;">⏳</div>
+                        <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 0.35rem; font-size: 1.05rem;">Pending Approvals</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">Review submitted exams</div>
                     </a>
-                    <a href="PendingApprovals.php" class="action-card">
-                        <div class="action-icon">⏳</div>
-                        <div class="action-title">Pending Approvals</div>
-                        <div class="action-desc">Questions awaiting review</div>
+                    <a href="ApprovedExams.php" style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.2s; display: block;">
+                        <div style="font-size: 2.25rem; margin-bottom: 0.5rem;">✅</div>
+                        <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 0.35rem; font-size: 1.05rem;">Approved Exams</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">View approved exams</div>
                     </a>
-                    <a href="ApprovedExams.php" class="action-card">
-                        <div class="action-icon">✅</div>
-                        <div class="action-title">Approved Exams</div>
-                        <div class="action-desc">View approved examinations</div>
+                    <a href="DepartmentExams.php" style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.2s; display: block;">
+                        <div style="font-size: 2.25rem; margin-bottom: 0.5rem;">🏛️</div>
+                        <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 0.35rem; font-size: 1.05rem;">Department Exams</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">Browse by department</div>
                     </a>
-                    <a href="DepartmentExams.php" class="action-card">
-                        <div class="action-icon">🏛️</div>
-                        <div class="action-title">Department Exams</div>
-                        <div class="action-desc">Filter by department</div>
+                    <a href="ApprovalHistory.php" style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.2s; display: block;">
+                        <div style="font-size: 2.25rem; margin-bottom: 0.5rem;">📜</div>
+                        <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 0.35rem; font-size: 1.05rem;">Approval History</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">View audit trail</div>
                     </a>
-                    <a href="ChangePassword.php" class="action-card">
-                        <div class="action-icon">🔒</div>
-                        <div class="action-title">Change Password</div>
-                        <div class="action-desc">Update your password</div>
-                    </a>
-                    <a href="../Help-modern.php" class="action-card">
-                        <div class="action-icon">❓</div>
-                        <div class="action-title">Help</div>
-                        <div class="action-desc">Get assistance</div>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Role Information -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h3 class="card-title">📌 Your Role as Exam Committee</h3>
-                </div>
-                <div style="padding: 2rem;">
-                    <p style="font-size: 1.1rem; line-height: 1.8; color: var(--text-primary);">
-                        <strong>Welcome to the Exam Committee Dashboard!</strong><br><br>
-                        As an Exam Committee member for the <strong style="color: var(--secondary-color);"><?php echo $_SESSION['Dept']; ?> Department</strong>, 
-                        you are responsible for reviewing and approving examination questions prepared by instructors to ensure quality and academic standards.
-                    </p>
-                    <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-light); border-radius: var(--radius-md); border-left: 4px solid var(--primary-color);">
-                        <h4 style="color: var(--primary-color); margin-bottom: 1rem;">🎯 Your Main Responsibilities:</h4>
-                        <ul style="list-style: none; padding: 0;">
-                            <li style="padding: 0.5rem 0; font-weight: 600;">✓ Review questions for content accuracy and clarity</li>
-                            <li style="padding: 0.5rem 0; font-weight: 600;">✓ Verify alignment with course objectives and syllabus</li>
-                            <li style="padding: 0.5rem 0; font-weight: 600;">✓ Check for appropriate difficulty level</li>
-                            <li style="padding: 0.5rem 0; font-weight: 600;">✓ Approve or request revisions on exam questions</li>
-                            <li style="padding: 0.5rem 0; font-weight: 600;">✓ Ensure compliance with academic standards</li>
-                        </ul>
-                    </div>
-                    <div style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(220, 53, 69, 0.1); border-radius: var(--radius-md); border-left: 4px solid #dc3545;">
-                        <h4 style="color: #dc3545; margin-bottom: 1rem;">🚫 Note: What You Cannot Do</h4>
-                        <ul style="list-style: none; padding: 0; color: var(--text-secondary);">
-                            <li style="padding: 0.3rem 0;">❌ Create or edit questions (only instructors can)</li>
-                            <li style="padding: 0.3rem 0;">❌ View student exam results</li>
-                            <li style="padding: 0.3rem 0;">❌ Manage user accounts</li>
-                            <li style="padding: 0.3rem 0;">❌ Take exams</li>
-                        </ul>
-                    </div>
-                    <div style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(40, 167, 69, 0.1); border-radius: var(--radius-md); border-left: 4px solid var(--success-color);">
-                        <h4 style="color: var(--success-color); margin-bottom: 0.5rem;">💡 Your Impact</h4>
-                        <p style="margin: 0; color: var(--text-primary); font-weight: 500;">
-                            You act as the <strong>quality control gatekeeper</strong>, ensuring exams are valid, fair, and academically sound before students take them. 
-                            Your approval gives the final green light for exams to go live.
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <?php $con->close(); ?>
     <script src="../assets/js/admin-sidebar.js"></script>
 </body>
 </html>

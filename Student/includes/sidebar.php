@@ -23,7 +23,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <nav class="sidebar-nav">
         <div class="nav-section">
             <div class="nav-section-title">Main Menu</div>
-            <a href="index-modern.php" class="nav-item <?php echo ($current_page == 'index-modern.php') ? 'active' : ''; ?>">
+            <a href="index.php" class="nav-item <?php echo ($current_page == 'index.php') ? 'active' : ''; ?>">
                 <span class="nav-icon">🏠</span>
                 <span class="nav-text">Dashboard</span>
             </a>

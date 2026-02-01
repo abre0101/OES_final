@@ -5,7 +5,7 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 require_once('../utils/NotificationSystem.php');
 
 $notificationSystem = new NotificationSystem($con);
@@ -30,7 +30,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Get question details for notification
     $questionData = $con->query("SELECT qp.*, ec.exam_name, qp.instructor_id 
         FROM question_page qp 
-        LEFT JOIN exam_category ec ON qp.exam_id = ec.exam_id 
+        LEFT JOIN exam_categories ec ON qp.exam_id = ec.exam_id 
         WHERE qp.Question_ID = $questionId")->fetch_assoc();
     
     $instructorId = $questionData['instructor_id'] ?? null;

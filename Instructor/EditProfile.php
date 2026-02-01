@@ -9,11 +9,11 @@ if(!isset($_SESSION['Name'])){
 }
 
 $Id = $_GET['InstId'] ?? $_SESSION['ID'];
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 $pageTitle = "Edit Profile";
 
 // Get instructor details
-$sql = "SELECT * FROM instructor WHERE Inst_ID='".$con->real_escape_string($Id)."'";
+$sql = "SELECT * FROM instructors WHERE instructor_id='".$con->real_escape_string($Id)."'";
 $result = $con->query($sql);
 $instructor = $result->fetch_assoc();
 
@@ -56,11 +56,11 @@ if(!$instructor) {
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
                             <div>
                                 <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">Instructor ID:</strong>
-                                <p style="margin: 0; font-size: 1.1rem; font-weight: 600;"><?php echo htmlspecialchars($instructor['Inst_ID']); ?></p>
+                                <p style="margin: 0; font-size: 1.1rem; font-weight: 600;"><?php echo htmlspecialchars($instructor['instructor_id']); ?></p>
                             </div>
                             <div>
                                 <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">Name:</strong>
-                                <p style="margin: 0; font-size: 1.1rem; font-weight: 600;"><?php echo htmlspecialchars($instructor['Inst_Name']); ?></p>
+                                <p style="margin: 0; font-size: 1.1rem; font-weight: 600;"><?php echo htmlspecialchars($instructor['full_name']); ?></p>
                             </div>
                             <div>
                                 <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">Email:</strong>
@@ -68,12 +68,12 @@ if(!$instructor) {
                             </div>
                             <div>
                                 <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">Department:</strong>
-                                <p style="margin: 0; font-size: 1.1rem; font-weight: 600;"><?php echo htmlspecialchars($instructor['dept_name']); ?></p>
+                                <p style="margin: 0; font-size: 1.1rem; font-weight: 600;"><?php echo htmlspecialchars($instructor['department_name']); ?></p>
                             </div>
                             <div>
                                 <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">Status:</strong>
                                 <p style="margin: 0; font-size: 1.1rem; font-weight: 600;">
-                                    <span style="color: var(--success-color);"><?php echo htmlspecialchars($instructor['Status']); ?></span>
+                                    <span style="color: var(--success-color);"><?php echo htmlspecialchars($instructor['is_active']); ?></span>
                                 </p>
                             </div>
                             <div>
@@ -84,7 +84,7 @@ if(!$instructor) {
                     </div>
 
                     <!-- Update Form -->
-                    <form method="post" action="UpdateProfile.php?Id=<?php echo $instructor['Inst_ID']; ?>" onsubmit="return validateForm()">
+                    <form method="post" action="UpdateProfile.php?Id=<?php echo $instructor['instructor_id']; ?>" onsubmit="return validateForm()">
                         <h3 style="margin: 0 0 1.5rem 0; color: var(--primary-color);">Update Credentials</h3>
                         
                         <div class="form-row">

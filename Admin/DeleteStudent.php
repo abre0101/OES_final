@@ -1,23 +1,23 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
-$Id = $_GET['Stud_ID'];
-$con = new mysqli("localhost","root","","oes");
+$Id = $_GET['student_id'];
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-$stmt = $con->prepare("delete from student where Id=?");
+$stmt = $con->prepare("delete FROM students where Id=?");
 $stmt->bind_param("s", $Id);
 $stmt->execute();
 $stmt->close();
 $con->close();
 
-header("Location: Student-modern.php?msg=deleted");
+header("Location: Student.php?msg=deleted");
 exit();
 ?>

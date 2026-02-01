@@ -1,18 +1,52 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
-
+session_start();
 if(!isset($_SESSION['Name'])){
     header("Location:../auth/institute-login.php");
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php");
+$instructor_id = $_SESSION['ID'];
 $pageTitle = "Manage Exams";
 
-// Get all exams
-$exams = $con->query("SELECT * FROM exam_category ORDER BY exam_id DESC");
+// Get filter
+$statusFilter = $_GET['status'] ?? 'all';
+
+// Build query
+$query = "SELECT es.*, c.course_name, c.course_code, ec.category_name,
+    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.schedule_id = es.schedule_id) as question_count,
+    (SELECT COUNT(DISTINCT er.student_id) FROM exam_results er WHERE er.schedule_id = es.schedule_id) as student_count
+    FROM exam_schedules es
+    INNER JOIN courses c ON es.course_id = c.course_id
+    INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
+    INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
+    WHERE ic.instructor_id = ? AND ic.is_active = TRUE";
+
+if($statusFilter != 'all') {
+    $query .= " AND es.approval_status = ?";
+}
+
+$query .= " ORDER BY es.exam_date DESC";
+
+$stmt = $con->prepare($query);
+if($statusFilter != 'all') {
+    $stmt->bind_param("is", $instructor_id, $statusFilter);
+} else {
+    $stmt->bind_param("i", $instructor_id);
+}
+$stmt->execute();
+$exams = $stmt->get_result();
+
+// Get statistics
+$stats = $con->query("SELECT 
+    COUNT(*) as total,
+    SUM(CASE WHEN approval_status = 'pending' THEN 1 ELSE 0 END) as pending,
+    SUM(CASE WHEN approval_status = 'approved' THEN 1 ELSE 0 END) as approved,
+    SUM(CASE WHEN approval_status = 'revision' THEN 1 ELSE 0 END) as revision,
+    SUM(CASE WHEN approval_status = 'rejected' THEN 1 ELSE 0 END) as rejected
+    FROM exam_schedules es
+    INNER JOIN instructor_courses ic ON es.course_id = ic.course_id
+    WHERE ic.instructor_id = $instructor_id AND ic.is_active = TRUE")->fetch_assoc();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -20,311 +54,216 @@ $exams = $con->query("SELECT * FROM exam_category ORDER BY exam_id DESC");
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Exams - Instructor</title>
-    <link href="../assets/css/modern-v2.css" rel="stylesheet">
-    <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
-    <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
+    <link href="../assets/css/modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-sidebar.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body.admin-layout { background: #f5f7fa; font-family: 'Poppins', sans-serif; }
+        .page-header-modern { background: linear-gradient(135deg, #003366 0%, #0055aa 100%); color: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 51, 102, 0.2); margin-bottom: 2rem; }
+        .page-header-modern h1 { margin: 0 0 0.5rem 0; font-size: 2.2rem; font-weight: 800; display: flex; align-items: center; gap: 1rem; color: white; }
+        .page-header-modern h1 span { color: white; }
+        .page-header-modern p { margin: 0; opacity: 0.95; font-size: 1.05rem; color: white; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); border-left: 5px solid; transition: transform 0.3s ease; text-align: center; cursor: pointer; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card.all { border-left-color: #007bff; }
+        .stat-card.pending { border-left-color: #ffc107; }
+        .stat-card.approved { border-left-color: #28a745; }
+        .stat-card.revision { border-left-color: #ff9800; }
+        .stat-card.rejected { border-left-color: #dc3545; }
+        .stat-card.active { background: linear-gradient(135deg, rgba(0, 51, 102, 0.1), rgba(0, 85, 170, 0.05)); }
+        .stat-value { font-size: 2rem; font-weight: 900; color: #003366; margin-bottom: 0.5rem; }
+        .stat-label { font-size: 0.9rem; color: #6c757d; font-weight: 600; }
+        .exam-card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border-left: 5px solid; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); transition: all 0.3s; }
+        .exam-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); }
+        .exam-card.pending { border-left-color: #ffc107; }
+        .exam-card.approved { border-left-color: #28a745; }
+        .exam-card.revision { border-left-color: #ff9800; }
+        .exam-card.rejected { border-left-color: #dc3545; }
+        .status-badge { padding: 0.5rem 1rem; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
+        .status-pending { background: #ffc107; color: #000; }
+        .status-approved { background: #28a745; color: white; }
+        .status-revision { background: #ff9800; color: white; }
+        .status-rejected { background: #dc3545; color: white; }
+        .btn-submit { background: linear-gradient(135deg, #003366 0%, #0055aa 100%); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 51, 102, 0.3); }
+    </style>
 </head>
 <body class="admin-layout">
     <?php include 'sidebar-component.php'; ?>
 
     <div class="admin-main-content">
-        <?php include 'header-component.php'; ?>
+        <?php $pageTitle = 'Manage Exams'; include 'header-component.php'; ?>
 
         <div class="admin-content">
-            <div class="page-header">
-                <h1>📋 Manage Exams</h1>
-                <p>Create and organize your exams</p>
+            <?php if(isset($_SESSION['success'])): ?>
+            <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #28a745;">
+                <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if(isset($_SESSION['error'])): ?>
+            <div style="background: #f8d7da; color: #721c24; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #dc3545;">
+                <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
+            </div>
+            <?php endif; ?>
+
+            <div class="page-header-modern">
+                <h1><span>📋</span> Manage Exams</h1>
+                <p>Create, submit, and track your examination approvals</p>
             </div>
 
-            <!-- Action Buttons -->
-            <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
-                <button class="btn btn-primary" onclick="showCreateExamForm()">
-                    ➕ Create New Exam
-                </button>
-                <button class="btn btn-success">
-                    📑 Exam Templates
-                </button>
-                <button class="btn btn-secondary">
-                    📤 Export Exams
-                </button>
-            </div>
-
-            <!-- Create Exam Form (Hidden by default) -->
-            <div id="createExamForm" style="display: none; background: white; padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                <h3 style="margin-bottom: 1.5rem;">Create New Exam</h3>
-                <form method="POST" action="SaveExam.php">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Exam Title *</label>
-                            <input type="text" name="exam_name" class="form-control" required placeholder="e.g., Midterm Exam">
-                        </div>
-                        <div class="form-group">
-                            <label>Exam Type</label>
-                            <select name="exam_type" class="form-control">
-                                <option value="Midterm">Midterm Exam</option>
-                                <option value="Final">Final Exam</option>
-                                <option value="Quiz">Quiz</option>
-                                <option value="Assignment">Assignment</option>
-                            </select>
-                        </div>
+            <!-- Status Filter -->
+            <div class="stats-grid">
+                <a href="?status=all" style="text-decoration: none;">
+                    <div class="stat-card all <?php echo $statusFilter == 'all' ? 'active' : ''; ?>">
+                        <div class="stat-value"><?php echo $stats['total']; ?></div>
+                        <div class="stat-label">All Exams</div>
                     </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Total Time (minutes)</label>
-                            <input type="number" name="duration" class="form-control" placeholder="60">
-                        </div>
-                        <div class="form-group">
-                            <label>Passing Score (%)</label>
-                            <input type="number" name="passing_score" class="form-control" placeholder="50">
-                        </div>
-                        <div class="form-group">
-                            <label>Attempt Limit</label>
-                            <input type="number" name="attempts" class="form-control" placeholder="1">
-                        </div>
+                </a>
+                <a href="?status=pending" style="text-decoration: none;">
+                    <div class="stat-card pending <?php echo $statusFilter == 'pending' ? 'active' : ''; ?>">
+                        <div class="stat-value"><?php echo $stats['pending']; ?></div>
+                        <div class="stat-label">⏳ Pending</div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label>Description</label>
-                        <textarea name="description" class="form-control" rows="3" placeholder="Exam description..."></textarea>
+                </a>
+                <a href="?status=approved" style="text-decoration: none;">
+                    <div class="stat-card approved <?php echo $statusFilter == 'approved' ? 'active' : ''; ?>">
+                        <div class="stat-value"><?php echo $stats['approved']; ?></div>
+                        <div class="stat-label">✓ Approved</div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 0.5rem;">
-                            <input type="checkbox" name="randomize">
-                            <span>Randomize question order</span>
-                        </label>
+                </a>
+                <a href="?status=revision" style="text-decoration: none;">
+                    <div class="stat-card revision <?php echo $statusFilter == 'revision' ? 'active' : ''; ?>">
+                        <div class="stat-value"><?php echo $stats['revision']; ?></div>
+                        <div class="stat-label">✏️ Revision</div>
                     </div>
-                    
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">Create Exam</button>
-                        <button type="button" class="btn btn-secondary" onclick="hideCreateExamForm()">Cancel</button>
+                </a>
+                <a href="?status=rejected" style="text-decoration: none;">
+                    <div class="stat-card rejected <?php echo $statusFilter == 'rejected' ? 'active' : ''; ?>">
+                        <div class="stat-value"><?php echo $stats['rejected']; ?></div>
+                        <div class="stat-label">✗ Rejected</div>
                     </div>
-                </form>
+                </a>
             </div>
 
             <!-- Exams List -->
-            <div class="tabs-container">
-                <div class="tabs-header">
-                    <button class="tab-btn active" onclick="switchTab(0)">By Course</button>
-                    <button class="tab-btn" onclick="switchTab(1)">All Exams</button>
-                    <button class="tab-btn" onclick="switchTab(2)">Draft</button>
-                    <button class="tab-btn" onclick="switchTab(3)">Pending Approval</button>
-                    <button class="tab-btn" onclick="switchTab(4)">Approved</button>
-                    <button class="tab-btn" onclick="switchTab(5)">Live</button>
-                    <button class="tab-btn" onclick="switchTab(6)">Completed</button>
-                </div>
+            <?php if($exams->num_rows > 0): ?>
+                <?php while($exam = $exams->fetch_assoc()): 
+                    $status = $exam['approval_status'] ?? 'pending';
+                    $canSubmit = !$exam['submitted_for_approval'] && $exam['question_count'] >= 5;
+                    $canResubmit = $status == 'revision' && $exam['question_count'] >= 5;
+                    $hasMinQuestions = $exam['question_count'] >= 5;
+                ?>
+                <div class="exam-card <?php echo $status; ?>">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="margin: 0 0 0.5rem 0; color: #003366; font-size: 1.3rem;">
+                                <?php echo htmlspecialchars($exam['exam_name']); ?>
+                            </h3>
+                            <p style="color: #6c757d; margin: 0; font-size: 0.9rem;">
+                                <?php echo htmlspecialchars($exam['course_code']); ?> - <?php echo htmlspecialchars($exam['course_name']); ?>
+                            </p>
+                        </div>
+                        <span class="status-badge status-<?php echo $status; ?>">
+                            <?php 
+                            $icons = ['pending' => '⏳', 'approved' => '✓', 'revision' => '✏️', 'rejected' => '✗'];
+                            echo $icons[$status] . ' ' . ucfirst($status); 
+                            ?>
+                        </span>
+                    </div>
 
-                <!-- By Course Tab -->
-                <div class="tab-content active">
-                    <?php
-                    // Get distinct courses that have questions
-                    $courses_query = $con->query("SELECT DISTINCT course_name FROM question_page ORDER BY course_name");
-                    
-                    if($courses_query && $courses_query->num_rows > 0):
-                        while($course = $courses_query->fetch_assoc()):
-                            $course_name = $course['course_name'];
-                            
-                            // Get exams for this course
-                            $course_exams = $con->query("SELECT DISTINCT ec.exam_id, ec.exam_name, 
-                                COUNT(qp.question_id) as question_count 
-                                FROM exam_category ec 
-                                INNER JOIN question_page qp ON ec.exam_id = qp.exam_id 
-                                WHERE qp.course_name = '".$con->real_escape_string($course_name)."'
-                                GROUP BY ec.exam_id, ec.exam_name
-                                ORDER BY ec.exam_id DESC");
-                            
-                            if($course_exams && $course_exams->num_rows > 0):
-                    ?>
-                    <div style="background: white; border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); border-left: 4px solid var(--secondary-color);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border-color);">
-                            <div>
-                                <h3 style="margin: 0; color: var(--primary-color);">
-                                    📚 <?php echo htmlspecialchars($course_name); ?>
-                                </h3>
-                                <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">
-                                    <?php echo $course_exams->num_rows; ?> exam(s)
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; margin: 1rem 0;">
+                        <div>
+                            <div style="font-size: 0.85rem; color: #6c757d; font-weight: 600;">Category</div>
+                            <div style="font-size: 1rem; color: #003366; font-weight: 600;"><?php echo htmlspecialchars($exam['category_name']); ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: #6c757d; font-weight: 600;">Exam Date</div>
+                            <div style="font-size: 1rem; color: #003366; font-weight: 600;"><?php echo date('M d, Y', strtotime($exam['exam_date'])); ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: #6c757d; font-weight: 600;">Questions</div>
+                            <div style="font-size: 1rem; color: #003366; font-weight: 600;"><?php echo $exam['question_count']; ?> Questions</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: #6c757d; font-weight: 600;">Duration</div>
+                            <div style="font-size: 1rem; color: #003366; font-weight: 600;"><?php echo $exam['duration_minutes']; ?> Min</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: #6c757d; font-weight: 600;">Students Taken</div>
+                            <div style="font-size: 1rem; color: #003366; font-weight: 600;"><?php echo $exam['student_count']; ?> Students</div>
+                        </div>
+                    </div>
+
+                    <?php if($exam['review_comments']): ?>
+                    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                        <strong style="color: #856404;">Committee Comments:</strong>
+                        <p style="margin: 0.5rem 0 0 0; color: #856404;"><?php echo htmlspecialchars($exam['review_comments']); ?></p>
+                    </div>
+                    <?php endif; ?>
+
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+                        <a href="ManageQuestions.php?schedule_id=<?php echo $exam['schedule_id']; ?>" class="btn-submit" style="background: #6c757d;">
+                            📝 Manage Questions
+                        </a>
+                        
+                        <?php if(!$exam['submitted_for_approval'] && $exam['question_count'] > 0): ?>
+                            <?php if(!$hasMinQuestions): ?>
+                            <div style="flex: 1; background: #fff3cd; border: 2px solid #ffc107; padding: 0.75rem; border-radius: 8px;">
+                                <strong style="color: #856404;">⚠️ Minimum 5 Questions Required</strong>
+                                <p style="margin: 0.25rem 0 0 0; color: #856404; font-size: 0.9rem;">
+                                    Current: <?php echo $exam['question_count']; ?> / 5 questions
                                 </p>
                             </div>
-                        </div>
+                            <?php endif; ?>
+                            <button type="button" 
+                                    class="btn-submit <?php echo !$canSubmit ? 'disabled' : ''; ?>" 
+                                    <?php if($canSubmit): ?>
+                                    onclick="if(confirm('Submit this exam for approval?')) { window.location.href='SubmitExamForApproval.php?schedule_id=<?php echo $exam['schedule_id']; ?>'; }"
+                                    <?php else: ?>
+                                    onclick="alert('Minimum 5 questions required. Current: <?php echo $exam['question_count']; ?>');" 
+                                    style="opacity: 0.5; cursor: not-allowed;"
+                                    <?php endif; ?>>
+                                📤 Submit for Approval
+                            </button>
+                        <?php endif; ?>
                         
-                        <?php while($exam = $course_exams->fetch_assoc()): ?>
-                        <div style="background: var(--bg-light); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1rem; border-left: 4px solid var(--primary-color);">
-                            <div style="display: flex; justify-content: space-between; align-items: start;">
-                                <div style="flex: 1;">
-                                    <h4 style="margin: 0 0 0.5rem 0; color: var(--primary-color);">
-                                        <?php echo htmlspecialchars($exam['exam_name']); ?>
-                                    </h4>
-                                    <div style="display: flex; gap: 2rem; font-size: 0.9rem; color: var(--text-secondary);">
-                                        <div>
-                                            <strong>Exam ID:</strong> <?php echo $exam['exam_id']; ?>
-                                        </div>
-                                        <div>
-                                            <strong>Questions:</strong> <?php echo $exam['question_count']; ?>
-                                        </div>
-                                        <div>
-                                            <strong>Status:</strong> 
-                                            <span style="color: var(--success-color); font-weight: 700;">Active</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <button class="btn btn-primary btn-sm" onclick="viewExam(<?php echo $exam['exam_id']; ?>)">
-                                        👁️ View
-                                    </button>
-                                    <button class="btn btn-success btn-sm" onclick="editExam(<?php echo $exam['exam_id']; ?>)">
-                                        ✏️ Edit
-                                    </button>
-                                    <button class="btn btn-secondary btn-sm" onclick="cloneExam(<?php echo $exam['exam_id']; ?>)">
-                                        📋 Clone
-                                    </button>
-                                </div>
+                        <?php if($status == 'revision' && $exam['question_count'] > 0): ?>
+                            <?php if(!$hasMinQuestions): ?>
+                            <div style="flex: 1; background: #fff3cd; border: 2px solid #ffc107; padding: 0.75rem; border-radius: 8px;">
+                                <strong style="color: #856404;">⚠️ Minimum 5 Questions Required</strong>
+                                <p style="margin: 0.25rem 0 0 0; color: #856404; font-size: 0.9rem;">
+                                    Current: <?php echo $exam['question_count']; ?> / 5 questions
+                                </p>
                             </div>
-                        </div>
-                        <?php endwhile; ?>
-                    </div>
-                    <?php 
-                            endif;
-                        endwhile;
-                    else:
-                    ?>
-                        <div style="text-align: center; padding: 4rem;">
-                            <h3 style="color: var(--text-secondary);">No exams yet</h3>
-                            <p>Create your first exam to get started</p>
-                            <button class="btn btn-primary" style="margin-top: 1rem;" onclick="showCreateExamForm()">
-                                ➕ Create Exam
+                            <?php endif; ?>
+                            <button type="button" 
+                                    class="btn-submit <?php echo !$canResubmit ? 'disabled' : ''; ?>" 
+                                    style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); <?php echo !$canResubmit ? 'opacity: 0.5; cursor: not-allowed;' : ''; ?>" 
+                                    <?php if($canResubmit): ?>
+                                    onclick="if(confirm('Resubmit this exam for approval?')) { window.location.href='SubmitExamForApproval.php?schedule_id=<?php echo $exam['schedule_id']; ?>'; }"
+                                    <?php else: ?>
+                                    onclick="alert('Minimum 5 questions required. Current: <?php echo $exam['question_count']; ?>');"
+                                    <?php endif; ?>>
+                                🔄 Resubmit
                             </button>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- All Exams Tab -->
-                <div class="tab-content">
-                    <?php
-                    // Get all exams with question count
-                    $all_exams = $con->query("SELECT ec.exam_id, ec.exam_name, 
-                        COUNT(qp.question_id) as question_count,
-                        GROUP_CONCAT(DISTINCT qp.course_name SEPARATOR ', ') as courses
-                        FROM exam_category ec 
-                        LEFT JOIN question_page qp ON ec.exam_id = qp.exam_id 
-                        GROUP BY ec.exam_id, ec.exam_name
-                        ORDER BY ec.exam_id DESC");
-                    
-                    if($all_exams && $all_exams->num_rows > 0):
-                        while($exam = $all_exams->fetch_assoc()):
-                    ?>
-                    <div style="background: white; border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); border-left: 4px solid var(--primary-color);">
-                        <div style="display: flex; justify-content: space-between; align-items: start;">
-                            <div style="flex: 1;">
-                                <h4 style="margin: 0 0 0.5rem 0; color: var(--primary-color);">
-                                    <?php echo htmlspecialchars($exam['exam_name']); ?>
-                                </h4>
-                                <div style="display: flex; gap: 2rem; font-size: 0.9rem; color: var(--text-secondary);">
-                                    <div>
-                                        <strong>Exam ID:</strong> <?php echo $exam['exam_id']; ?>
-                                    </div>
-                                    <div>
-                                        <strong>Questions:</strong> <?php echo $exam['question_count']; ?>
-                                    </div>
-                                    <div>
-                                        <strong>Courses:</strong> <?php echo $exam['courses'] ? htmlspecialchars($exam['courses']) : 'None'; ?>
-                                    </div>
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-primary btn-sm" onclick="viewExam(<?php echo $exam['exam_id']; ?>)">
-                                    👁️ View
-                                </button>
-                                <button class="btn btn-success btn-sm" onclick="editExam(<?php echo $exam['exam_id']; ?>)">
-                                    ✏️ Edit
-                                </button>
-                                <button class="btn btn-secondary btn-sm" onclick="cloneExam(<?php echo $exam['exam_id']; ?>)">
-                                    📋 Clone
-                                </button>
-                            </div>
-                        </div>
+                        <?php endif; ?>
                     </div>
-                    <?php 
-                        endwhile;
-                    else:
-                    ?>
-                        <div style="text-align: center; padding: 4rem;">
-                            <h3 style="color: var(--text-secondary);">No exams yet</h3>
-                            <p>Create your first exam to get started</p>
-                            <button class="btn btn-primary" style="margin-top: 1rem;" onclick="showCreateExamForm()">
-                                ➕ Create Exam
-                            </button>
-                        </div>
-                    <?php endif; ?>
                 </div>
-
-                <div class="tab-content">
-                    <p style="padding: 2rem; text-align: center;">Draft exams will appear here</p>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <div style="background: white; border-radius: 12px; padding: 3rem; text-align: center; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);">
+                    <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;">📋</div>
+                    <h3 style="color: #6c757d; margin-bottom: 0.5rem;">No Exams Found</h3>
+                    <p style="color: #6c757d;">Create your first exam to get started.</p>
                 </div>
-
-                <div class="tab-content">
-                    <p style="padding: 2rem; text-align: center;">Exams pending approval will appear here</p>
-                </div>
-
-                <div class="tab-content">
-                    <p style="padding: 2rem; text-align: center;">Approved exams will appear here</p>
-                </div>
-
-                <div class="tab-content">
-                    <p style="padding: 2rem; text-align: center;">Live exams will appear here</p>
-                </div>
-
-                <div class="tab-content">
-                    <p style="padding: 2rem; text-align: center;">Completed exams will appear here</p>
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
     </div>
 
     <script src="../assets/js/admin-sidebar.js"></script>
-    <script>
-        function showCreateExamForm() {
-            document.getElementById('createExamForm').style.display = 'block';
-        }
-        
-        function hideCreateExamForm() {
-            document.getElementById('createExamForm').style.display = 'none';
-        }
-        
-        function viewExam(id) {
-            window.location.href = 'ViewExam.php?id=' + id;
-        }
-        
-        function editExam(id) {
-            window.location.href = 'EditExam.php?id=' + id;
-        }
-        
-        function cloneExam(id) {
-            if(confirm('Clone this exam?')) {
-                window.location.href = 'CloneExam.php?id=' + id;
-            }
-        }
-        
-        function deleteExam(id) {
-            if(confirm('Are you sure you want to delete this exam?')) {
-                window.location.href = 'DeleteExam.php?id=' + id;
-            }
-        }
-        
-        function switchTab(index) {
-            // Remove active class from all tabs and content
-            const tabBtns = document.querySelectorAll('.tab-btn');
-            const tabContents = document.querySelectorAll('.tab-content');
-            
-            tabBtns.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            
-            // Add active class to selected tab and content
-            tabBtns[index].classList.add('active');
-            tabContents[index].classList.add('active');
-        }
-    </script>
 </body>
 </html>
 <?php $con->close(); ?>

@@ -14,7 +14,7 @@
 	// Select Database
 	$con->select_db("oes");
 	// Specify the query to Insert Record
-	$sql = "delete from schedule where schedule_id='".$Id."'";
+	$sql = "delete FROM exam_schedules where schedule_id='".$Id."'";
 	// execute query
 	$con->query ($sql);
 	// Close The Connection

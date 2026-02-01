@@ -175,9 +175,9 @@ if ($failedFiles == 0 && $failedFolders == 0) {
     echo "</div>";
 }
 
-echo "<a href='index-modern.php' class='btn'>🏠 Go to Home</a>";
-echo "<a href='Student/index-modern.php' class='btn'>👨‍🎓 Student Dashboard</a>";
-echo "<a href='Admin/index-modern.php' class='btn'>👨‍💼 Admin Dashboard</a>";
+echo "<a href='index.php' class='btn'>🏠 Go to Home</a>";
+echo "<a href='Student/index.php' class='btn'>👨‍🎓 Student Dashboard</a>";
+echo "<a href='Admin/index.php' class='btn'>👨‍💼 Admin Dashboard</a>";
 
 echo "</div></body></html>";
 ?>

@@ -4,8 +4,8 @@
  * Use this to log security events throughout the system
  */
 
-function logSecurityEvent($userId, $userType, $action, $status, $details = '') {
-    $con = new mysqli("localhost","root","","oes");
+function logSecurityEvent($userId, $userType, $action, $is_active, $details = '') {
+    $con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
     
     // Create table if doesn't exist
     $createTableSQL = "CREATE TABLE IF NOT EXISTS `security_logs` (
@@ -15,7 +15,7 @@ function logSecurityEvent($userId, $userType, $action, $status, $details = '') {
         `action` VARCHAR(100),
         `ip_address` VARCHAR(45),
         `user_agent` TEXT,
-        `status` VARCHAR(20),
+        `is_active` VARCHAR(20),
         `details` TEXT,
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX `idx_user` (`user_id`),
@@ -31,8 +31,8 @@ function logSecurityEvent($userId, $userType, $action, $status, $details = '') {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
     
     // Insert log
-    $stmt = $con->prepare("INSERT INTO security_logs (user_id, user_type, action, ip_address, user_agent, status, details) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssssss", $userId, $userType, $action, $ipAddress, $userAgent, $status, $details);
+    $stmt = $con->prepare("INSERT INTO security_logs (user_id, user_type, action, ip_address, user_agent, is_active, details) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssssss", $userId, $userType, $action, $ipAddress, $userAgent, $is_active, $details);
     $stmt->execute();
     $stmt->close();
     $con->close();

@@ -1,22 +1,22 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 // Database connection
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
 $Id = $_GET['Id'];
-$sql = "select * from admin where Admin_ID='".$Id."'";
+$sql = "select * FROM administrators where admin_id='".$Id."'";
 $result = $con->query($sql);
 
 if($row = $result->fetch_array()) {
-    $Admin_ID = $row['Admin_ID'];
+    $admin_id = $row['admin_id'];
     $Admin_Name = $row['Admin_Name'];
     $Email = $row['email'];
     $UserName = $row['username'];

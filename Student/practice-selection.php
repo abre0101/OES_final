@@ -4,17 +4,19 @@ if (!isset($_SESSION)) {
 }
 
 if(!isset($_SESSION['Name'])){
-    header("Location: ../index-modern.php");
+    header("Location: ../index.php");
     exit();
 }
 
 // Get available courses with questions
-$con = mysqli_connect("localhost","root","","oes");
-$sql = "SELECT DISTINCT course_name, COUNT(*) as question_count 
-        FROM question_page 
-        GROUP BY course_name 
+require_once(__DIR__ . "/../Connections/OES.php");
+$sql = "SELECT c.course_name, COUNT(q.question_id) as question_count 
+        FROM courses c
+        INNER JOIN questions q ON c.course_id = q.course_id
+        WHERE q.approval_status = 'approved'
+        GROUP BY c.course_id, c.course_name 
         HAVING question_count > 0
-        ORDER BY course_name";
+        ORDER BY c.course_name";
 $result = mysqli_query($con,$sql);
 $courses = [];
 while($row = mysqli_fetch_array($result)) {
@@ -164,7 +166,7 @@ mysqli_close($con);
 </head>
 <body>
     <div class="practice-selection-container">
-        <a href="index-modern.php" class="back-button btn btn-secondary">
+        <a href="index.php" class="back-button btn btn-secondary">
             ← Back to Dashboard
         </a>
         
@@ -197,7 +199,7 @@ mysqli_close($con);
                 <div class="empty-state-icon">📭</div>
                 <h2>No Practice Questions Available</h2>
                 <p>There are currently no practice questions in the system. Please check back later or contact your instructor.</p>
-                <a href="index-modern.php" class="btn btn-primary" style="margin-top: 2rem;">
+                <a href="index.php" class="btn btn-primary" style="margin-top: 2rem;">
                     Back to Dashboard
                 </a>
             </div>

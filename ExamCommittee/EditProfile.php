@@ -44,22 +44,22 @@ $Id=$_GET['ECID'];
 	// Select Database
 	$con->select_db("oes");
 // Specify the query to execute
-//$sql = "select * from exam_committee where EC_ID ='".$ID."'";
-$sql = "select * from exam_committee where exam_committee.EC_ID='".$Id."'";
+//$sql = "select * FROM exam_committee_members where committee_member_id ='".$ID."'";
+$sql = "select * FROM exam_committee_members where exam_committee.committee_member_id='".$Id."'";
 // Execute query
 $result =$con->query($sql);
 // Loop through each records 
 while($row = $result->fetch_array())
 {
-$Id=$row['EC_ID'];
-$Department=$row['dept_name'];
-$Name=$row['EC_Name'];
+$Id=$row['committee_member_id'];
+$Department=$row['department_name'];
+$Name=$row['full_name'];
 
 $Email=$row['email'];
 
 $UserName =$row['username'];
 $Password=$row['password'];
-$Status=$row['Status'];
+$is_active=$row['is_active'];
 }
 ?>
           <form method="post" action="UpdateProfile.php?Id=<?php echo $Id;?>">

@@ -14,12 +14,12 @@
 
 	
 	// Establish Connection with MYSQL
-	 $con = new mysqli("localhost","root","","oes");
+	 $con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 	//$con = mysql_connect ("localhost","root");
 	// Select Database
 	//mysql_select_db("oes", $con);
 	// Specify the query to Insert Record
-	$sql = "insert into faculty 	(faculty_id,faculty_name) 	values('".$ID."','".$Name."' )";
+	$sql = "insert INTO faculties 	(faculty_id,faculty_name) 	values('".$ID."','".$Name."' )";
 	// execute query
 	 $con->query($sql);
 

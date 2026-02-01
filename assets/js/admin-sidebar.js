@@ -112,8 +112,8 @@ function performSearch(searchTerm) {
         'exam': 'ECommittee.php',
         'committee': 'ECommittee.php',
         'exam committee': 'ECommittee.php',
-        'dashboard': 'index-modern.php',
-        'home': 'index-modern.php',
+        'dashboard': 'index.php',
+        'home': 'index.php',
         'profile': 'Profile.php',
         'settings': 'SystemSettings.php',
         'system settings': 'SystemSettings.php'

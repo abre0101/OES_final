@@ -6,17 +6,17 @@
 
 class GradingHelper {
     private static $gradingScheme = array(
-        'A+' => array('min' => 90, 'max' => 100, 'gpa' => 4.0, 'status' => 'Excellent'),
-        'A'  => array('min' => 85, 'max' => 89.99, 'gpa' => 3.75, 'status' => 'Excellent'),
-        'A-' => array('min' => 80, 'max' => 84.99, 'gpa' => 3.5, 'status' => 'Excellent'),
-        'B+' => array('min' => 75, 'max' => 79.99, 'gpa' => 3.0, 'status' => 'Good'),
-        'B'  => array('min' => 70, 'max' => 74.99, 'gpa' => 2.75, 'status' => 'Good'),
-        'B-' => array('min' => 65, 'max' => 69.99, 'gpa' => 2.5, 'status' => 'Good'),
-        'C+' => array('min' => 60, 'max' => 64.99, 'gpa' => 2.0, 'status' => 'Satisfactory'),
-        'C'  => array('min' => 55, 'max' => 59.99, 'gpa' => 1.75, 'status' => 'Satisfactory'),
-        'C-' => array('min' => 50, 'max' => 54.99, 'gpa' => 1.5, 'status' => 'Satisfactory'),
-        'D'  => array('min' => 45, 'max' => 49.99, 'gpa' => 1.0, 'status' => 'Pass'),
-        'F'  => array('min' => 0, 'max' => 44.99, 'gpa' => 0.0, 'status' => 'Fail')
+        'A+' => array('min' => 90, 'max' => 100, 'gpa' => 4.0, 'is_active' => 'Excellent'),
+        'A'  => array('min' => 85, 'max' => 89.99, 'gpa' => 3.75, 'is_active' => 'Excellent'),
+        'A-' => array('min' => 80, 'max' => 84.99, 'gpa' => 3.5, 'is_active' => 'Excellent'),
+        'B+' => array('min' => 75, 'max' => 79.99, 'gpa' => 3.0, 'is_active' => 'Good'),
+        'B'  => array('min' => 70, 'max' => 74.99, 'gpa' => 2.75, 'is_active' => 'Good'),
+        'B-' => array('min' => 65, 'max' => 69.99, 'gpa' => 2.5, 'is_active' => 'Good'),
+        'C+' => array('min' => 60, 'max' => 64.99, 'gpa' => 2.0, 'is_active' => 'Satisfactory'),
+        'C'  => array('min' => 55, 'max' => 59.99, 'gpa' => 1.75, 'is_active' => 'Satisfactory'),
+        'C-' => array('min' => 50, 'max' => 54.99, 'gpa' => 1.5, 'is_active' => 'Satisfactory'),
+        'D'  => array('min' => 45, 'max' => 49.99, 'gpa' => 1.0, 'is_active' => 'Pass'),
+        'F'  => array('min' => 0, 'max' => 44.99, 'gpa' => 0.0, 'is_active' => 'Fail')
     );
     
     /**
@@ -30,7 +30,7 @@ class GradingHelper {
                 return array(
                     'grade' => $grade,
                     'gpa' => $details['gpa'],
-                    'status' => $details['status'],
+                    'is_active' => $details['is_active'],
                     'percentage' => $score
                 );
             }
@@ -39,7 +39,7 @@ class GradingHelper {
         return array(
             'grade' => 'F',
             'gpa' => 0.0,
-            'status' => 'Fail',
+            'is_active' => 'Fail',
             'percentage' => $score
         );
     }
@@ -147,7 +147,7 @@ class GradingHelper {
             'Fail' => 'Unfortunately, you did not pass. Please review the material and try again.'
         );
         
-        return $messages[$gradeInfo['status']] ?? 'Keep working hard!';
+        return $messages[$gradeInfo['is_active']] ?? 'Keep working hard!';
     }
 }
 ?>

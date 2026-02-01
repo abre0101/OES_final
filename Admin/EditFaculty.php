@@ -1,19 +1,19 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 // Database connection
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
 // Get faculty data
 $FacId = $_GET['FacId'];
-$sql = "select * from faculty where faculty_id='".$FacId."'";
+$sql = "select * FROM faculties where faculty_id='".$FacId."'";
 $result = $con->query($sql);
 
 if($row = $result->fetch_array()) {

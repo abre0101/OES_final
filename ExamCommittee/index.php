@@ -1,5 +1,5 @@
 <?php
-// Redirect to modern index page
-header("Location: index-modern.php");
+// Redirect to main landing page
+header('Location: index.php');
 exit();
 ?>

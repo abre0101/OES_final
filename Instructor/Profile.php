@@ -43,23 +43,23 @@ $con = new mysqli("localhost","root");
 // Select Database
 $con->select_db("oes");
 // Specify the query to execute
-$sql = "select * from instructor where Inst_ID ='".$ID."'  ";
+$sql = "select * FROM instructors where instructor_id ='".$ID."'  ";
 // Execute query
 $result = $con->query($sql);
 // Loop through each records 
 $row = $result->fetch_array()
 ?>             
                <strong>Instructor ID:</strong>
-                    <?php echo $row['Inst_ID'];?><br/> <br/>
+                    <?php echo $row['instructor_id'];?><br/> <br/>
                   <strong>Instructor Name:</strong>
-                    <td><?php echo $row['Inst_Name'];?><br/> <br/>
+                    <td><?php echo $row['full_name'];?><br/> <br/>
                   <strong>Email :</strong>
                <?php echo $row['email'];?><br/> <br/>
                  <strong>Username:</strong>
                   <?php echo $row['username'];?><br/> <br/>
                  <strong>Password:</strong>
                 <?php echo $row['password'];?><br/> <br/>
-                   <a href="EditProfile.php?InstId=<?php echo $row['Inst_ID']; ?>">Edit Profile</a></td>
+                   <a href="EditProfile.php?InstId=<?php echo $row['instructor_id']; ?>">Edit Profile</a></td>
                	  </div>
 
 

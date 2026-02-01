@@ -1,11 +1,11 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php");
 $message = '';
 $messageType = '';
 $importResults = [];
@@ -15,7 +15,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
     $userType = $_POST['import_type'];
     $file = $_FILES['csv_file'];
     
-    if($file['error'] == 0) {
+    if($file['error'] == 0 && $file['size'] <= 5242880) { // 5MB limit
         $filename = $file['tmp_name'];
         $handle = fopen($filename, 'r');
         
@@ -25,55 +25,66 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
         $successCount = 0;
         $errorCount = 0;
         $errors = [];
+        $rowNumber = 1;
         
         while(($data = fgetcsv($handle)) !== FALSE) {
+            $rowNumber++;
             try {
                 switch($userType) {
                     case 'student':
-                        // Expected: ID, Name, Email, Password, Department, Semester, Status
-                        if(count($data) >= 7) {
-                            $stmt = $con->prepare("INSERT INTO student (Id, Name, Email, Password, dept_name, Semister, Status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                            $stmt->bind_param("sssssss", $data[0], $data[1], $data[2], $data[3], $data[4], $data[5], $data[6]);
+                        // Expected: student_code, username, password, full_name, email, phone, department_id, semester, gender
+                        if(count($data) >= 9) {
+                            $stmt = $con->prepare("INSERT INTO students (student_code, username, password, full_name, email, phone, department_id, semester, gender, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
+                            $stmt->bind_param("ssssssiis", $data[0], $data[1], $data[2], $data[3], $data[4], $data[5], $data[6], $data[7], $data[8]);
                             if($stmt->execute()) {
                                 $successCount++;
                             } else {
                                 $errorCount++;
-                                $errors[] = "Row: {$data[0]} - " . $stmt->error;
+                                $errors[] = "Row {$rowNumber}: {$data[0]} - " . $stmt->error;
                             }
+                        } else {
+                            $errorCount++;
+                            $errors[] = "Row {$rowNumber}: Insufficient columns";
                         }
                         break;
                         
                     case 'instructor':
-                        // Expected: ID, Name, Email, Password, Department, Status
-                        if(count($data) >= 6) {
-                            $stmt = $con->prepare("INSERT INTO instructor (Inst_ID, Name, Email, Password, dept_name, Status) VALUES (?, ?, ?, ?, ?, ?)");
-                            $stmt->bind_param("ssssss", $data[0], $data[1], $data[2], $data[3], $data[4], $data[5]);
+                        // Expected: instructor_code, username, password, full_name, email, phone, department_id
+                        if(count($data) >= 7) {
+                            $stmt = $con->prepare("INSERT INTO instructors (instructor_code, username, password, full_name, email, phone, department_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+                            $stmt->bind_param("ssssssi", $data[0], $data[1], $data[2], $data[3], $data[4], $data[5], $data[6]);
                             if($stmt->execute()) {
                                 $successCount++;
                             } else {
                                 $errorCount++;
-                                $errors[] = "Row: {$data[0]} - " . $stmt->error;
+                                $errors[] = "Row {$rowNumber}: {$data[0]} - " . $stmt->error;
                             }
+                        } else {
+                            $errorCount++;
+                            $errors[] = "Row {$rowNumber}: Insufficient columns";
                         }
                         break;
                         
                     case 'exam_committee':
-                        // Expected: ID, Name, Email, Password, Department, Status
-                        if(count($data) >= 6) {
-                            $stmt = $con->prepare("INSERT INTO exam_committee (committee_id, Name, Email, Password, dept_name, Status) VALUES (?, ?, ?, ?, ?, ?)");
-                            $stmt->bind_param("ssssss", $data[0], $data[1], $data[2], $data[3], $data[4], $data[5]);
+                        // Expected: member_code, username, password, full_name, email, phone, department_id
+                        if(count($data) >= 7) {
+                            $stmt = $con->prepare("INSERT INTO exam_committee_members (member_code, username, password, full_name, email, phone, department_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+                            $stmt->bind_param("ssssssi", $data[0], $data[1], $data[2], $data[3], $data[4], $data[5], $data[6]);
                             if($stmt->execute()) {
                                 $successCount++;
                             } else {
                                 $errorCount++;
-                                $errors[] = "Row: {$data[0]} - " . $stmt->error;
+                                $errors[] = "Row {$rowNumber}: {$data[0]} - " . $stmt->error;
                             }
+                        } else {
+                            $errorCount++;
+                            $errors[] = "Row {$rowNumber}: Insufficient columns";
                         }
                         break;
                 }
             } catch(Exception $e) {
                 $errorCount++;
-                $errors[] = "Row error: " . $e->getMessage();
+                $errors[] = "Row {$rowNumber}: " . $e->getMessage();
             }
         }
         
@@ -86,17 +97,24 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
         ];
         
         if($successCount > 0) {
-            $message = "Successfully imported {$successCount} users!";
+            $message = "✅ Successfully imported {$successCount} user(s)!";
             $messageType = 'success';
         }
         if($errorCount > 0) {
-            $message .= " {$errorCount} errors occurred.";
+            $message .= " ⚠️ {$errorCount} error(s) occurred.";
             $messageType = $successCount > 0 ? 'warning' : 'danger';
         }
     } else {
-        $message = 'Error uploading file. Please try again.';
+        $message = '❌ Error: File too large or upload failed. Maximum size is 5MB.';
         $messageType = 'danger';
     }
+}
+
+// Get departments for reference
+$departments = $con->query("SELECT department_id, department_name FROM departments ORDER BY department_name");
+$deptList = [];
+while($dept = $departments->fetch_assoc()) {
+    $deptList[] = $dept;
 }
 ?>
 <!DOCTYPE html>
@@ -104,41 +122,109 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Import - Admin</title>
+    <title>Bulk Import - Admin Dashboard</title>
     <link href="../assets/css/modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        .template-card {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-            color: white;
+        .page-header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            gap: 2rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 197, 253, 0.05) 100%);
             padding: 2rem;
             border-radius: var(--radius-lg);
-            margin-bottom: 2rem;
+            border: 2px solid rgba(59, 130, 246, 0.1);
         }
+        
+        .page-title-section h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .page-title-section h1 span {
+            -webkit-text-fill-color: initial;
+            background: none;
+        }
+        
+        .page-title-section p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
         .upload-zone {
             border: 3px dashed var(--border-color);
             border-radius: var(--radius-lg);
-            padding: 3rem;
+            padding: 3rem 2rem;
             text-align: center;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             cursor: pointer;
+            background: var(--bg-light);
         }
         .upload-zone:hover {
             border-color: var(--primary-color);
-            background: rgba(0, 123, 255, 0.05);
+            background: rgba(59, 130, 246, 0.05);
+            transform: translateY(-2px);
         }
         .upload-zone.dragover {
             border-color: var(--success-color);
             background: rgba(40, 167, 69, 0.1);
+            border-style: solid;
         }
-        .result-box {
-            background: white;
+        .upload-zone.has-file {
+            border-color: var(--success-color);
+            background: rgba(40, 167, 69, 0.05);
+        }
+        .template-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid var(--border-color);
             border-radius: var(--radius-lg);
             padding: 1.5rem;
-            margin-top: 2rem;
-            border-left: 4px solid var(--primary-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .template-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        .template-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .stats-card {
+            text-align: center;
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 2px solid;
+        }
+        .stats-card.success {
+            background: rgba(40, 167, 69, 0.1);
+            border-color: var(--success-color);
+        }
+        .stats-card.error {
+            background: rgba(220, 53, 69, 0.1);
+            border-color: #dc3545;
+        }
+        .dept-reference {
+            max-height: 300px;
+            overflow-y: auto;
+            background: var(--bg-light);
+            padding: 1rem;
+            border-radius: var(--radius-md);
         }
     </style>
 </head>
@@ -152,47 +238,66 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
         ?>
 
         <div class="admin-content">
-            <div class="page-header">
-                <h1>📥 Bulk User Import</h1>
-                <p>Import multiple users at once using CSV files</p>
-            </div>
-
-            <?php if($message): ?>
-            <div class="alert alert-<?php echo $messageType; ?>" style="margin-bottom: 2rem; padding: 1.25rem; border-radius: var(--radius-lg);">
-                <strong><?php echo $messageType == 'success' ? '✓' : ($messageType == 'warning' ? '⚠' : '✗'); ?></strong> <?php echo $message; ?>
-            </div>
-            <?php endif; ?>
-
-            <?php if(!empty($importResults)): ?>
-            <div class="result-box">
-                <h3 style="margin-bottom: 1rem; color: var(--primary-color);">📊 Import Results</h3>
-                <div class="grid grid-2" style="margin-bottom: 1rem;">
-                    <div style="text-align: center; padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: var(--radius-md);">
-                        <div style="font-size: 2.5rem; font-weight: 800; color: var(--success-color);"><?php echo $importResults['success']; ?></div>
-                        <div style="color: var(--text-secondary);">Successfully Imported</div>
-                    </div>
-                    <div style="text-align: center; padding: 1rem; background: rgba(220, 53, 69, 0.1); border-radius: var(--radius-md);">
-                        <div style="font-size: 2.5rem; font-weight: 800; color: #dc3545;"><?php echo $importResults['errors']; ?></div>
-                        <div style="color: var(--text-secondary);">Errors</div>
-                    </div>
+            <!-- Page Header -->
+            <div class="page-header-actions">
+                <div class="page-title-section">
+                    <h1><span>📥</span> Bulk User Import</h1>
+                    <p>Import multiple users at once using CSV files</p>
                 </div>
-                
-                <?php if(!empty($importResults['error_details'])): ?>
-                <details style="margin-top: 1rem;">
-                    <summary style="cursor: pointer; font-weight: 600; color: var(--primary-color);">View Error Details</summary>
-                    <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: var(--radius-md); max-height: 300px; overflow-y: auto;">
-                        <?php foreach($importResults['error_details'] as $error): ?>
-                        <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); color: #dc3545;">
-                            • <?php echo htmlspecialchars($error); ?>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </details>
-                <?php endif; ?>
+            </div>
+
+            <!-- Alert Messages -->
+            <?php if($message): ?>
+            <div class="alert alert-<?php echo $messageType; ?>" style="margin-bottom: 2rem; padding: 1.25rem; border-radius: var(--radius-lg); border-left: 4px solid;">
+                <?php echo $message; ?>
             </div>
             <?php endif; ?>
 
-            <div class="grid grid-2">
+            <!-- Import Results -->
+            <?php if(!empty($importResults)): ?>
+            <div class="card" style="margin-bottom: 2rem;">
+                <div class="card-header">
+                    <h3 class="card-title">📊 Import Results</h3>
+                </div>
+                <div style="padding: 2rem;">
+                    <div class="grid grid-2" style="gap: 2rem; margin-bottom: 2rem;">
+                        <div class="stats-card success">
+                            <div style="font-size: 3.5rem; font-weight: 900; color: var(--success-color); margin-bottom: 0.5rem;">
+                                <?php echo $importResults['success']; ?>
+                            </div>
+                            <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-secondary);">
+                                ✓ Successfully Imported
+                            </div>
+                        </div>
+                        <div class="stats-card error">
+                            <div style="font-size: 3.5rem; font-weight: 900; color: #dc3545; margin-bottom: 0.5rem;">
+                                <?php echo $importResults['errors']; ?>
+                            </div>
+                            <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-secondary);">
+                                ✗ Errors Encountered
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <?php if(!empty($importResults['error_details'])): ?>
+                    <details style="margin-top: 1.5rem;">
+                        <summary style="cursor: pointer; font-weight: 700; color: var(--primary-color); padding: 1rem; background: var(--bg-light); border-radius: var(--radius-md);">
+                            🔍 View Error Details (<?php echo count($importResults['error_details']); ?> errors)
+                        </summary>
+                        <div style="margin-top: 1rem; padding: 1.5rem; background: #fff3cd; border-radius: var(--radius-md); border-left: 4px solid #ffc107; max-height: 400px; overflow-y: auto;">
+                            <?php foreach($importResults['error_details'] as $error): ?>
+                            <div style="padding: 0.75rem; margin-bottom: 0.5rem; background: white; border-radius: 6px; border-left: 3px solid #dc3545;">
+                                <strong style="color: #dc3545;">⚠</strong> <?php echo htmlspecialchars($error); ?>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </details>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <div class="grid grid-2" style="gap: 2rem;">
                 <!-- Upload Form -->
                 <div class="card">
                     <div class="card-header">
@@ -201,35 +306,38 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
                     <div style="padding: 2rem;">
                         <form method="POST" enctype="multipart/form-data" id="uploadForm">
                             <div class="form-group">
-                                <label>Select Import Type *</label>
+                                <label style="font-weight: 700; margin-bottom: 0.5rem; display: block;">Select Import Type *</label>
                                 <select name="import_type" id="importType" class="form-control" required onchange="updateTemplate()">
-                                    <option value="">-- Select Type --</option>
-                                    <option value="student">Students</option>
-                                    <option value="instructor">Instructors</option>
-                                    <option value="exam_committee">Exam Committee</option>
+                                    <option value="">-- Select User Type --</option>
+                                    <option value="student">👨‍🎓 Students</option>
+                                    <option value="instructor">👨‍🏫 Instructors</option>
+                                    <option value="exam_committee">👥 Exam Committee Members</option>
                                 </select>
+                                <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">Choose the type of users you want to import</small>
                             </div>
 
                             <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFile').click()">
-                                <div style="font-size: 3rem; margin-bottom: 1rem;">📁</div>
-                                <h3 style="margin-bottom: 0.5rem;">Drop CSV file here or click to browse</h3>
-                                <p style="color: var(--text-secondary); margin-bottom: 1rem;">Maximum file size: 5MB</p>
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">📁</div>
+                                <h3 style="margin-bottom: 0.5rem; font-weight: 700;">Drop CSV file here or click to browse</h3>
+                                <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Supported format: .csv</p>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Maximum file size: 5MB</p>
                                 <input type="file" name="csv_file" id="csvFile" accept=".csv" required style="display: none;" onchange="handleFileSelect(event)">
-                                <div id="fileName" style="font-weight: 600; color: var(--primary-color);"></div>
+                                <div id="fileName" style="font-weight: 700; color: var(--success-color); margin-top: 1rem; font-size: 1.1rem;"></div>
                             </div>
 
-                            <div style="background: var(--bg-light); padding: 1rem; border-radius: var(--radius-md); margin: 1.5rem 0;">
-                                <strong>📋 CSV Format Requirements:</strong>
-                                <ul style="margin: 0.5rem 0 0 1.5rem; color: var(--text-secondary);">
-                                    <li>First row must be headers</li>
-                                    <li>Use comma (,) as delimiter</li>
+                            <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 197, 253, 0.1) 100%); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0; border-left: 4px solid var(--primary-color);">
+                                <strong style="color: var(--primary-color); display: block; margin-bottom: 0.75rem;">📋 CSV Format Requirements:</strong>
+                                <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-secondary); line-height: 1.8;">
+                                    <li>First row must contain column headers</li>
+                                    <li>Use comma (,) as field delimiter</li>
                                     <li>Ensure all required fields are present</li>
-                                    <li>Download template below for correct format</li>
+                                    <li>Download template for correct format</li>
+                                    <li>Check department IDs in reference table</li>
                                 </ul>
                             </div>
 
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                            <div class="form-actions" style="display: flex; gap: 1rem;">
+                                <button type="submit" class="btn btn-primary" id="submitBtn" disabled style="flex: 1;">
                                     📥 Import Users
                                 </button>
                                 <button type="reset" class="btn btn-secondary" onclick="resetForm()">
@@ -240,81 +348,125 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
                     </div>
                 </div>
 
-                <!-- Templates -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">📄 CSV Templates</h3>
+                <!-- Templates & Reference -->
+                <div>
+                    <!-- CSV Templates -->
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <div class="card-header">
+                            <h3 class="card-title">📄 Download CSV Templates</h3>
+                        </div>
+                        <div style="padding: 2rem;">
+                            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                                Download the appropriate template, fill in your data, and upload it above.
+                            </p>
+
+                            <div id="studentTemplate" class="template-card" style="display: none; margin-bottom: 1rem;" onclick="downloadTemplate('student')">
+                                <div class="template-icon">👨‍🎓</div>
+                                <h4 style="margin: 0 0 0.5rem 0; font-weight: 700;">Student Template</h4>
+                                <p style="margin: 0 0 1rem 0; color: var(--text-secondary); font-size: 0.9rem;">
+                                    student_code, username, password, full_name, email, phone, department_id, semester, gender
+                                </p>
+                                <button class="btn btn-primary btn-sm">⬇️ Download Template</button>
+                            </div>
+
+                            <div id="instructorTemplate" class="template-card" style="display: none; margin-bottom: 1rem;" onclick="downloadTemplate('instructor')">
+                                <div class="template-icon">👨‍🏫</div>
+                                <h4 style="margin: 0 0 0.5rem 0; font-weight: 700;">Instructor Template</h4>
+                                <p style="margin: 0 0 1rem 0; color: var(--text-secondary); font-size: 0.9rem;">
+                                    instructor_code, username, password, full_name, email, phone, department_id
+                                </p>
+                                <button class="btn btn-primary btn-sm">⬇️ Download Template</button>
+                            </div>
+
+                            <div id="committeeTemplate" class="template-card" style="display: none; margin-bottom: 1rem;" onclick="downloadTemplate('exam_committee')">
+                                <div class="template-icon">👥</div>
+                                <h4 style="margin: 0 0 0.5rem 0; font-weight: 700;">Exam Committee Template</h4>
+                                <p style="margin: 0 0 1rem 0; color: var(--text-secondary); font-size: 0.9rem;">
+                                    member_code, username, password, full_name, email, phone, department_id
+                                </p>
+                                <button class="btn btn-primary btn-sm">⬇️ Download Template</button>
+                            </div>
+
+                            <div id="noTemplate" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+                                <p style="margin: 0; font-weight: 600;">Select an import type to view templates</p>
+                            </div>
+                        </div>
                     </div>
-                    <div style="padding: 2rem;">
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            Download the appropriate template for your import type. Fill in the data and upload.
-                        </p>
 
-                        <!-- Student Template -->
-                        <div class="template-card">
-                            <h4 style="margin: 0 0 1rem 0;">👨‍🎓 Student Template</h4>
-                            <p style="opacity: 0.9; margin-bottom: 1rem;">Required columns: ID, Name, Email, Password, Department, Semester, Status</p>
-                            <button onclick="downloadTemplate('student')" class="btn btn-light">
-                                ⬇️ Download Student Template
-                            </button>
+                    <!-- Department Reference -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">🏢 Department Reference</h3>
                         </div>
-
-                        <!-- Instructor Template -->
-                        <div class="template-card" style="background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);">
-                            <h4 style="margin: 0 0 1rem 0;">👨‍🏫 Instructor Template</h4>
-                            <p style="opacity: 0.9; margin-bottom: 1rem;">Required columns: ID, Name, Email, Password, Department, Status</p>
-                            <button onclick="downloadTemplate('instructor')" class="btn btn-light">
-                                ⬇️ Download Instructor Template
-                            </button>
-                        </div>
-
-                        <!-- Exam Committee Template -->
-                        <div class="template-card" style="background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%);">
-                            <h4 style="margin: 0 0 1rem 0;">👥 Exam Committee Template</h4>
-                            <p style="opacity: 0.9; margin-bottom: 1rem;">Required columns: ID, Name, Email, Password, Department, Status</p>
-                            <button onclick="downloadTemplate('exam_committee')" class="btn btn-light">
-                                ⬇️ Download Committee Template
-                            </button>
+                        <div style="padding: 2rem;">
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                                Use these department IDs in your CSV file:
+                            </p>
+                            <div class="dept-reference">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="background: var(--primary-color); color: white;">
+                                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border-color);">ID</th>
+                                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border-color);">Department Name</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach($deptList as $dept): ?>
+                                        <tr style="border-bottom: 1px solid var(--border-color);">
+                                            <td style="padding: 0.75rem; font-weight: 700; color: var(--primary-color);"><?php echo $dept['department_id']; ?></td>
+                                            <td style="padding: 0.75rem;"><?php echo $dept['department_name']; ?></td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Instructions -->
-            <div class="card mt-4">
+            <div class="card" style="margin-top: 2rem;">
                 <div class="card-header">
                     <h3 class="card-title">📚 Import Instructions</h3>
                 </div>
                 <div style="padding: 2rem;">
-                    <div class="grid grid-3">
+                    <div class="grid grid-3" style="gap: 2rem;">
                         <div>
-                            <h4 style="color: var(--primary-color); margin-bottom: 1rem;">1️⃣ Prepare Your Data</h4>
-                            <ul style="color: var(--text-secondary); line-height: 1.8;">
+                            <h4 style="color: var(--primary-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="background: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">1</span>
+                                Prepare Your Data
+                            </h4>
+                            <ul style="color: var(--text-secondary); line-height: 1.8; padding-left: 1.5rem;">
                                 <li>Download the appropriate CSV template</li>
                                 <li>Fill in all required fields</li>
-                                <li>Ensure IDs are unique</li>
-                                <li>Use valid email addresses</li>
-                                <li>Status: Active or Inactive</li>
+                                <li>Use correct department IDs from reference table</li>
+                                <li>Ensure data format matches template</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 style="color: var(--primary-color); margin-bottom: 1rem;">2️⃣ Upload & Import</h4>
-                            <ul style="color: var(--text-secondary); line-height: 1.8;">
-                                <li>Select the import type</li>
-                                <li>Upload your CSV file</li>
-                                <li>Review the file name</li>
-                                <li>Click "Import Users"</li>
-                                <li>Wait for processing</li>
+                            <h4 style="color: var(--primary-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="background: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">2</span>
+                                Upload & Import
+                            </h4>
+                            <ul style="color: var(--text-secondary); line-height: 1.8; padding-left: 1.5rem;">
+                                <li>Select the user type to import</li>
+                                <li>Upload your prepared CSV file</li>
+                                <li>Review file details before submitting</li>
+                                <li>Click "Import Users" to process</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 style="color: var(--primary-color); margin-bottom: 1rem;">3️⃣ Review Results</h4>
-                            <ul style="color: var(--text-secondary); line-height: 1.8;">
-                                <li>Check success count</li>
-                                <li>Review any errors</li>
-                                <li>Fix errors in CSV if needed</li>
-                                <li>Re-import failed records</li>
-                                <li>Verify imported users</li>
+                            <h4 style="color: var(--primary-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="background: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">3</span>
+                                Review Results
+                            </h4>
+                            <ul style="color: var(--text-secondary); line-height: 1.8; padding-left: 1.5rem;">
+                                <li>Check import success count</li>
+                                <li>Review any error messages</li>
+                                <li>Fix errors and re-import if needed</li>
+                                <li>Verify imported users in respective sections</li>
                             </ul>
                         </div>
                     </div>
@@ -325,78 +477,136 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
 
     <script src="../assets/js/admin-sidebar.js"></script>
     <script>
-        const templates = {
-            student: {
-                headers: ['ID', 'Name', 'Email', 'Password', 'Department', 'Semester', 'Status'],
-                sample: ['STU001', 'John Doe', 'john@example.com', 'password123', 'Computer Science', '1', 'Active']
-            },
-            instructor: {
-                headers: ['ID', 'Name', 'Email', 'Password', 'Department', 'Status'],
-                sample: ['INS001', 'Dr. Jane Smith', 'jane@example.com', 'password123', 'Computer Science', 'Active']
-            },
-            exam_committee: {
-                headers: ['ID', 'Name', 'Email', 'Password', 'Department', 'Status'],
-                sample: ['COM001', 'Prof. Mike Johnson', 'mike@example.com', 'password123', 'Computer Science', 'Active']
+        const uploadZone = document.getElementById('uploadZone');
+        const csvFile = document.getElementById('csvFile');
+        const fileName = document.getElementById('fileName');
+        const submitBtn = document.getElementById('submitBtn');
+        const importType = document.getElementById('importType');
+
+        // Drag and drop handlers
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if(files.length > 0 && files[0].name.endsWith('.csv')) {
+                csvFile.files = files;
+                handleFileSelect({ target: { files: files } });
+            } else {
+                alert('⚠️ Please drop a valid CSV file');
             }
-        };
+        });
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if(file) {
+                if(file.size > 5242880) {
+                    alert('❌ File too large! Maximum size is 5MB');
+                    csvFile.value = '';
+                    return;
+                }
+                
+                fileName.textContent = `✓ Selected: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+                uploadZone.classList.add('has-file');
+                
+                if(importType.value) {
+                    submitBtn.disabled = false;
+                }
+            }
+        }
+
+        function updateTemplate() {
+            const type = importType.value;
+            
+            // Hide all templates
+            document.getElementById('studentTemplate').style.display = 'none';
+            document.getElementById('instructorTemplate').style.display = 'none';
+            document.getElementById('committeeTemplate').style.display = 'none';
+            document.getElementById('noTemplate').style.display = 'none';
+            
+            // Show selected template
+            if(type === 'student') {
+                document.getElementById('studentTemplate').style.display = 'block';
+            } else if(type === 'instructor') {
+                document.getElementById('instructorTemplate').style.display = 'block';
+            } else if(type === 'exam_committee') {
+                document.getElementById('committeeTemplate').style.display = 'block';
+            } else {
+                document.getElementById('noTemplate').style.display = 'block';
+            }
+            
+            // Enable submit if file is selected
+            if(csvFile.files.length > 0) {
+                submitBtn.disabled = false;
+            }
+        }
 
         function downloadTemplate(type) {
-            const template = templates[type];
-            let csv = template.headers.join(',') + '\n';
-            csv += template.sample.join(',') + '\n';
+            let csv = '';
+            let filename = '';
+            
+            switch(type) {
+                case 'student':
+                    csv = 'student_code,username,password,full_name,email,phone,department_id,semester,gender\n';
+                    csv += 'STU001,john.doe,pass123,John Doe,john@example.com,+251911234567,1,1,Male\n';
+                    csv += 'STU002,jane.smith,pass123,Jane Smith,jane@example.com,+251911234568,1,1,Female';
+                    filename = 'student_import_template.csv';
+                    break;
+                case 'instructor':
+                    csv = 'instructor_code,username,password,full_name,email,phone,department_id\n';
+                    csv += 'INS001,dr.john,pass123,Dr. John Smith,dr.john@example.com,+251911234567,1\n';
+                    csv += 'INS002,dr.jane,pass123,Dr. Jane Doe,dr.jane@example.com,+251911234568,2';
+                    filename = 'instructor_import_template.csv';
+                    break;
+                case 'exam_committee':
+                    csv = 'member_code,username,password,full_name,email,phone,department_id\n';
+                    csv += 'EC001,committee.member1,pass123,Committee Member 1,member1@example.com,+251911234567,1\n';
+                    csv += 'EC002,committee.member2,pass123,Committee Member 2,member2@example.com,+251911234568,2';
+                    filename = 'exam_committee_import_template.csv';
+                    break;
+            }
             
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${type}_import_template.csv`;
+            a.download = filename;
             a.click();
             window.URL.revokeObjectURL(url);
         }
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if(file) {
-                document.getElementById('fileName').textContent = `Selected: ${file.name}`;
-                document.getElementById('submitBtn').disabled = false;
-            }
-        }
-
         function resetForm() {
-            document.getElementById('fileName').textContent = '';
-            document.getElementById('submitBtn').disabled = true;
+            fileName.textContent = '';
+            uploadZone.classList.remove('has-file');
+            submitBtn.disabled = true;
+            updateTemplate();
         }
 
-        // Drag and drop
-        const uploadZone = document.getElementById('uploadZone');
-        
-        uploadZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadZone.classList.add('dragover');
-        });
-        
-        uploadZone.addEventListener('dragleave', () => {
-            uploadZone.classList.remove('dragover');
-        });
-        
-        uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-            
-            const file = e.dataTransfer.files[0];
-            if(file && file.name.endsWith('.csv')) {
-                document.getElementById('csvFile').files = e.dataTransfer.files;
-                handleFileSelect({ target: { files: [file] } });
-            } else {
-                alert('Please drop a CSV file');
+        // Form validation
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            if(!importType.value) {
+                e.preventDefault();
+                alert('⚠️ Please select an import type');
+                return false;
             }
+            
+            if(!csvFile.files.length) {
+                e.preventDefault();
+                alert('⚠️ Please select a CSV file');
+                return false;
+            }
+            
+            return confirm('📥 Are you sure you want to import these users?\n\nThis action will add new users to the system.');
         });
-
-        function updateTemplate() {
-            const type = document.getElementById('importType').value;
-            // Could highlight the relevant template
-        }
     </script>
 </body>
 </html>
-<?php $con->close(); ?>

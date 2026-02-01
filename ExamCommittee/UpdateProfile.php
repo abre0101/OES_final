@@ -16,8 +16,8 @@ $con = new mysqli("localhost","root");
 // Select Database
 $con->select_db("oes");
 // Specify the query to Update Record
-   // $sql = "Update exam_committee set exam_committee.username='".$UserName."',exam_committee.password='".$Password."' where EC_ID='".$Id."'";
-	$sql = "Update exam_committee set exam_committee.username='".$UserName."',exam_committee.password='".$Password."' where EC_ID='".$Id."'";
+   // $sql = "UPDATE exam_committee_members set exam_committee.username='".$UserName."',exam_committee.password='".$Password."' where committee_member_id='".$Id."'";
+	$sql = "UPDATE exam_committee_members set exam_committee.username='".$UserName."',exam_committee.password='".$Password."' where committee_member_id='".$Id."'";
 
 	// execute query
 	$con->query ($sql);

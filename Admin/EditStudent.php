@@ -1,42 +1,42 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 // Database connection
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
 // Get departments for dropdown
-$query_Recordsetd = "SELECT * From department";
+$query_Recordsetd = "SELECT * FROM departments";
 $Recordsetd = $con->query($query_Recordsetd);
 $row_Recordsetd = $Recordsetd->fetch_assoc();
 $totalRows_Recordsetd = $Recordsetd->num_rows;
 
 // Get student data
-$Stud_ID = $_GET['Stud_ID'];
-$stmt = $con->prepare("select * from student where Id=?");
-$stmt->bind_param("s", $Stud_ID);
+$student_id = $_GET['student_id'];
+$stmt = $con->prepare("select * FROM students where Id=?");
+$stmt->bind_param("s", $student_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if($row = $result->fetch_array()) {
     $Id = $row['Id'];
     $Name = $row['Name'];
-    $StudDept = $row['dept_name'];
+    $StudDept = $row['department_name'];
     $StudYear = $row['year'];
-    $Semester = $row['semister'];
+    $Semester = $row['semester'];
     $StudSex = $row['Sex'];
     $Email = $row['email'];
     $UserName = $row['username'];
     $Password = $row['password'];
-    $Status = $row['Status'];
+    $is_active = $row['is_active'];
 } else {
-    header("Location: Student-modern.php");
+    header("Location: Student.php");
     exit();
 }
 $stmt->close();
@@ -174,7 +174,7 @@ $stmt->close();
         <div class="admin-content">
             <div class="page-header">
                 <h1>✏️ Edit Student Information</h1>
-                <p>Update student details and status</p>
+                <p>UPDATE students details and is_active</p>
             </div>
 
             <div class="edit-container">
@@ -211,7 +211,7 @@ $stmt->close();
                             <span class="info-value"><?php echo $UserName; ?></span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">Current Status</span>
+                            <span class="info-label">Current is_active</span>
                             <span class="info-value"><?php echo $Status; ?></span>
                         </div>
                     </div>
@@ -219,7 +219,7 @@ $stmt->close();
 
                 <!-- Edit Form Section -->
                 <div class="form-section">
-                    <h3>🔄 Update Student Information</h3>
+                    <h3>🔄 UPDATE students Information</h3>
                     <form method="post" action="UpdateStudent.php?Id=<?php echo $Id;?>">
                         <div class="form-group">
                             <label for="cmbDep">Change Department:</label>
@@ -227,9 +227,9 @@ $stmt->close();
                                 <option value="<?php echo $StudDept; ?>"><?php echo $StudDept; ?> (Current)</option>
                                 <?php
                                 do {
-                                    if($row_Recordsetd['dept_name'] != $StudDept) {
+                                    if($row_Recordsetd['department_name'] != $StudDept) {
                                 ?>
-                                <option value="<?php echo $row_Recordsetd['dept_name']?>"><?php echo $row_Recordsetd['dept_name']?></option>
+                                <option value="<?php echo $row_Recordsetd['department_name']?>"><?php echo $row_Recordsetd['department_name']?></option>
                                 <?php
                                     }
                                 } while ($row_Recordsetd = $Recordsetd->fetch_assoc());
@@ -265,17 +265,17 @@ $stmt->close();
                             <select name="cmbStatus" id="cmbStatus">
                                 <option value="<?php echo $Status; ?>"><?php echo $Status; ?> (Current)</option>
                                 <?php 
-                                if($Status != 'Active') echo "<option value='Active'>Active</option>";
-                                if($Status != 'InActive') echo "<option value='InActive'>Inactive</option>";
+                                if($is_active != 'Active') echo "<option value='Active'>Active</option>";
+                                if($is_active != 'InActive') echo "<option value='InActive'>Inactive</option>";
                                 ?>
                             </select>
                         </div>
                         
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">
-                                ✓ Update Student
+                                ✓ UPDATE students
                             </button>
-                            <a href="Student-modern.php" class="btn btn-secondary">
+                            <a href="Student.php" class="btn btn-secondary">
                                 ← Back to Students
                             </a>
                         </div>

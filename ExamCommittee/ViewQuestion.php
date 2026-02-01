@@ -8,16 +8,23 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 $pageTitle = "View Question Details";
 
 $question_id = $_GET['id'] ?? 0;
 
-// Get question details
-$question = $con->query("SELECT qp.*, ec.exam_name 
-    FROM question_page qp 
-    LEFT JOIN exam_category ec ON qp.exam_id = ec.exam_id 
-    WHERE qp.question_id = '$question_id'")->fetch_assoc();
+// Get question details from modern questions table
+$question = $con->query("SELECT q.*, 
+    ec.exam_name,
+    c.course_name,
+    qt.topic_name,
+    i.full_name as instructor_name
+    FROM questions q
+    LEFT JOIN exam_categories ec ON q.exam_category_id = ec.exam_id
+    LEFT JOIN courses c ON q.course_id = c.course_id
+    LEFT JOIN question_topics qt ON q.topic_id = qt.topic_id
+    LEFT JOIN instructors i ON q.instructor_id = i.instructor_id
+    WHERE q.question_id = '$question_id'")->fetch_assoc();
 
 if(!$question) {
     header("Location: CheckQuestions.php");
@@ -103,8 +110,8 @@ if(!$question) {
                         <div style="font-size: 1rem; color: var(--text-secondary);">
                             <strong>Course:</strong> <?php echo $question['course_name'] ?? 'N/A'; ?> | 
                             <strong>Question ID:</strong> <?php echo $question['question_id']; ?> | 
-                            <strong>Exam ID:</strong> <?php echo $question['exam_id']; ?> |
-                            <strong>Semester:</strong> <?php echo $question['semester']; ?>
+                            <strong>Topic:</strong> <?php echo $question['topic_name'] ?? 'N/A'; ?> |
+                            <strong>Instructor:</strong> <?php echo $question['instructor_name'] ?? 'N/A'; ?>
                         </div>
                     </div>
                     <span style="padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 1rem; font-weight: 700; background: #ffc107; color: #000;">
@@ -117,7 +124,7 @@ if(!$question) {
                     <h3 style="color: var(--primary-color); margin-bottom: 1rem;">📝 Question</h3>
                     <div style="padding: 1.5rem; background: var(--bg-light); border-radius: var(--radius-md); border-left: 4px solid var(--primary-color);">
                         <p style="font-size: 1.1rem; line-height: 1.8; margin: 0; color: var(--text-primary);">
-                            <?php echo htmlspecialchars($question['question']); ?>
+                            <?php echo htmlspecialchars($question['question_text']); ?>
                         </p>
                     </div>
                 </div>
@@ -126,13 +133,13 @@ if(!$question) {
                 <div style="margin-bottom: 2rem;">
                     <h3 style="color: var(--primary-color); margin-bottom: 1rem;">✓ Answer Choices</h3>
                     
-                    <div class="choice-item <?php echo ($question['Answer'] == 'A') ? 'correct' : ''; ?>">
+                    <div class="choice-item <?php echo ($question['correct_answer'] == 'A') ? 'correct' : ''; ?>">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <strong style="color: var(--primary-color);">Option A:</strong>
-                                <span style="margin-left: 1rem;"><?php echo htmlspecialchars($question['Option1']); ?></span>
+                                <span style="margin-left: 1rem;"><?php echo htmlspecialchars($question['option_a']); ?></span>
                             </div>
-                            <?php if($question['Answer'] == 'A'): ?>
+                            <?php if($question['correct_answer'] == 'A'): ?>
                             <span style="background: var(--success-color); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700; font-size: 0.85rem;">
                                 ✓ Correct Answer
                             </span>
@@ -140,13 +147,13 @@ if(!$question) {
                         </div>
                     </div>
                     
-                    <div class="choice-item <?php echo ($question['Answer'] == 'B') ? 'correct' : ''; ?>">
+                    <div class="choice-item <?php echo ($question['correct_answer'] == 'B') ? 'correct' : ''; ?>">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <strong style="color: var(--primary-color);">Option B:</strong>
-                                <span style="margin-left: 1rem;"><?php echo htmlspecialchars($question['Option2']); ?></span>
+                                <span style="margin-left: 1rem;"><?php echo htmlspecialchars($question['option_b']); ?></span>
                             </div>
-                            <?php if($question['Answer'] == 'B'): ?>
+                            <?php if($question['correct_answer'] == 'B'): ?>
                             <span style="background: var(--success-color); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700; font-size: 0.85rem;">
                                 ✓ Correct Answer
                             </span>
@@ -154,33 +161,37 @@ if(!$question) {
                         </div>
                     </div>
                     
-                    <div class="choice-item <?php echo ($question['Answer'] == 'C') ? 'correct' : ''; ?>">
+                    <?php if(!empty($question['option_c'])): ?>
+                    <div class="choice-item <?php echo ($question['correct_answer'] == 'C') ? 'correct' : ''; ?>">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <strong style="color: var(--primary-color);">Option C:</strong>
-                                <span style="margin-left: 1rem;"><?php echo htmlspecialchars($question['Option3']); ?></span>
+                                <span style="margin-left: 1rem;"><?php echo htmlspecialchars($question['option_c']); ?></span>
                             </div>
-                            <?php if($question['Answer'] == 'C'): ?>
+                            <?php if($question['correct_answer'] == 'C'): ?>
                             <span style="background: var(--success-color); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700; font-size: 0.85rem;">
                                 ✓ Correct Answer
                             </span>
                             <?php endif; ?>
                         </div>
                     </div>
+                    <?php endif; ?>
                     
-                    <div class="choice-item <?php echo ($question['Answer'] == 'D') ? 'correct' : ''; ?>">
+                    <?php if(!empty($question['option_d'])): ?>
+                    <div class="choice-item <?php echo ($question['correct_answer'] == 'D') ? 'correct' : ''; ?>">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <strong style="color: var(--primary-color);">Option D:</strong>
-                                <span style="margin-left: 1rem;"><?php echo htmlspecialchars($question['Option4']); ?></span>
+                                <span style="margin-left: 1rem;"><?php echo htmlspecialchars($question['option_d']); ?></span>
                             </div>
-                            <?php if($question['Answer'] == 'D'): ?>
+                            <?php if($question['correct_answer'] == 'D'): ?>
                             <span style="background: var(--success-color); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700; font-size: 0.85rem;">
                                 ✓ Correct Answer
                             </span>
                             <?php endif; ?>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Question Metadata -->
@@ -193,17 +204,17 @@ if(!$question) {
                         </div>
                         <div>
                             <strong>Difficulty Level:</strong>
-                            <p style="margin: 0.5rem 0 0 0;">Medium</p>
+                            <p style="margin: 0.5rem 0 0 0;"><?php echo $question['difficulty_level'] ?? 'Medium'; ?></p>
                         </div>
                         <div>
                             <strong>Correct Answer:</strong>
                             <p style="margin: 0.5rem 0 0 0; color: var(--success-color); font-weight: 700; font-size: 1.2rem;">
-                                Option <?php echo $question['Answer']; ?>
+                                Option <?php echo $question['correct_answer']; ?>
                             </p>
                         </div>
                         <div>
-                            <strong>Time Limit:</strong>
-                            <p style="margin: 0.5rem 0 0 0;">N/A</p>
+                            <strong>Point Value:</strong>
+                            <p style="margin: 0.5rem 0 0 0;"><?php echo $question['point_value'] ?? 1; ?> point(s)</p>
                         </div>
                     </div>
                 </div>
@@ -277,7 +288,7 @@ if(!$question) {
 
     <script src="../assets/js/admin-sidebar.js"></script>
     <script>
-        const questionId = <?php echo $Question_ID; ?>;
+        const questionId = <?php echo $question_id; ?>;
         
         function approveQuestion() {
             if(confirm('Are you sure you want to approve this question?\n\nThis will make it available for exams.')) {

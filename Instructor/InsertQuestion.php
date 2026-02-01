@@ -1,39 +1,129 @@
-
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>Untitled Document</title>
-</head>
-
-<body>
 <?php
-        $ID=$_POST['quetionID'];       
-        $cmbCourse=$_POST['cmbCourse'];
-	$cmbExam=$_POST['cmbExam'];
+if (!isset($_SESSION)) {
+    session_start();
+}
+
+if(!isset($_SESSION['Name'])){
+    header("Location:../auth/institute-login.php");
+    exit();
+}
+
+// Validate POST data
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    die('Invalid request method');
+}
+
+$con = require_once(__DIR__ . "/../Connections/OES.php");
+
+// Get form data
+$instructor_id = $_POST['instructor_id'] ?? $_SESSION['ID'];
+$course_id = $_POST['course_id'] ?? null;
+$schedule_id = $_POST['schedule_id'] ?? null;
+$topic_id = !empty($_POST['topic_id']) ? $_POST['topic_id'] : null;
+$question_text = $_POST['question_text'] ?? '';
+$option_a = $_POST['option_a'] ?? '';
+$option_b = $_POST['option_b'] ?? '';
+$option_c = !empty($_POST['option_c']) ? $_POST['option_c'] : null;
+$option_d = !empty($_POST['option_d']) ? $_POST['option_d'] : null;
+$correct_answer = $_POST['correct_answer'] ?? '';
+$difficulty_level = $_POST['difficulty_level'] ?? 'Medium';
+$point_value = $_POST['point_value'] ?? 1;
+$save_and_add_another = isset($_POST['save_and_add_another']);
+
+// Validate required fields
+if(empty($course_id) || empty($question_text) || empty($option_a) || empty($option_b) || empty($correct_answer)) {
+    echo '<script type="text/javascript">alert("Please fill all required fields");window.history.back();</script>';
+    exit();
+}
+
+// If schedule_id is provided, check if exam is locked
+if($schedule_id) {
+    $checkExam = $con->prepare("SELECT approval_status FROM exam_schedules WHERE schedule_id = ?");
+    $checkExam->bind_param("i", $schedule_id);
+    $checkExam->execute();
+    $examStatus = $checkExam->get_result()->fetch_assoc();
+    $checkExam->close();
+    
+    if($examStatus && $examStatus['approval_status'] != 'draft' && $examStatus['approval_status'] != 'revision') {
+        echo '<script type="text/javascript">
+            alert("Cannot add questions to an exam that has been submitted for approval.");
+            window.location="ViewExam.php?id=' . $schedule_id . '";
+        </script>';
+        exit();
+    }
+}
+
+// Start transaction
+$con->begin_transaction();
+
+try {
+    // Insert question into questions table
+    $insertQuestion = $con->prepare("INSERT INTO questions 
+        (course_id, instructor_id, topic_id, question_text, option_a, option_b, option_c, option_d, 
+         correct_answer, difficulty_level, point_value, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+    
+    $insertQuestion->bind_param("iiisssssssi", 
+        $course_id, $instructor_id, $topic_id, $question_text, 
+        $option_a, $option_b, $option_c, $option_d, 
+        $correct_answer, $difficulty_level, $point_value
+    );
+    
+    if(!$insertQuestion->execute()) {
+        throw new Exception("Failed to insert question: " . $insertQuestion->error);
+    }
+    
+    $question_id = $con->insert_id;
+    $insertQuestion->close();
+    
+    // If schedule_id is provided, link question to exam
+    if($schedule_id) {
+        // Get the current max question order for this exam
+        $orderQuery = $con->prepare("SELECT COALESCE(MAX(question_order), 0) + 1 as next_order 
+            FROM exam_questions WHERE schedule_id = ?");
+        $orderQuery->bind_param("i", $schedule_id);
+        $orderQuery->execute();
+        $orderResult = $orderQuery->get_result();
+        $next_order = $orderResult->fetch_assoc()['next_order'];
+        $orderQuery->close();
         
-	$cmbSem=$_POST['cmbSem'];
-	//$cmbQtype=$_POST['cmbQtype'];
-	$txtQuestion=$_POST['txtQue'];
-	$txtA=$_POST['txtA'];
-	$txtB=$_POST['txtB'];
-	$txtAns=$_POST['txtAns'];
-	// Establish Connection with Database
-$con = new mysqli("localhost","root");
-// Select Database
-$con->select_db("oes");
-// Specify the query to execute
+        // Insert into exam_questions
+        $insertExamQuestion = $con->prepare("INSERT INTO exam_questions 
+            (schedule_id, question_id, question_order) 
+            VALUES (?, ?, ?)");
+        $insertExamQuestion->bind_param("iii", $schedule_id, $question_id, $next_order);
+        
+        if(!$insertExamQuestion->execute()) {
+            throw new Exception("Failed to link question to exam: " . $insertExamQuestion->error);
+        }
+        $insertExamQuestion->close();
+    }
+    
+    // Commit transaction
+    $con->commit();
+    
+    // Success message and redirect
+    if($save_and_add_another) {
+        $redirect = $schedule_id ? "AddQuestion.php?schedule_id=$schedule_id" : "AddQuestion.php";
+        echo '<script type="text/javascript">
+            alert("Question added successfully! Add another question.");
+            window.location="' . $redirect . '";
+        </script>';
+    } else {
+        echo '<script type="text/javascript">
+            alert("Question added successfully!");
+            window.location="ManageQuestions.php";
+        </script>';
+    }
+    
+} catch (Exception $e) {
+    // Rollback on error
+    $con->rollback();
+    echo '<script type="text/javascript">
+        alert("Error: ' . addslashes($e->getMessage()) . '");
+        window.history.back();
+    </script>';
+}
 
-$sql = "insert into truefalse_question	(question_id,course_name,exam_id,semester,question,Answer1,Answer2,Answer) 	
-       values('".$ID."','".$cmbCourse."','".$cmbExam."','".$cmbSem."','".$txtQuestion."','".$txtA."','".$txtB."','".$txtAns."')";
-// Execute query
-$result = $con->query($sql);
-
-// Close The Connection
-//$con->close();
-	
-	echo '<script type="text/javascript">alert("Question Inserted Succesfully");window.location=\'Question.php\';</script>';
-
+$con->close();
 ?>
-</body>
-</html>

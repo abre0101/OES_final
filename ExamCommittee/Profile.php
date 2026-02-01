@@ -32,7 +32,7 @@ $ID=$_SESSION['ID'];
 	$con = new mysqli("localhost","root");
 	// Select Database
 	$con->select_db("oes");
-	$sql = "select * from exam_committee where EC_ID ='".$ID."'";
+	$sql = "select * FROM exam_committee_members where committee_member_id ='".$ID."'";
     // Execute query
     $result = 	$con->query ($sql);
     // Loop through each records 
@@ -41,15 +41,15 @@ $ID=$_SESSION['ID'];
                 <table width="80%" height="183" border="0" cellpadding="0" cellspacing="0">
                   <tr>
                     <td><strong> ID:</strong></td>
-                    <td><?php echo $row['EC_ID'];?></td>
+                    <td><?php echo $row['committee_member_id'];?></td>
                   </tr>
                   <tr>
                     <td><strong> Name:</strong></td>
-                    <td><?php echo $row['EC_Name'];?></td>
+                    <td><?php echo $row['full_name'];?></td>
                   </tr> 
                   <tr>
                     <td><strong>Department:</strong></td>
-                    <td><?php echo $row['dept_name'];?></td>
+                    <td><?php echo $row['department_name'];?></td>
                   </tr>
                   <tr>
                     <td><strong>Email :</strong></td>
@@ -65,7 +65,7 @@ $ID=$_SESSION['ID'];
                   </tr>
                   <tr>
                     <td>&nbsp;</td>
-                    <td><a href="EditProfile.php?ECID=<?php echo $row['EC_ID']; ?>">Edit Profile</a></td>
+                    <td><a href="EditProfile.php?ECID=<?php echo $row['committee_member_id']; ?>">Edit Profile</a></td>
                   </tr>
                 </table>
 	<h1>&nbsp;</h1>

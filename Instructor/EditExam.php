@@ -8,7 +8,7 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 $pageTitle = "Edit Exam";
 
 $exam_id = $_GET['id'] ?? 0;
@@ -85,8 +85,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                             
                             <div class="form-group">
-                                <label>Status</label>
-                                <select name="status" class="form-control">
+                                <label>is_active</label>
+                                <select name='is_active' class="form-control">
                                     <option value="Active">Active</option>
                                     <option value="Draft">Draft</option>
                                     <option value="Archived">Archived</option>

@@ -1,28 +1,28 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 $Id = $_GET['Id'];
 $Year = $_POST['cmbYear'];
-$Status = $_POST['cmbStatus'];
+$is_active = $_POST['cmbStatus'];
 $Sem = $_POST['cmbSem'];
 $Department = $_POST['cmbDep'];
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-$stmt = $con->prepare("UPDATE student SET dept_name=?, Status=?, year=?, semister=? WHERE Id=?");
-$stmt->bind_param("sssis", $Department, $Status, $Year, $Sem, $Id);
+$stmt = $con->prepare("UPDATE students SET department_name=?, is_active=?, year=?, semester=? WHERE Id=?");
+$stmt->bind_param("sssis", $Department, $is_active, $Year, $Sem, $Id);
 $stmt->execute();
 $stmt->close();
 $con->close();
 
-header("Location: Student-modern.php?msg=updated");
+header("Location: Student.php?msg=updated");
 exit();
 ?>

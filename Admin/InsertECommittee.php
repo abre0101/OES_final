@@ -14,14 +14,14 @@
          $UserName=$_POST['excUName'];
          $Password=$_POST['excPassword'];
 	$Department=$_POST['cmbDep'];       
-	$Status=$_POST['cmbStatus'];
+	$is_active=$_POST['cmbStatus'];
 	
 	// Establish Connection with MYSQL
 	$con = new mysqli("localhost","root");
 	// Select Database
 	$con->select_db("oes");
 	// Specify the query to Insert Record
-    $sql = "Insert into exam_committee	(EC_ID,EC_Name,email,username,password,dept_name,Status) 
+    $sql = "Insert INTO exam_committee_members	(committee_member_id,full_name,email,username,password,department_name,is_active) 
              values('".$Id."','".$Name."','".$Email."','".$UserName."','".$Password."','".$Department."','".$Status."')";	
 	// execute query
 	$con->query ($sql);

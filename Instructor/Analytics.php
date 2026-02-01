@@ -5,75 +5,140 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 $pageTitle = "Analytics & Insights";
 
+// Check if required tables exist
+$questionsExists = false;
+$studentAnswersExists = false;
+$questionTopicsExists = false;
+$examResultsExists = false;
+
+$tableCheck = $con->query("SHOW TABLES LIKE 'questions'");
+if($tableCheck && $tableCheck->num_rows > 0) {
+    $questionsExists = true;
+}
+
+$tableCheck = $con->query("SHOW TABLES LIKE 'student_answers'");
+if($tableCheck && $tableCheck->num_rows > 0) {
+    $studentAnswersExists = true;
+}
+
+$tableCheck = $con->query("SHOW TABLES LIKE 'question_topics'");
+if($tableCheck && $tableCheck->num_rows > 0) {
+    $questionTopicsExists = true;
+}
+
+$tableCheck = $con->query("SHOW TABLES LIKE 'exam_results'");
+if($tableCheck && $tableCheck->num_rows > 0) {
+    $examResultsExists = true;
+}
+
 // Get question difficulty analysis
-$questionDifficulty = $con->query("SELECT 
-    qp.Question_ID,
-    qp.Question,
-    qp.course_name,
-    COUNT(DISTINCT sa.student_id) as attempt_count,
-    SUM(CASE WHEN sa.is_correct = 1 THEN 1 ELSE 0 END) as correct_count,
-    ROUND((SUM(CASE WHEN sa.is_correct = 1 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(DISTINCT sa.student_id), 0)), 2) as success_rate
-    FROM question_page qp
-    LEFT JOIN student_answers sa ON qp.Question_ID = sa.question_id
-    GROUP BY qp.Question_ID
-    HAVING attempt_count > 0
-    ORDER BY success_rate ASC
-    LIMIT 20");
+$questionDifficulty = null;
+if($questionsExists && $studentAnswersExists) {
+    $questionDifficulty = $con->query("SELECT 
+        q.question_id,
+        q.question_text,
+        c.course_name,
+        COUNT(DISTINCT sa.answer_id) as attempt_count,
+        SUM(CASE WHEN sa.is_correct = 1 THEN 1 ELSE 0 END) as correct_count,
+        ROUND((SUM(CASE WHEN sa.is_correct = 1 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(sa.answer_id), 0)), 2) as success_rate
+        FROM questions q
+        INNER JOIN courses c ON q.course_id = c.course_id
+        LEFT JOIN student_answers sa ON q.question_id = sa.question_id
+        GROUP BY q.question_id
+        HAVING attempt_count > 0
+        ORDER BY success_rate ASC
+        LIMIT 20");
+}
 
 // Get performance trends over time
-$performanceTrends = $con->query("SELECT 
-    DATE(r.Result_ID) as exam_date,
-    AVG(r.Result) as avg_score,
-    COUNT(*) as exam_count,
-    SUM(CASE WHEN r.Result >= 50 THEN 1 ELSE 0 END) as pass_count
-    FROM result r
-    WHERE r.Result > 0
-    GROUP BY DATE(r.Result_ID)
-    ORDER BY exam_date DESC
-    LIMIT 30");
+$performanceTrends = null;
+if($examResultsExists) {
+    $performanceTrends = $con->query("SELECT 
+        DATE(er.exam_submitted_at) as exam_date,
+        AVG(er.percentage_score) as avg_score,
+        COUNT(*) as exam_count,
+        SUM(CASE WHEN er.pass_status = 'Pass' THEN 1 ELSE 0 END) as pass_count
+        FROM exam_results er
+        WHERE er.percentage_score > 0
+        GROUP BY DATE(er.exam_submitted_at)
+        ORDER BY exam_date DESC
+        LIMIT 30");
+}
 
-// Get course performance comparison
-$coursePerformance = $con->query("SELECT 
-    qp.course_name,
-    COUNT(DISTINCT qp.Question_ID) as question_count,
-    COUNT(DISTINCT sa.student_id) as student_count,
-    ROUND(AVG(CASE WHEN sa.is_correct = 1 THEN 100 ELSE 0 END), 2) as avg_accuracy
-    FROM question_page qp
-    LEFT JOIN student_answers sa ON qp.Question_ID = sa.question_id
-    WHERE qp.course_name IS NOT NULL
-    GROUP BY qp.course_name
-    ORDER BY avg_accuracy DESC");
+// Get course performance comparison - using exam results
+$coursePerformance = null;
+if($examResultsExists) {
+    $coursePerformance = $con->query("SELECT 
+        c.course_name,
+        c.course_code,
+        COUNT(DISTINCT er.result_id) as exam_count,
+        COUNT(DISTINCT er.student_id) as student_count,
+        ROUND(AVG(er.percentage_score), 2) as avg_score,
+        SUM(CASE WHEN er.pass_status = 'Pass' THEN 1 ELSE 0 END) as pass_count,
+        ROUND((SUM(CASE WHEN er.pass_status = 'Pass' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(er.result_id), 0)), 2) as pass_rate
+        FROM courses c
+        INNER JOIN exam_schedules es ON c.course_id = es.course_id
+        INNER JOIN exam_results er ON es.schedule_id = er.schedule_id
+        GROUP BY c.course_id
+        HAVING exam_count > 0
+        ORDER BY avg_score DESC");
+}
 
 // Get topic performance (if topics exist)
-$topicPerformance = $con->query("SELECT 
-    qt.topic_name,
-    qt.course_name,
-    COUNT(DISTINCT qp.Question_ID) as question_count,
-    ROUND(AVG(CASE WHEN sa.is_correct = 1 THEN 100 ELSE 0 END), 2) as avg_accuracy
-    FROM question_topics qt
-    LEFT JOIN question_page qp ON qt.topic_id = qp.topic_id
-    LEFT JOIN student_answers sa ON qp.Question_ID = sa.question_id
-    GROUP BY qt.topic_id
-    HAVING question_count > 0
-    ORDER BY avg_accuracy ASC
-    LIMIT 10");
+$topicPerformance = null;
+if($questionTopicsExists && $questionsExists && $studentAnswersExists) {
+    $topicPerformance = $con->query("SELECT 
+        qt.topic_name,
+        c.course_name,
+        COUNT(DISTINCT q.question_id) as question_count,
+        COUNT(DISTINCT sa.answer_id) as attempt_count,
+        ROUND(AVG(CASE WHEN sa.is_correct = 1 THEN 100 ELSE 0 END), 2) as avg_accuracy
+        FROM question_topics qt
+        INNER JOIN courses c ON qt.course_id = c.course_id
+        LEFT JOIN questions q ON qt.topic_id = q.topic_id
+        LEFT JOIN student_answers sa ON q.question_id = sa.question_id
+        GROUP BY qt.topic_id
+        HAVING question_count > 0 AND attempt_count > 0
+        ORDER BY avg_accuracy ASC
+        LIMIT 10");
+}
 
 // Get overall statistics
 $stats = [];
-$stats['total_questions'] = $con->query("SELECT COUNT(*) as count FROM question_page")->fetch_assoc()['count'];
-$stats['total_attempts'] = $con->query("SELECT COUNT(*) as count FROM student_answers")->fetch_assoc()['count'];
-$stats['avg_difficulty'] = $con->query("SELECT ROUND(AVG(CASE WHEN sa.is_correct = 1 THEN 100 ELSE 0 END), 2) as avg FROM student_answers sa")->fetch_assoc()['avg'] ?? 0;
-$stats['hardest_questions'] = $con->query("SELECT COUNT(*) as count FROM (
-    SELECT qp.Question_ID, 
-    ROUND((SUM(CASE WHEN sa.is_correct = 1 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(sa.student_id), 0)), 2) as success_rate
-    FROM question_page qp
-    LEFT JOIN student_answers sa ON qp.Question_ID = sa.question_id
-    GROUP BY qp.Question_ID
-    HAVING success_rate < 50 AND COUNT(sa.student_id) > 0
-) as hard_questions")->fetch_assoc()['count'];
+if($questionsExists) {
+    $result = $con->query("SELECT COUNT(*) as count FROM questions");
+    $stats['total_questions'] = $result ? $result->fetch_assoc()['count'] : 0;
+} else {
+    $stats['total_questions'] = 0;
+}
+
+if($studentAnswersExists) {
+    $result = $con->query("SELECT COUNT(*) as count FROM student_answers");
+    $stats['total_attempts'] = $result ? $result->fetch_assoc()['count'] : 0;
+    
+    $result = $con->query("SELECT ROUND(AVG(CASE WHEN is_correct = 1 THEN 100 ELSE 0 END), 2) as avg FROM student_answers");
+    $stats['avg_difficulty'] = $result ? ($result->fetch_assoc()['avg'] ?? 0) : 0;
+} else {
+    $stats['total_attempts'] = 0;
+    $stats['avg_difficulty'] = 0;
+}
+
+if($questionsExists && $studentAnswersExists) {
+    $result = $con->query("SELECT COUNT(*) as count FROM (
+        SELECT q.question_id, 
+        ROUND((SUM(CASE WHEN sa.is_correct = 1 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(sa.answer_id), 0)), 2) as success_rate
+        FROM questions q
+        LEFT JOIN student_answers sa ON q.question_id = sa.question_id
+        GROUP BY q.question_id
+        HAVING success_rate < 50 AND COUNT(sa.answer_id) > 0
+    ) as hard_questions");
+    $stats['hardest_questions'] = $result ? $result->fetch_assoc()['count'] : 0;
+} else {
+    $stats['hardest_questions'] = 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -81,20 +146,44 @@ $stats['hardest_questions'] = $con->query("SELECT COUNT(*) as count FROM (
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analytics - Instructor</title>
-    <link href="../assets/css/modern-v2.css" rel="stylesheet">
-    <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
-    <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
+    <link href="../assets/css/modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-sidebar.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .difficulty-badge {
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        .difficulty-easy { background: rgba(40, 167, 69, 0.1); color: var(--success-color); }
-        .difficulty-medium { background: rgba(255, 193, 7, 0.1); color: var(--warning-color); }
+        body.admin-layout { background: #f5f7fa; font-family: 'Poppins', sans-serif; }
+        .page-header-modern { background: linear-gradient(135deg, #003366 0%, #0055aa 100%); color: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 51, 102, 0.2); margin-bottom: 2rem; }
+        .page-header-modern h1 { margin: 0 0 0.5rem 0; font-size: 2.2rem; font-weight: 800; display: flex; align-items: center; gap: 1rem; color: white; }
+        .page-header-modern h1 span { color: white; }
+        .page-header-modern p { margin: 0; opacity: 0.95; font-size: 1.05rem; color: white; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: white; border-radius: 12px; padding: 1.75rem; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); border-left: 5px solid; transition: transform 0.3s ease; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card.primary { border-left-color: #007bff; }
+        .stat-card.success { border-left-color: #28a745; }
+        .stat-card.warning { border-left-color: #ffc107; }
+        .stat-card.danger { border-left-color: #dc3545; }
+        .stat-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+        .stat-value { font-size: 2.5rem; font-weight: 900; color: #003366; margin-bottom: 0.5rem; }
+        .stat-label { font-size: 0.95rem; color: #6c757d; font-weight: 500; }
+        .report-section { background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); margin-bottom: 2rem; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 3px solid #f0f0f0; }
+        .section-title { font-size: 1.4rem; font-weight: 700; color: #003366; display: flex; align-items: center; gap: 0.75rem; }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table thead { background: linear-gradient(135deg, #003366 0%, #0055aa 100%); }
+        .data-table th { padding: 1rem; text-align: left; color: white; font-weight: 600; font-size: 0.9rem; white-space: nowrap; }
+        .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid #e8eef3; font-size: 0.9rem; }
+        .data-table tbody tr:hover { background: #f8f9fa; }
+        .score-badge { padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; display: inline-block; }
+        .badge-excellent { background: #d4edda; color: #155724; }
+        .badge-good { background: #d1ecf1; color: #0c5460; }
+        .badge-average { background: #fff3cd; color: #856404; }
+        .badge-poor { background: #f8d7da; color: #721c24; }
+        .chart-container { margin: 1.5rem 0; padding: 1.5rem; background: #f8f9fa; border-radius: 8px; }
+        .difficulty-badge { padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .difficulty-easy { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+        .difficulty-medium { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
         .difficulty-hard { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
     </style>
 </head>
@@ -102,37 +191,34 @@ $stats['hardest_questions'] = $con->query("SELECT COUNT(*) as count FROM (
     <?php include 'sidebar-component.php'; ?>
 
     <div class="admin-main-content">
-        <?php include 'header-component.php'; ?>
+        <?php $pageTitle = 'Analytics & Insights'; include 'header-component.php'; ?>
 
         <div class="admin-content">
-            <div class="page-header">
-                <h1>📊 Analytics & Insights</h1>
+            <div class="page-header-modern">
+                <h1><span>📊</span> Analytics & Insights</h1>
                 <p>Question difficulty analysis and student performance trends</p>
             </div>
 
             <!-- Key Metrics -->
-            <div class="grid grid-4" style="margin-bottom: 2rem;">
-                <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2.5rem; font-weight: 800; color: var(--primary-color);">
-                        <?php echo $stats['total_questions']; ?>
-                    </div>
-                    <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Questions</div>
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-icon">❓</div>
+                    <div class="stat-value"><?php echo number_format($stats['total_questions'] ?? 0); ?></div>
+                    <div class="stat-label">Total Questions</div>
                 </div>
-                <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2.5rem; font-weight: 800; color: var(--success-color);">
-                        <?php echo $stats['total_attempts']; ?>
-                    </div>
-                    <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Attempts</div>
+                <div class="stat-card success">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-value"><?php echo number_format($stats['total_attempts'] ?? 0); ?></div>
+                    <div class="stat-label">Total Attempts</div>
                 </div>
-                <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2.5rem; font-weight: 800; color: var(--warning-color);">
-                        <?php echo $stats['avg_difficulty']; ?>%
-                    </div>
-                    <div style="font-size: 0.9rem; color: var(--text-secondary);">Avg Success Rate</div>
+                <div class="stat-card warning">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-value"><?php echo number_format($stats['avg_difficulty'] ?? 0, 1); ?>%</div>
+                    <div class="stat-label">Avg Success Rate</div>
                 </div>
-                <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2.5rem; font-weight: 800; color: #dc3545;">
-                        <?php echo $stats['hardest_questions']; ?>
+                <div class="stat-card danger">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="stat-value"><?php echo number_format($stats['hardest_questions'] ?? 0); ?></div>
                     </div>
                     <div style="font-size: 0.9rem; color: var(--text-secondary);">Hard Questions (<50%)</div>
                 </div>
@@ -152,19 +238,19 @@ $stats['hardest_questions'] = $con->query("SELECT COUNT(*) as count FROM (
                         ?>;">
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
                                 <div style="flex: 1;">
-                                    <strong style="color: var(--primary-color);">Question #<?php echo $q['Question_ID']; ?></strong>
+                                    <strong style="color: var(--primary-color);">Question #<?php echo $q['question_id']; ?></strong>
                                     <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
                                         <?php echo $q['course_name']; ?>
                                     </div>
                                 </div>
-                                <span class="difficulty-badge difficulty-<?php 
-                                    echo $q['success_rate'] < 40 ? 'hard' : ($q['success_rate'] < 70 ? 'medium' : 'easy'); 
-                                ?>">
+                                <span style="padding: 0.25rem 0.75rem; background: <?php 
+                                    echo $q['success_rate'] < 40 ? '#dc3545' : ($q['success_rate'] < 70 ? 'var(--warning-color)' : 'var(--success-color)'); 
+                                ?>; color: white; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
                                     <?php echo $q['success_rate']; ?>% Success
                                 </span>
                             </div>
                             <p style="margin: 0 0 0.75rem 0; color: var(--text-secondary); font-size: 0.9rem;">
-                                <?php echo substr($q['Question'], 0, 100); ?><?php echo strlen($q['Question']) > 100 ? '...' : ''; ?>
+                                <?php echo substr($q['question_text'], 0, 150); ?><?php echo strlen($q['question_text']) > 150 ? '...' : ''; ?>
                             </p>
                             <div style="display: flex; gap: 2rem; font-size: 0.85rem; color: var(--text-secondary);">
                                 <div>
@@ -210,13 +296,19 @@ $stats['hardest_questions'] = $con->query("SELECT COUNT(*) as count FROM (
                                 <?php echo $course['course_name']; ?>
                             </h4>
                             <div style="font-size: 2.5rem; font-weight: 800; color: <?php 
-                                echo $course['avg_accuracy'] < 50 ? '#dc3545' : ($course['avg_accuracy'] < 75 ? 'var(--warning-color)' : 'var(--success-color)'); 
+                                echo $course['avg_score'] < 50 ? '#dc3545' : ($course['avg_score'] < 75 ? 'var(--warning-color)' : 'var(--success-color)'); 
                             ?>; margin-bottom: 0.5rem;">
-                                <?php echo $course['avg_accuracy']; ?>%
+                                <?php echo $course['avg_score']; ?>%
                             </div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                                <?php echo $course['question_count']; ?> questions • 
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                                <?php echo $course['exam_count']; ?> exams • 
                                 <?php echo $course['student_count']; ?> students
+                            </div>
+                            <div style="padding-top: 0.75rem; border-top: 1px solid var(--border-color); font-size: 0.85rem;">
+                                <span style="color: var(--success-color); font-weight: 600;">
+                                    <?php echo $course['pass_rate']; ?>%
+                                </span>
+                                <span style="color: var(--text-secondary);"> pass rate</span>
                             </div>
                         </div>
                         <?php endwhile; ?>

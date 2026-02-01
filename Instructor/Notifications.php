@@ -5,11 +5,11 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 require_once('../utils/NotificationSystem.php');
 
 $notificationSystem = new NotificationSystem($con);
-$userId = $_SESSION['Inst_ID'];
+$userId = $_SESSION['instructor_id'];
 $userType = 'instructor';
 
 // Handle mark as read

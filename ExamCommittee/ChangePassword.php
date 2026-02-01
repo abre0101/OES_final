@@ -8,7 +8,7 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 $pageTitle = "Change Password";
 
 $message = '';
@@ -28,7 +28,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = 'Password must be at least 6 characters';
     } else {
         // Verify current password
-        $stmt = $con->prepare("SELECT password FROM exam_committee WHERE EC_ID=?");
+        $stmt = $con->prepare("SELECT password FROM exam_committee_members WHERE committee_member_id=?");
         $stmt->bind_param("s", $_SESSION['ID']);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -36,7 +36,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         if($user && $user['password'] === $current_password) {
             // Update password
-            $update = $con->prepare("UPDATE exam_committee SET password=?, last_password_change=NOW() WHERE EC_ID=?");
+            $update = $con->prepare("UPDATE exam_committee_members SET password=?, last_password_change=NOW() WHERE committee_member_id=?");
             $update->bind_param("ss", $new_password, $_SESSION['ID']);
             
             if($update->execute()) {
@@ -186,7 +186,7 @@ $last_change = null; // Will be available after migration
                                 <button type="submit" class="btn btn-primary" style="flex: 1;">
                                     🔒 Update Password
                                 </button>
-                                <a href="index-modern.php" class="btn btn-secondary">
+                                <a href="index.php" class="btn btn-secondary">
                                     Cancel
                                 </a>
                             </div>

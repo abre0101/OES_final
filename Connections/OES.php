@@ -1,7 +1,7 @@
 <?php
 // Database connection configuration
 $hostname_OES = "localhost";
-$database_OES = "oes";
+$database_OES = "oes_professional";
 $username_OES = "root";
 $password_OES = "";
 
@@ -15,4 +15,7 @@ if ($con->connect_error) {
 
 // Set charset to utf8
 $con->set_charset("utf8");
+
+// Return connection object
+return $con;
 ?>

@@ -5,7 +5,7 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 
 // Add point_value column if it doesn't exist
 $con->query("ALTER TABLE question_page ADD COLUMN IF NOT EXISTS point_value INT DEFAULT 1 AFTER Answer");
@@ -27,7 +27,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $option4 = $_POST['option4'];
         $answer = $_POST['answer'];
         
-        $stmt = $con->prepare("INSERT INTO question_page (exam_id, course_name, Semister, Question, Option1, Option2, Option3, Option4, Answer, point_value, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+        $stmt = $con->prepare("INSERT INTO question_page (exam_id, course_name, semester, Question, Option1, Option2, Option3, Option4, Answer, point_value, approval_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
         $stmt->bind_param("isssssssi", $examId, $courseName, $semester, $question, $option1, $option2, $option3, $option4, $answer, $pointValue);
         
     } else {

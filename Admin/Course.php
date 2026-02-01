@@ -1,17 +1,17 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 // Database connection
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-$query_Recordsetd = "SELECT * From department ORDER BY dept_name ASC";
+$query_Recordsetd = "SELECT * FROM departments ORDER BY department_name ASC";
 $Recordsetd = $con->query($query_Recordsetd);
 $departments = [];
 if($Recordsetd->num_rows > 0) {
@@ -20,7 +20,7 @@ if($Recordsetd->num_rows > 0) {
     }
 }
 
-$query_Recordseti = "SELECT * From instructor ORDER BY Inst_Name ASC";
+$query_Recordseti = "SELECT * FROM instructors ORDER BY full_name ASC";
 $Recordseti = $con->query($query_Recordseti);
 $instructors = [];
 if($Recordseti->num_rows > 0) {
@@ -46,22 +46,35 @@ if($Recordseti->num_rows > 0) {
             align-items: center;
             margin-bottom: 2rem;
             gap: 2rem;
+            background: linear-gradient(135deg, rgba(0, 51, 102, 0.05) 0%, rgba(0, 85, 170, 0.05) 100%);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 2px solid rgba(0, 51, 102, 0.1);
         }
         
         .page-title-section h1 {
             margin: 0 0 0.5rem 0;
             font-size: 2rem;
             font-weight: 800;
-            color: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             display: flex;
             align-items: center;
             gap: 0.75rem;
+        }
+        
+        .page-title-section h1 span {
+            -webkit-text-fill-color: initial;
+            background: none;
         }
         
         .page-title-section p {
             margin: 0;
             color: var(--text-secondary);
             font-size: 1.05rem;
+            font-weight: 500;
         }
         
         .btn-create-new {
@@ -450,18 +463,24 @@ if($Recordseti->num_rows > 0) {
             <!-- Courses Display Grid -->
             <div class="courses-grid">
                 <?php
-                $con2 = new mysqli("localhost","root","","oes");
-                $sql = "SELECT * FROM course ORDER BY course_name ASC";
-                $result = $con2->query($sql);
+                $sql = "SELECT c.*, d.department_name, 
+                        GROUP_CONCAT(i.full_name SEPARATOR ', ') as instructor_names
+                        FROM courses c 
+                        LEFT JOIN departments d ON c.department_id = d.department_id 
+                        LEFT JOIN instructor_courses ic ON c.course_id = ic.course_id AND ic.is_active = 1
+                        LEFT JOIN instructors i ON ic.instructor_id = i.instructor_id
+                        GROUP BY c.course_id
+                        ORDER BY c.course_name ASC";
+                $result = $con->query($sql);
 
-                if($result->num_rows > 0) {
+                if($result && $result->num_rows > 0) {
                     while($row = $result->fetch_array()) {
                         $Id = $row['course_id'];
                         $Name = $row['course_name'];
-                        $Semester = $row['semister'];
-                        $Credit = $row['credit_hr'];
-                        $Dept = $row['dept_name'];
-                        $Instructor = $row['Inst_Name'];
+                        $Semester = $row['semester'];
+                        $Credit = $row['credit_hours'] ?? 'N/A';
+                        $Dept = $row['department_name'] ?? 'N/A';
+                        $Instructor = $row['instructor_names'] ?? 'Not Assigned';
                 ?>
                 <div class="course-card">
                     <div class="course-header">
@@ -504,7 +523,7 @@ if($Recordseti->num_rows > 0) {
                 </div>
                 <?php
                 }
-                $con2->close();
+                $con->close();
                 ?>
             </div>
         </div>
@@ -549,7 +568,7 @@ if($Recordseti->num_rows > 0) {
                         <?php
                         foreach($departments as $dept) {
                         ?>
-                        <option value="<?php echo $dept['deptno']?>"><?php echo $dept['dept_name']?></option>
+                        <option value="<?php echo $dept['deptno']?>"><?php echo $dept['department_name']?></option>
                         <?php
                         }
                         ?>
@@ -563,7 +582,7 @@ if($Recordseti->num_rows > 0) {
                         <?php
                         foreach($instructors as $instructor) {
                         ?>
-                        <option value="<?php echo $instructor['Inst_ID']?>"><?php echo $instructor['Inst_Name']?></option>
+                        <option value="<?php echo $instructor['instructor_id']?>"><?php echo $instructor['full_name']?></option>
                         <?php
                         }
                         ?>
@@ -606,6 +625,3 @@ if($Recordseti->num_rows > 0) {
     </script>
 </body>
 </html>
-<?php 
-$con->close();
-?>

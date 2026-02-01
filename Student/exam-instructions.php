@@ -4,7 +4,7 @@ if (!isset($_SESSION)) {
 }
 
 if(!isset($_SESSION['Name'])){
-    header("Location: ../index-modern.php");
+    header("Location: ../index.php");
     exit();
 }
 
@@ -13,10 +13,10 @@ $scheduleId = isset($_GET['schedule_id']) ? $_GET['schedule_id'] : null;
 $examInfo = null;
 
 if ($scheduleId) {
-    $con = mysqli_connect("localhost","root","","oes");
+    $con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
     $stmt = $con->prepare("SELECT s.*, e.exam_name as exam_type_name 
-                           FROM schedule s 
-                           LEFT JOIN exam_category e ON s.exam_name = e.exam_id 
+                           FROM exam_schedules s 
+                           LEFT JOIN exam_categories e ON s.exam_name = e.exam_id 
                            WHERE s.schedule_id = ?");
     $stmt->bind_param("i", $scheduleId);
     $stmt->execute();

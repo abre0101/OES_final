@@ -1,7 +1,7 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 ?>
@@ -16,6 +16,43 @@ if(!isset($_SESSION['username'])){
     <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        .page-header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            gap: 2rem;
+            background: linear-gradient(135deg, rgba(0, 51, 102, 0.05) 0%, rgba(0, 85, 170, 0.05) 100%);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 2px solid rgba(0, 51, 102, 0.1);
+        }
+        
+        .page-title-section h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .page-title-section h1 span {
+            -webkit-text-fill-color: initial;
+            background: none;
+        }
+        
+        .page-subtitle {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+        
         .settings-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -141,9 +178,11 @@ if(!isset($_SESSION['username'])){
         ?>
 
         <div class="admin-content">
-            <div class="page-header">
-                <h1>⚙️ System Settings</h1>
-                <p>Configure and manage your examination system</p>
+            <div class="page-header-actions">
+                <div class="page-title-section">
+                    <h1><span>⚙️</span> System Settings</h1>
+                    <p class="page-subtitle">Configure and manage your examination system</p>
+                </div>
             </div>
 
             <div class="settings-container">
@@ -180,7 +219,7 @@ if(!isset($_SESSION['username'])){
                         </div>
                         <p class="settings-card-desc">Database connection and backup settings</p>
                         <div class="settings-item">
-                            <span class="settings-item-label">Database Status</span>
+                            <span class="settings-item-label">Database is_active</span>
                             <span class="settings-item-value" style="color: var(--success-color); font-weight: 700;">✓ Connected</span>
                         </div>
                         <div class="settings-item">
@@ -232,7 +271,7 @@ if(!isset($_SESSION['username'])){
                             <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
                         </div>
                         <div class="settings-item">
-                            <span class="settings-item-label">SMTP Status</span>
+                            <span class="settings-item-label">SMTP is_active</span>
                             <span class="settings-item-value" style="color: var(--success-color); font-weight: 700;">✓ Configured</span>
                         </div>
                         <div class="settings-item">
@@ -280,7 +319,7 @@ if(!isset($_SESSION['username'])){
                             <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
                         </div>
                         <div class="settings-item">
-                            <span class="settings-item-label">Cache Status</span>
+                            <span class="settings-item-label">Cache is_active</span>
                             <span class="settings-item-value">Enabled</span>
                         </div>
                         <div class="settings-item">

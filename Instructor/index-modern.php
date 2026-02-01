@@ -8,12 +8,49 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 
-// Get instructor stats
-$inst_id = $_SESSION['ID'];
-$total_questions = $con->query("SELECT COUNT(*) as count FROM question_page")->fetch_assoc()['count'] ?? 0;
-$total_students = $con->query("SELECT COUNT(*) as count FROM student")->fetch_assoc()['count'] ?? 0;
+// Get instructor info
+$instructor_id = $_SESSION['ID'];
+$instructor_name = $_SESSION['Name'];
+
+// Get instructor's courses count
+$coursesQuery = $con->prepare("SELECT COUNT(DISTINCT course_id) as count 
+    FROM instructor_courses 
+    WHERE instructor_id = ? AND is_active = TRUE");
+$coursesQuery->bind_param("i", $instructor_id);
+$coursesQuery->execute();
+$total_courses = $coursesQuery->get_result()->fetch_assoc()['count'];
+$coursesQuery->close();
+
+// Get total questions created by this instructor
+$questionsQuery = $con->prepare("SELECT COUNT(*) as count 
+    FROM questions 
+    WHERE instructor_id = ?");
+$questionsQuery->bind_param("i", $instructor_id);
+$questionsQuery->execute();
+$total_questions = $questionsQuery->get_result()->fetch_assoc()['count'];
+$questionsQuery->close();
+
+// Get total exams created for instructor's courses
+$examsQuery = $con->prepare("SELECT COUNT(DISTINCT es.schedule_id) as count 
+    FROM exam_schedules es
+    INNER JOIN instructor_courses ic ON es.course_id = ic.course_id
+    WHERE ic.instructor_id = ? AND ic.is_active = TRUE");
+$examsQuery->bind_param("i", $instructor_id);
+$examsQuery->execute();
+$total_exams = $examsQuery->get_result()->fetch_assoc()['count'];
+$examsQuery->close();
+
+// Get total students enrolled in instructor's courses
+$studentsQuery = $con->prepare("SELECT COUNT(DISTINCT sc.student_id) as count 
+    FROM student_courses sc
+    INNER JOIN instructor_courses ic ON sc.course_id = ic.course_id
+    WHERE ic.instructor_id = ? AND ic.is_active = TRUE AND sc.is_active = TRUE");
+$studentsQuery->bind_param("i", $instructor_id);
+$studentsQuery->execute();
+$total_students = $studentsQuery->get_result()->fetch_assoc()['count'];
+$studentsQuery->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -97,9 +134,9 @@ $total_students = $con->query("SELECT COUNT(*) as count FROM student")->fetch_as
             <div class="welcome-banner">
                 <div class="welcome-content">
                     <h1>👋 Welcome, <?php echo $_SESSION['Name']; ?>!</h1>
-                    <p>Instructor Dashboard - <?php echo $_SESSION['Dept']; ?> Department</p>
+                    <p>Instructor Dashboard - Debre Markos University</p>
                     <p style="font-size: 0.95rem; margin-top: 0.5rem; opacity: 0.9;">
-                        Course: <?php echo $_SESSION['Course']; ?>
+                        Manage your exams, questions, and student assessments
                     </p>
                 </div>
                 <div class="welcome-image">
@@ -112,8 +149,8 @@ $total_students = $con->query("SELECT COUNT(*) as count FROM student")->fetch_as
                 <div class="stat-card stat-primary">
                     <div class="stat-icon">📚</div>
                     <div class="stat-details">
-                        <div class="stat-value">2</div>
-                        <div class="stat-label">Active Courses</div>
+                        <div class="stat-value"><?php echo $total_courses; ?></div>
+                        <div class="stat-label">My Courses</div>
                     </div>
                 </div>
 
@@ -121,15 +158,15 @@ $total_students = $con->query("SELECT COUNT(*) as count FROM student")->fetch_as
                     <div class="stat-icon">📝</div>
                     <div class="stat-details">
                         <div class="stat-value"><?php echo $total_questions; ?></div>
-                        <div class="stat-label">Total Exams Created</div>
+                        <div class="stat-label">Questions Created</div>
                     </div>
                 </div>
 
                 <div class="stat-card stat-warning">
-                    <div class="stat-icon">⏳</div>
+                    <div class="stat-icon">📋</div>
                     <div class="stat-details">
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Pending Approval</div>
+                        <div class="stat-value"><?php echo $total_exams; ?></div>
+                        <div class="stat-label">Exams Created</div>
                     </div>
                 </div>
 
@@ -137,7 +174,7 @@ $total_students = $con->query("SELECT COUNT(*) as count FROM student")->fetch_as
                     <div class="stat-icon">👨‍🎓</div>
                     <div class="stat-details">
                         <div class="stat-value"><?php echo $total_students; ?></div>
-                        <div class="stat-label">Total Students</div>
+                        <div class="stat-label">Students</div>
                     </div>
                 </div>
             </div>
@@ -151,9 +188,9 @@ $total_students = $con->query("SELECT COUNT(*) as count FROM student")->fetch_as
                         <div class="action-title">Create New Exam</div>
                         <div class="action-desc">Add questions and create exam</div>
                     </a>
-                    <a href="ManageSchedule.php" class="action-card">
+                    <a href="ManageExams.php" class="action-card">
                         <div class="action-icon">📅</div>
-                        <div class="action-title">View Today's Schedule</div>
+                        <div class="action-title">View Exams</div>
                         <div class="action-desc">Check scheduled exams</div>
                     </a>
                     <a href="ManageQuestions.php" class="action-card">
@@ -186,7 +223,7 @@ $total_students = $con->query("SELECT COUNT(*) as count FROM student")->fetch_as
                         <div class="activity-item">
                             <div class="activity-icon" style="background: var(--success-color);">✓</div>
                             <div class="activity-content">
-                                <div class="activity-title">System Status</div>
+                                <div class="activity-title">System is_active</div>
                                 <div class="activity-time">All systems operational</div>
                             </div>
                         </div>

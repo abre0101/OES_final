@@ -1,18 +1,18 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 // Database connection
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
 $Id = $_SESSION['ID'];
-$sql = "select * from admin where Admin_ID='".$Id."'";
+$sql = "select * FROM administrators where admin_id='".$Id."'";
 $result = $con->query($sql);
 $row = $result->fetch_array();
 ?>
@@ -170,7 +170,7 @@ $row = $result->fetch_array();
                             <div class="profile-info-grid">
                                 <div class="profile-info-item">
                                     <span class="profile-info-label">Admin ID</span>
-                                    <div class="profile-info-value"><?php echo $row['Admin_ID']; ?></div>
+                                    <div class="profile-info-value"><?php echo $row['admin_id']; ?></div>
                                 </div>
                                 
                                 <div class="profile-info-item">
@@ -194,7 +194,7 @@ $row = $result->fetch_array();
                             <a href="EditProfile.php?Id=<?php echo $Id;?>" class="btn btn-primary">
                                 ✏️ Edit Profile
                             </a>
-                            <a href="index-modern.php" class="btn btn-secondary">
+                            <a href="index.php" class="btn btn-secondary">
                                 ← Back to Dashboard
                             </a>
                         </div>

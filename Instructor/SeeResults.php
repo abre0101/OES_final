@@ -8,23 +8,104 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php");
 $pageTitle = "See Results";
+$instructor_id = $_SESSION['ID'];
 
-// Get results
-$results = $con->query("SELECT r.*, s.Name, ec.exam_name 
-    FROM result r 
-    LEFT JOIN student s ON r.Stud_ID = s.Id 
-    LEFT JOIN exam_category ec ON r.exam_id = ec.exam_id 
-    ORDER BY r.Stud_ID DESC 
-    LIMIT 50");
+// Get filter parameters
+$schedule_id = $_GET['schedule_id'] ?? null;
+$course_id = $_GET['course_id'] ?? null;
+$grade_filter = $_GET['grade'] ?? null;
+$pass_status = $_GET['pass_status'] ?? null;
+
+// Build query for results from instructor's courses
+$query = "SELECT 
+    er.result_id,
+    er.total_questions,
+    er.correct_answers,
+    er.wrong_answers,
+    er.percentage_score,
+    er.letter_grade,
+    er.pass_status,
+    er.exam_submitted_at,
+    s.student_code,
+    s.full_name as student_name,
+    es.exam_name,
+    c.course_name,
+    c.course_code
+    FROM exam_results er
+    INNER JOIN students s ON er.student_id = s.student_id
+    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN courses c ON es.course_id = c.course_id
+    INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
+    WHERE ic.instructor_id = ? AND ic.is_active = TRUE";
+
+$params = [$instructor_id];
+$types = "i";
+
+if($schedule_id) {
+    $query .= " AND er.schedule_id = ?";
+    $params[] = $schedule_id;
+    $types .= "i";
+}
+
+if($course_id) {
+    $query .= " AND c.course_id = ?";
+    $params[] = $course_id;
+    $types .= "i";
+}
+
+if($grade_filter) {
+    $query .= " AND er.letter_grade = ?";
+    $params[] = $grade_filter;
+    $types .= "s";
+}
+
+if($pass_status) {
+    $query .= " AND er.pass_status = ?";
+    $params[] = $pass_status;
+    $types .= "s";
+}
+
+$query .= " ORDER BY er.exam_submitted_at DESC LIMIT 100";
+
+$stmt = $con->prepare($query);
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$results = $stmt->get_result();
+
+// Get instructor's courses for filter
+$coursesQuery = $con->prepare("SELECT DISTINCT c.course_id, c.course_name, c.course_code
+    FROM instructor_courses ic
+    INNER JOIN courses c ON ic.course_id = c.course_id
+    WHERE ic.instructor_id = ? AND ic.is_active = TRUE
+    ORDER BY c.course_name");
+$coursesQuery->bind_param("i", $instructor_id);
+$coursesQuery->execute();
+$courses = $coursesQuery->get_result();
+
+// Get statistics
+$statsQuery = $con->prepare("SELECT 
+    COUNT(DISTINCT er.result_id) as total_results,
+    COUNT(DISTINCT er.student_id) as total_students,
+    AVG(er.percentage_score) as avg_score,
+    SUM(CASE WHEN er.pass_status = 'Pass' THEN 1 ELSE 0 END) as passed_count
+    FROM exam_results er
+    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN courses c ON es.course_id = c.course_id
+    INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
+    WHERE ic.instructor_id = ? AND ic.is_active = TRUE");
+$statsQuery->bind_param("i", $instructor_id);
+$statsQuery->execute();
+$stats = $statsQuery->get_result()->fetch_assoc();
+$statsQuery->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>See Results - Instructor</title>
+    <title>Results Overview - Instructor</title>
     <link href="../assets/css/modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
@@ -38,8 +119,8 @@ $results = $con->query("SELECT r.*, s.Name, ec.exam_name
 
         <div class="admin-content">
             <div class="page-header">
-                <h1>📊 Student Results</h1>
-                <p>View and analyze student performance</p>
+                <h1>📊 Results Overview</h1>
+                <p>View and analyze student performance across all exams</p>
             </div>
 
             <!-- Stats -->
@@ -47,36 +128,73 @@ $results = $con->query("SELECT r.*, s.Name, ec.exam_name
                 <div class="stat-card stat-primary">
                     <div class="stat-icon">📝</div>
                     <div class="stat-details">
-                        <div class="stat-value">
-                            <?php echo $results ? $results->num_rows : 0; ?>
-                        </div>
+                        <div class="stat-value"><?php echo $stats['total_results']; ?></div>
                         <div class="stat-label">Total Results</div>
                     </div>
                 </div>
                 
                 <div class="stat-card stat-success">
-                    <div class="stat-icon">✅</div>
+                    <div class="stat-icon">👨‍🎓</div>
                     <div class="stat-details">
-                        <div class="stat-value">85%</div>
-                        <div class="stat-label">Average Score</div>
+                        <div class="stat-value"><?php echo $stats['total_students']; ?></div>
+                        <div class="stat-label">Students</div>
                     </div>
                 </div>
                 
                 <div class="stat-card stat-warning">
                     <div class="stat-icon">📈</div>
                     <div class="stat-details">
-                        <div class="stat-value">92%</div>
-                        <div class="stat-label">Pass Rate</div>
+                        <div class="stat-value"><?php echo round($stats['avg_score'], 1); ?>%</div>
+                        <div class="stat-label">Average Score</div>
                     </div>
                 </div>
                 
                 <div class="stat-card stat-info">
-                    <div class="stat-icon">🏆</div>
+                    <div class="stat-icon">✅</div>
                     <div class="stat-details">
-                        <div class="stat-value">A</div>
-                        <div class="stat-label">Top Grade</div>
+                        <div class="stat-value"><?php echo $stats['passed_count']; ?></div>
+                        <div class="stat-label">Passed</div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Filter -->
+            <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <form method="GET" action="">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+                        <div class="form-group" style="margin: 0;">
+                            <label>Filter by Grade</label>
+                            <select name="grade" class="form-control">
+                                <option value="">All Grades</option>
+                                <option value="A+" <?php echo ($grade_filter == 'A+') ? 'selected' : ''; ?>>A+</option>
+                                <option value="A" <?php echo ($grade_filter == 'A') ? 'selected' : ''; ?>>A</option>
+                                <option value="A-" <?php echo ($grade_filter == 'A-') ? 'selected' : ''; ?>>A-</option>
+                                <option value="B+" <?php echo ($grade_filter == 'B+') ? 'selected' : ''; ?>>B+</option>
+                                <option value="B" <?php echo ($grade_filter == 'B') ? 'selected' : ''; ?>>B</option>
+                                <option value="B-" <?php echo ($grade_filter == 'B-') ? 'selected' : ''; ?>>B-</option>
+                                <option value="C+" <?php echo ($grade_filter == 'C+') ? 'selected' : ''; ?>>C+</option>
+                                <option value="C" <?php echo ($grade_filter == 'C') ? 'selected' : ''; ?>>C</option>
+                                <option value="C-" <?php echo ($grade_filter == 'C-') ? 'selected' : ''; ?>>C-</option>
+                                <option value="D" <?php echo ($grade_filter == 'D') ? 'selected' : ''; ?>>D</option>
+                                <option value="F" <?php echo ($grade_filter == 'F') ? 'selected' : ''; ?>>F</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group" style="margin: 0;">
+                            <label>Filter by Status</label>
+                            <select name="pass_status" class="form-control">
+                                <option value="">All Status</option>
+                                <option value="Pass" <?php echo ($pass_status == 'Pass') ? 'selected' : ''; ?>>✅ Passed</option>
+                                <option value="Fail" <?php echo ($pass_status == 'Fail') ? 'selected' : ''; ?>>❌ Failed</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="submit" class="btn btn-primary">🔍 Filter</button>
+                            <a href="SeeResults.php" class="btn btn-secondary">Clear</a>
+                        </div>
+                    </div>
+                </form>
             </div>
 
             <!-- Results Table -->
@@ -110,18 +228,20 @@ $results = $con->query("SELECT r.*, s.Name, ec.exam_name
                             <?php if($results && $results->num_rows > 0): ?>
                                 <?php while($result = $results->fetch_assoc()): ?>
                                 <tr>
-                                    <td><?php echo $result['Stud_ID']; ?></td>
-                                    <td><?php echo $result['Name'] ?? 'N/A'; ?></td>
-                                    <td><?php echo $result['exam_name'] ?? 'Exam'; ?></td>
-                                    <td><strong><?php echo $result['score'] ?? '0'; ?>%</strong></td>
+                                    <td><?php echo htmlspecialchars($result['student_code']); ?></td>
+                                    <td><?php echo htmlspecialchars($result['student_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($result['exam_name']); ?><br>
+                                        <small style="color: var(--text-secondary);"><?php echo htmlspecialchars($result['course_name']); ?></small>
+                                    </td>
+                                    <td><strong><?php echo round($result['percentage_score'], 1); ?>%</strong></td>
                                     <td>
-                                        <span class="badge badge-success">
-                                            <?php echo $result['grade'] ?? 'N/A'; ?>
+                                        <span class="badge <?php echo $result['pass_status'] == 'Pass' ? 'badge-success' : 'badge-danger'; ?>">
+                                            <?php echo $result['letter_grade']; ?>
                                         </span>
                                     </td>
-                                    <td><?php echo date('M d, Y'); ?></td>
+                                    <td><?php echo date('M d, Y', strtotime($result['exam_submitted_at'])); ?></td>
                                     <td>
-                                        <button class="btn btn-primary btn-sm">View Details</button>
+                                        <a href="ViewStudentResult.php?result_id=<?php echo $result['result_id']; ?>" class="btn btn-primary btn-sm">View Details</a>
                                     </td>
                                 </tr>
                                 <?php endwhile; ?>

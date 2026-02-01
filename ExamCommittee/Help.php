@@ -331,7 +331,7 @@ $pageTitle = "Help & Support";
                 switch(e.key) {
                     case 'h':
                         e.preventDefault();
-                        window.location.href = 'index-modern.php';
+                        window.location.href = 'index.php';
                         break;
                     case 'q':
                         e.preventDefault();

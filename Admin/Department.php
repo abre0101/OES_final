@@ -1,17 +1,17 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 // Database connection
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-$query_Recordsetd = "SELECT * From faculty ORDER BY faculty_name ASC";
+$query_Recordsetd = "SELECT * FROM faculties ORDER BY faculty_name ASC";
 $Recordsetd = $con->query($query_Recordsetd);
 $faculties = [];
 if($Recordsetd->num_rows > 0) {
@@ -37,22 +37,35 @@ if($Recordsetd->num_rows > 0) {
             align-items: center;
             margin-bottom: 2rem;
             gap: 2rem;
+            background: linear-gradient(135deg, rgba(0, 51, 102, 0.05) 0%, rgba(0, 85, 170, 0.05) 100%);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 2px solid rgba(0, 51, 102, 0.1);
         }
         
         .page-title-section h1 {
             margin: 0 0 0.5rem 0;
             font-size: 2rem;
             font-weight: 800;
-            color: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             display: flex;
             align-items: center;
             gap: 0.75rem;
+        }
+        
+        .page-title-section h1 span {
+            -webkit-text-fill-color: initial;
+            background: none;
         }
         
         .page-title-section p {
             margin: 0;
             color: var(--text-secondary);
             font-size: 1.05rem;
+            font-weight: 500;
         }
         
         .btn-create-new {
@@ -417,15 +430,17 @@ if($Recordsetd->num_rows > 0) {
             <!-- Departments Display Grid -->
             <div class="departments-grid">
                 <?php
-                $con2 = new mysqli("localhost","root","","oes");
-                $sql = "SELECT * FROM department ORDER BY dept_name ASC";
-                $result = $con2->query($sql);
+                $sql = "SELECT d.*, f.faculty_name 
+                        FROM departments d 
+                        LEFT JOIN faculties f ON d.faculty_id = f.faculty_id 
+                        ORDER BY d.department_name ASC";
+                $result = $con->query($sql);
 
-                if($result->num_rows > 0) {
+                if($result && $result->num_rows > 0) {
                     while($row = $result->fetch_array()) {
-                        $Id = $row['deptno'];
-                        $DepartmentName = $row['dept_name'];
-                        $DeptFaculty = $row['faculty_name'];
+                        $Id = $row['department_id'];
+                        $DepartmentName = $row['department_name'];
+                        $DeptFaculty = $row['faculty_name'] ?? 'N/A';
                 ?>
                 <div class="department-card">
                     <div class="department-icon">🏢</div>
@@ -455,7 +470,7 @@ if($Recordsetd->num_rows > 0) {
                 </div>
                 <?php
                 }
-                $con2->close();
+                $con->close();
                 ?>
             </div>
         </div>
@@ -529,6 +544,3 @@ if($Recordsetd->num_rows > 0) {
     </script>
 </body>
 </html>
-<?php 
-$con->close();
-?>

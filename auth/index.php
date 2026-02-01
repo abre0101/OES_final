@@ -1,5 +1,0 @@
-<?php
-// Redirect to home page
-header("Location: ../index-modern.php");
-exit();
-?>

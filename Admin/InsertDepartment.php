@@ -19,7 +19,7 @@
 	// Select Database
 	$con->select_db("oes");
 	// Specify the query to Insert Record
-	$sql = "insert into department 	(deptno,dept_name,faculty_name) 	values('".$ID."','".$Name."','".$DeptFaculty."' )";
+	$sql = "insert INTO departments 	(deptno,department_name,faculty_name) 	values('".$ID."','".$Name."','".$DeptFaculty."' )";
 	// execute query
 	$con->query ($sql);
 	// Close The Connection

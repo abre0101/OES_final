@@ -33,7 +33,7 @@
                     </div>
                     <a href="Logout.php" class="btn btn-danger btn-sm">Logout</a>
                     <?php else: ?>
-                    <a href="index-modern.php#login" class="btn btn-primary btn-sm">Login</a>
+                    <a href="index.php#login" class="btn btn-primary btn-sm">Login</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -41,7 +41,7 @@
         <nav class="main-nav">
             <div class="container">
                 <ul class="nav-menu">
-                    <li><a href="index-modern.php">Home</a></li>
+                    <li><a href="index.php">Home</a></li>
                     <li><a href="AboutUs-modern.php">About Us</a></li>
                     <li><a href="Shedule-modern.php">Schedule</a></li>
                     <li><a href="Help-modern.php">Help</a></li>

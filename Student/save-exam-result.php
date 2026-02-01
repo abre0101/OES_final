@@ -4,7 +4,7 @@ if (!isset($_SESSION)) {
 }
 
 if(!isset($_SESSION['Name']) || !isset($_SESSION['ID'])){
-    header("Location: ../index-modern.php");
+    header("Location: ../index.php");
     exit();
 }
 
@@ -18,7 +18,7 @@ $answers = isset($_POST['answers']) ? $_POST['answers'] : '{}';
 $studentID = $_SESSION['ID'];
 
 // Connect to database
-$con = mysqli_connect("localhost", "root", "", "oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
 
 if (!$con) {
     die("Connection failed: " . mysqli_connect_error());
@@ -27,7 +27,7 @@ if (!$con) {
 // Get exam and course information from the questions taken
 $sql = "SELECT q.exam_id, q.course_name, c.course_id 
         FROM question_page q
-        LEFT JOIN course c ON TRIM(q.course_name) = TRIM(c.course_name)
+        LEFT JOIN courses c ON TRIM(q.course_name) = TRIM(c.course_name)
         LIMIT 1";
 $result = mysqli_query($con, $sql);
 
@@ -41,7 +41,7 @@ if ($result && mysqli_num_rows($result) > 0) {
     } else {
         // Fallback: try to find course_id by name
         $courseName = $row['course_name'];
-        $courseQuery = mysqli_query($con, "SELECT course_id FROM course WHERE course_name LIKE '%{$courseName}%' LIMIT 1");
+        $courseQuery = mysqli_query($con, "SELECT course_id FROM courses WHERE course_name LIKE '%{$courseName}%' LIMIT 1");
         if ($courseQuery && mysqli_num_rows($courseQuery) > 0) {
             $courseRow = mysqli_fetch_assoc($courseQuery);
             $courseId = $courseRow['course_id'];
@@ -58,7 +58,7 @@ if ($result && mysqli_num_rows($result) > 0) {
 }
 
 // Insert result into database
-$stmt = $con->prepare("INSERT INTO result (exam_id, course_id, Stud_ID, Total, Correct, Wrong, Result) VALUES (?, ?, ?, ?, ?, ?, ?)");
+$stmt = $con->prepare("INSERT INTO exam_results (exam_id, course_id, student_id, Total, Correct, Wrong, Result) VALUES (?, ?, ?, ?, ?, ?, ?)");
 $stmt->bind_param("issiiii", $examId, $courseId, $studentID, $total, $correct, $wrong, $score);
 
 

@@ -9,7 +9,7 @@ if(!isset($_SESSION['Name'])){
 }
 
 // Get questions and course info from database
-$con = mysqli_connect("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
 $sql = "SELECT * FROM question_page ORDER BY question_id LIMIT 20";
 $result = mysqli_query($con,$sql);
 $questions = [];

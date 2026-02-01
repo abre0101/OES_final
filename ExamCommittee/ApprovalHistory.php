@@ -1,104 +1,115 @@
 <?php
-session_start();
+if (!isset($_SESSION)) {
+    session_start();
+}
+
 if(!isset($_SESSION['Name'])){
     header("Location:../auth/institute-login.php");
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
-$pageTitle = "Approval History";
+$con = require_once(__DIR__ . "/../Connections/OES.php");
 
 // Get filter parameters
-$filterStatus = isset($_GET['status']) ? $_GET['status'] : 'all';
-$filterDate = isset($_GET['date']) ? $_GET['date'] : 'all';
-$searchQuery = isset($_GET['search']) ? $_GET['search'] : '';
+$actionFilter = $_GET['action'] ?? 'all';
+$dateFilter = $_GET['date'] ?? 'all';
+$searchQuery = $_GET['search'] ?? '';
 
-// Build WHERE clause
-$whereConditions = [];
-if($filterStatus != 'all') {
-    $whereConditions[] = "qp.approval_status = '$filterStatus'";
+// Build query - exclude draft exams
+$query = "SELECT eah.*, es.exam_name, c.course_name, c.course_code, ec.category_name,
+    ecm.full_name as reviewer_name
+    FROM exam_approval_history eah
+    INNER JOIN exam_schedules es ON eah.schedule_id = es.schedule_id
+    LEFT JOIN courses c ON es.course_id = c.course_id
+    LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
+    LEFT JOIN exam_committee_members ecm ON eah.performed_by = ecm.committee_member_id AND eah.performed_by_type = 'committee'
+    WHERE es.approval_status != 'draft'";
+
+if($actionFilter != 'all') {
+    $query .= " AND eah.action = '" . $con->real_escape_string($actionFilter) . "'";
 }
-if($filterDate == 'today') {
-    $whereConditions[] = "DATE(qp.review_date) = CURDATE()";
-} elseif($filterDate == 'week') {
-    $whereConditions[] = "qp.review_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-} elseif($filterDate == 'month') {
-    $whereConditions[] = "qp.review_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+
+if($dateFilter == 'today') {
+    $query .= " AND DATE(eah.created_at) = CURDATE()";
+} elseif($dateFilter == 'week') {
+    $query .= " AND eah.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+} elseif($dateFilter == 'month') {
+    $query .= " AND eah.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
 }
+
 if($searchQuery) {
-    $whereConditions[] = "(qp.Question LIKE '%$searchQuery%' OR ec.exam_name LIKE '%$searchQuery%' OR qp.reviewed_by LIKE '%$searchQuery%')";
+    $query .= " AND (es.exam_name LIKE '%" . $con->real_escape_string($searchQuery) . "%' 
+                OR c.course_name LIKE '%" . $con->real_escape_string($searchQuery) . "%'
+                OR c.course_code LIKE '%" . $con->real_escape_string($searchQuery) . "%')";
 }
 
-$whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+$query .= " ORDER BY eah.created_at DESC LIMIT 100";
+$history = $con->query($query);
 
-// Get approval history
-$history = $con->query("SELECT qp.*, ec.exam_name 
-    FROM question_page qp 
-    LEFT JOIN exam_category ec ON qp.exam_id = ec.exam_id 
-    $whereClause
-    ORDER BY qp.review_date DESC 
-    LIMIT 100");
+// Debug: Check if query executed successfully
+if(!$history) {
+    error_log("Approval History Query Error: " . $con->error);
+}
 
 // Get statistics
-$stats = [];
-$stats['total_reviewed'] = $con->query("SELECT COUNT(*) as count FROM question_page WHERE review_date IS NOT NULL")->fetch_assoc()['count'];
-$stats['approved'] = $con->query("SELECT COUNT(*) as count FROM question_page WHERE approval_status = 'approved'")->fetch_assoc()['count'];
-$stats['revision'] = $con->query("SELECT COUNT(*) as count FROM question_page WHERE approval_status = 'revision'")->fetch_assoc()['count'];
-$stats['rejected'] = $con->query("SELECT COUNT(*) as count FROM question_page WHERE approval_status = 'rejected'")->fetch_assoc()['count'];
-$stats['pending'] = $con->query("SELECT COUNT(*) as count FROM question_page WHERE approval_status = 'pending' OR approval_status IS NULL")->fetch_assoc()['count'];
-
-// Get reviewer statistics
-$reviewerStats = $con->query("SELECT reviewed_by, 
+$stats = $con->query("SELECT 
     COUNT(*) as total_reviews,
-    SUM(CASE WHEN approval_status = 'approved' THEN 1 ELSE 0 END) as approved_count,
-    SUM(CASE WHEN approval_status = 'revision' THEN 1 ELSE 0 END) as revision_count,
-    SUM(CASE WHEN approval_status = 'rejected' THEN 1 ELSE 0 END) as rejected_count
-    FROM question_page 
-    WHERE reviewed_by IS NOT NULL 
-    GROUP BY reviewed_by 
-    ORDER BY total_reviews DESC 
-    LIMIT 10");
+    SUM(CASE WHEN eah.action = 'approved' THEN 1 ELSE 0 END) as approved_count,
+    SUM(CASE WHEN eah.action = 'revision_requested' THEN 1 ELSE 0 END) as revision_count,
+    SUM(CASE WHEN eah.action = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
+    SUM(CASE WHEN DATE(eah.created_at) = CURDATE() THEN 1 ELSE 0 END) as today_count
+    FROM exam_approval_history eah");
+
+// Ensure stats has default values if query fails
+if(!$stats) {
+    $stats = ['total_reviews' => 0, 'approved_count' => 0, 'revision_count' => 0, 'rejected_count' => 0, 'today_count' => 0];
+} else {
+    $stats = $stats->fetch_assoc();
+    // Ensure all values are set
+    $stats['total_reviews'] = $stats['total_reviews'] ?? 0;
+    $stats['approved_count'] = $stats['approved_count'] ?? 0;
+    $stats['revision_count'] = $stats['revision_count'] ?? 0;
+    $stats['rejected_count'] = $stats['rejected_count'] ?? 0;
+    $stats['today_count'] = $stats['today_count'] ?? 0;
+}
+
+// Get top reviewers
+$topReviewers = $con->query("SELECT 
+    ecm.full_name,
+    COUNT(*) as review_count,
+    SUM(CASE WHEN eah.action = 'approved' THEN 1 ELSE 0 END) as approved,
+    SUM(CASE WHEN eah.action = 'revision_requested' THEN 1 ELSE 0 END) as revisions,
+    SUM(CASE WHEN eah.action = 'rejected' THEN 1 ELSE 0 END) as rejected
+    FROM exam_approval_history eah
+    LEFT JOIN exam_committee_members ecm ON eah.performed_by = ecm.committee_member_id
+    WHERE eah.performed_by_type = 'committee'
+    GROUP BY eah.performed_by, ecm.full_name
+    ORDER BY review_count DESC
+    LIMIT 5");
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Approval History - Exam Committee</title>
+    <title>Approval History</title>
     <link href="../assets/css/modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        .history-item {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            border-left: 4px solid var(--border-color);
-            transition: all 0.3s;
-        }
-        .history-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .history-item.approved { border-left-color: var(--success-color); }
-        .history-item.revision { border-left-color: #ff9800; }
-        .history-item.rejected { border-left-color: #dc3545; }
-        .history-item.pending { border-left-color: var(--warning-color); }
-        
         .timeline {
             position: relative;
-            padding-left: 2rem;
+            padding-left: 2.5rem;
         }
         .timeline::before {
             content: '';
             position: absolute;
-            left: 0;
+            left: 0.75rem;
             top: 0;
             bottom: 0;
-            width: 2px;
-            background: var(--border-color);
+            width: 3px;
+            background: linear-gradient(to bottom, var(--primary-color), transparent);
         }
         .timeline-item {
             position: relative;
@@ -107,14 +118,80 @@ $reviewerStats = $con->query("SELECT reviewed_by,
         .timeline-item::before {
             content: '';
             position: absolute;
-            left: -2.4rem;
+            left: -1.85rem;
             top: 0.5rem;
-            width: 12px;
-            height: 12px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
-            background: var(--primary-color);
             border: 3px solid white;
-            box-shadow: 0 0 0 2px var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-color);
+            z-index: 1;
+        }
+        .timeline-item.approved::before { box-shadow: 0 0 0 3px var(--success-color); background: var(--success-color); }
+        .timeline-item.revision_requested::before { box-shadow: 0 0 0 3px #ff9800; background: #ff9800; }
+        .timeline-item.rejected::before { box-shadow: 0 0 0 3px #dc3545; background: #dc3545; }
+        
+        .history-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.2s;
+        }
+        .history-card:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .badge-approved { background: #d4edda; color: #155724; }
+        .badge-revision { background: #fff3cd; color: #856404; }
+        .badge-rejected { background: #f8d7da; color: #721c24; }
+        .badge-submitted { background: #d1ecf1; color: #0c5460; }
+        
+        .stat-card-mini {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .reviewer-card {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .filter-chip {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            border: 2px solid var(--border-color);
+            background: white;
+            color: var(--text-primary);
+        }
+        .filter-chip:hover {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+        .filter-chip.active {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
         }
     </style>
 </head>
@@ -125,144 +202,144 @@ $reviewerStats = $con->query("SELECT reviewed_by,
         <?php include 'header-component.php'; ?>
 
         <div class="admin-content">
-            <div class="page-header">
-                <h1>📜 Approval History</h1>
-                <p>Complete audit trail of all question reviews and approvals</p>
+            <!-- Header -->
+            <div style="margin-bottom: 2rem;">
+                <h1 style="font-size: 1.75rem; margin: 0 0 0.25rem 0; color: var(--primary-color);">📜 Approval History</h1>
+                <p style="margin: 0; color: var(--text-secondary); font-size: 0.95rem;">Complete audit trail of all exam reviews</p>
             </div>
 
-            <!-- Statistics -->
-            <div class="grid grid-5" style="margin-bottom: 2rem;">
-                <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem; font-weight: 800; color: var(--primary-color);">
-                        <?php echo $stats['total_reviewed']; ?>
+            <?php if($stats['total_reviews'] == 0): ?>
+            <!-- Info Box for Empty State -->
+            <div style="background: linear-gradient(135deg, rgba(0, 123, 255, 0.1), rgba(0, 123, 255, 0.05)); border-left: 4px solid var(--primary-color); padding: 1.25rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                <div style="display: flex; align-items: start; gap: 1rem;">
+                    <div style="font-size: 2rem;">ℹ️</div>
+                    <div>
+                        <h3 style="margin: 0 0 0.5rem 0; color: var(--primary-color); font-size: 1.05rem;">Getting Started</h3>
+                        <p style="margin: 0 0 0.75rem 0; color: var(--text-primary); font-size: 0.9rem;">
+                            This page tracks all exam approval activities. Once you start reviewing exams from the Pending Approvals page, 
+                            you'll see a complete timeline of all actions here including approvals, revision requests, and rejections.
+                        </p>
+                        <a href="PendingApprovals.php" class="btn btn-primary btn-sm">
+                            Go to Pending Approvals →
+                        </a>
                     </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Total Reviewed</div>
-                </div>
-                <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem; font-weight: 800; color: var(--success-color);">
-                        <?php echo $stats['approved']; ?>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Approved</div>
-                </div>
-                <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem; font-weight: 800; color: #ff9800;">
-                        <?php echo $stats['revision']; ?>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Revision</div>
-                </div>
-                <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem; font-weight: 800; color: #dc3545;">
-                        <?php echo $stats['rejected']; ?>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Rejected</div>
-                </div>
-                <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem; font-weight: 800; color: var(--warning-color);">
-                        <?php echo $stats['pending']; ?>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Pending</div>
                 </div>
             </div>
+            <?php endif; ?>
 
-            <!-- Filters -->
-            <div class="card" style="margin-bottom: 2rem;">
-                <div style="padding: 1.5rem;">
-                    <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
-                        <div class="form-group" style="margin: 0;">
-                            <label>Status</label>
-                            <select name="status" class="form-control">
-                                <option value="all" <?php echo $filterStatus == 'all' ? 'selected' : ''; ?>>All Status</option>
-                                <option value="approved" <?php echo $filterStatus == 'approved' ? 'selected' : ''; ?>>Approved</option>
-                                <option value="revision" <?php echo $filterStatus == 'revision' ? 'selected' : ''; ?>>Revision</option>
-                                <option value="rejected" <?php echo $filterStatus == 'rejected' ? 'selected' : ''; ?>>Rejected</option>
-                                <option value="pending" <?php echo $filterStatus == 'pending' ? 'selected' : ''; ?>>Pending</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group" style="margin: 0;">
-                            <label>Date Range</label>
-                            <select name="date" class="form-control">
-                                <option value="all" <?php echo $filterDate == 'all' ? 'selected' : ''; ?>>All Time</option>
-                                <option value="today" <?php echo $filterDate == 'today' ? 'selected' : ''; ?>>Today</option>
-                                <option value="week" <?php echo $filterDate == 'week' ? 'selected' : ''; ?>>Last 7 Days</option>
-                                <option value="month" <?php echo $filterDate == 'month' ? 'selected' : ''; ?>>Last 30 Days</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group" style="margin: 0;">
-                            <label>Search</label>
-                            <input type="text" name="search" class="form-control" placeholder="Question, exam, reviewer..." value="<?php echo $searchQuery; ?>">
-                        </div>
-
-                        <div>
-                            <button type="submit" class="btn btn-primary">🔍 Filter</button>
-                            <a href="ApprovalHistory.php" class="btn btn-secondary">Clear</a>
-                        </div>
-                    </form>
+            <!-- Statistics Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div class="stat-card-mini">
+                    <div style="font-size: 2rem; font-weight: 800; color: var(--primary-color);"><?php echo $stats['total_reviews']; ?></div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Total Reviews</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div style="font-size: 2rem; font-weight: 800; color: var(--success-color);"><?php echo $stats['approved_count']; ?></div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Approved</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div style="font-size: 2rem; font-weight: 800; color: #ff9800;"><?php echo $stats['revision_count']; ?></div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Revisions</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div style="font-size: 2rem; font-weight: 800; color: #dc3545;"><?php echo $stats['rejected_count']; ?></div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Rejected</div>
+                </div>
+                <div class="stat-card-mini">
+                    <div style="font-size: 2rem; font-weight: 800; color: var(--primary-color);"><?php echo $stats['today_count']; ?></div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Today</div>
                 </div>
             </div>
 
-            <div class="grid grid-2">
-                <!-- History List -->
+            <div class="grid grid-2" style="gap: 1.5rem;">
+                <!-- Main Timeline -->
                 <div style="grid-column: span 2;">
+                    <!-- Filters -->
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div style="padding: 1.25rem;">
+                            <h3 style="margin: 0 0 1rem 0; font-size: 1.05rem; color: var(--primary-color);">🔍 Filters</h3>
+                            
+                            <!-- Action Filter -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Action Type</label>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <a href="?action=all&date=<?php echo $dateFilter; ?>&search=<?php echo urlencode($searchQuery); ?>" class="filter-chip <?php echo $actionFilter == 'all' ? 'active' : ''; ?>">All</a>
+                                    <a href="?action=approved&date=<?php echo $dateFilter; ?>&search=<?php echo urlencode($searchQuery); ?>" class="filter-chip <?php echo $actionFilter == 'approved' ? 'active' : ''; ?>">✓ Approved</a>
+                                    <a href="?action=revision_requested&date=<?php echo $dateFilter; ?>&search=<?php echo urlencode($searchQuery); ?>" class="filter-chip <?php echo $actionFilter == 'revision_requested' ? 'active' : ''; ?>">✏️ Revision</a>
+                                    <a href="?action=rejected&date=<?php echo $dateFilter; ?>&search=<?php echo urlencode($searchQuery); ?>" class="filter-chip <?php echo $actionFilter == 'rejected' ? 'active' : ''; ?>">✗ Rejected</a>
+                                </div>
+                            </div>
+
+                            <!-- Date Filter -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Time Period</label>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <a href="?action=<?php echo $actionFilter; ?>&date=all&search=<?php echo urlencode($searchQuery); ?>" class="filter-chip <?php echo $dateFilter == 'all' ? 'active' : ''; ?>">All Time</a>
+                                    <a href="?action=<?php echo $actionFilter; ?>&date=today&search=<?php echo urlencode($searchQuery); ?>" class="filter-chip <?php echo $dateFilter == 'today' ? 'active' : ''; ?>">Today</a>
+                                    <a href="?action=<?php echo $actionFilter; ?>&date=week&search=<?php echo urlencode($searchQuery); ?>" class="filter-chip <?php echo $dateFilter == 'week' ? 'active' : ''; ?>">Last 7 Days</a>
+                                    <a href="?action=<?php echo $actionFilter; ?>&date=month&search=<?php echo urlencode($searchQuery); ?>" class="filter-chip <?php echo $dateFilter == 'month' ? 'active' : ''; ?>">Last 30 Days</a>
+                                </div>
+                            </div>
+
+                            <!-- Search -->
+                            <form method="GET" style="display: flex; gap: 0.5rem;">
+                                <input type="hidden" name="action" value="<?php echo $actionFilter; ?>">
+                                <input type="hidden" name="date" value="<?php echo $dateFilter; ?>">
+                                <input type="text" name="search" class="form-control" placeholder="Search exams, courses..." value="<?php echo htmlspecialchars($searchQuery); ?>" style="flex: 1;">
+                                <button type="submit" class="btn btn-primary">Search</button>
+                                <?php if($searchQuery): ?>
+                                <a href="?action=<?php echo $actionFilter; ?>&date=<?php echo $dateFilter; ?>" class="btn btn-secondary">Clear</a>
+                                <?php endif; ?>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Timeline -->
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">📋 Review History</h3>
+                            <h3 class="card-title" style="margin: 0;">📋 Review Timeline</h3>
                         </div>
-                        <div style="padding: 2rem;">
+                        <div style="padding: 2rem 1.5rem;">
                             <?php if($history && $history->num_rows > 0): ?>
                             <div class="timeline">
-                                <?php while($item = $history->fetch_assoc()): ?>
-                                <div class="timeline-item">
-                                    <div class="history-item <?php echo $item['approval_status'] ?? 'pending'; ?>">
-                                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                                            <div>
-                                                <h4 style="margin: 0 0 0.5rem 0; color: var(--primary-color);">
-                                                    <?php echo $item['exam_name'] ?? 'Exam Question'; ?>
+                                <?php while($item = $history->fetch_assoc()): 
+                                    $actionLabels = [
+                                        'approved' => ['text' => 'Approved', 'class' => 'badge-approved', 'icon' => '✓'],
+                                        'revision_requested' => ['text' => 'Revision Requested', 'class' => 'badge-revision', 'icon' => '✏️'],
+                                        'rejected' => ['text' => 'Rejected', 'class' => 'badge-rejected', 'icon' => '✗'],
+                                        'submitted' => ['text' => 'Submitted', 'class' => 'badge-submitted', 'icon' => '📤'],
+                                        'resubmitted' => ['text' => 'Resubmitted', 'class' => 'badge-submitted', 'icon' => '🔄']
+                                    ];
+                                    $action = $actionLabels[$item['action']] ?? ['text' => ucfirst($item['action']), 'class' => 'badge-submitted', 'icon' => '•'];
+                                ?>
+                                <div class="timeline-item <?php echo $item['action']; ?>">
+                                    <div class="history-card">
+                                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                                            <div style="flex: 1;">
+                                                <h4 style="margin: 0 0 0.35rem 0; color: var(--primary-color); font-size: 1.05rem;">
+                                                    <?php echo htmlspecialchars($item['exam_name']); ?>
                                                 </h4>
-                                                <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                                                    Question ID: <?php echo $item['Question_ID']; ?> | 
-                                                    Course: <?php echo $item['course_name']; ?>
+                                                <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                                    <?php echo htmlspecialchars($item['course_code']); ?> - <?php echo htmlspecialchars($item['course_name']); ?>
                                                 </div>
                                             </div>
-                                            <span style="padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; background: <?php 
-                                                echo $item['approval_status'] == 'approved' ? 'var(--success-color)' : 
-                                                     ($item['approval_status'] == 'revision' ? '#ff9800' : 
-                                                     ($item['approval_status'] == 'rejected' ? '#dc3545' : 'var(--warning-color)')); 
-                                            ?>; color: white;">
-                                                <?php echo ucfirst($item['approval_status'] ?? 'pending'); ?>
+                                            <span class="status-badge <?php echo $action['class']; ?>">
+                                                <?php echo $action['icon']; ?> <?php echo $action['text']; ?>
                                             </span>
                                         </div>
 
-                                        <div style="background: var(--bg-light); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
-                                            <strong>Question:</strong>
-                                            <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">
-                                                <?php echo substr($item['Question'], 0, 150); ?><?php echo strlen($item['Question']) > 150 ? '...' : ''; ?>
-                                            </p>
-                                        </div>
-
-                                        <?php if($item['revision_comments']): ?>
-                                        <div style="background: rgba(255, 152, 0, 0.1); padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid #ff9800; margin-bottom: 1rem;">
-                                            <strong>Comments:</strong>
-                                            <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">
-                                                <?php echo $item['revision_comments']; ?>
-                                            </p>
+                                        <?php if($item['comments']): ?>
+                                        <div style="background: var(--bg-light); padding: 0.75rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; border-left: 3px solid var(--primary-color);">
+                                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; font-weight: 600;">Comments:</div>
+                                            <div style="font-size: 0.9rem; color: var(--text-primary);">
+                                                <?php echo nl2br(htmlspecialchars($item['comments'])); ?>
+                                            </div>
                                         </div>
                                         <?php endif; ?>
 
-                                        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                                            <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                                                <strong>Reviewed by:</strong> <?php echo $item['reviewed_by'] ?? 'N/A'; ?>
-                                            </div>
-                                            <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                                                <?php echo $item['review_date'] ? date('M d, Y H:i', strtotime($item['review_date'])) : 'Not reviewed'; ?>
-                                            </div>
-                                        </div>
-
-                                        <div style="margin-top: 1rem;">
-                                            <a href="ViewQuestion.php?id=<?php echo $item['Question_ID']; ?>" class="btn btn-sm btn-primary">
-                                                View Details
-                                            </a>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-secondary);">
+                                            <span>👤 <?php echo htmlspecialchars($item['reviewer_name'] ?? 'Committee Member'); ?></span>
+                                            <span>🕒 <?php echo date('M d, Y - h:i A', strtotime($item['created_at'])); ?></span>
                                         </div>
                                     </div>
                                 </div>
@@ -270,73 +347,79 @@ $reviewerStats = $con->query("SELECT reviewed_by,
                             </div>
                             <?php else: ?>
                             <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                                <div style="font-size: 3rem; margin-bottom: 1rem;">📜</div>
-                                <p>No approval history found matching your filters.</p>
+                                <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.3;">📜</div>
+                                <h3 style="margin: 0 0 0.75rem 0; color: var(--text-primary);">No Approval History Yet</h3>
+                                <p style="margin: 0 0 0.5rem 0; font-size: 0.95rem;">
+                                    <?php if($actionFilter != 'all' || $dateFilter != 'all' || $searchQuery): ?>
+                                        No records match your current filters.
+                                    <?php else: ?>
+                                        Approval history will appear here once you start reviewing exams.
+                                    <?php endif; ?>
+                                </p>
+                                <?php if($actionFilter != 'all' || $dateFilter != 'all' || $searchQuery): ?>
+                                <a href="ApprovalHistory.php" class="btn btn-primary" style="margin-top: 1rem;">Clear All Filters</a>
+                                <?php else: ?>
+                                <a href="PendingApprovals.php" class="btn btn-primary" style="margin-top: 1rem;">Go to Pending Approvals</a>
+                                <?php endif; ?>
                             </div>
                             <?php endif; ?>
                         </div>
                     </div>
                 </div>
 
-                <!-- Reviewer Statistics -->
+                <!-- Top Reviewers Sidebar -->
+                <?php if($topReviewers && $topReviewers->num_rows > 0): ?>
                 <div style="grid-column: span 2;">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">👥 Reviewer Statistics</h3>
+                            <h3 class="card-title" style="margin: 0;">🏆 Top Reviewers</h3>
                         </div>
-                        <div style="padding: 2rem;">
-                            <?php if($reviewerStats && $reviewerStats->num_rows > 0): ?>
-                            <?php while($reviewer = $reviewerStats->fetch_assoc()): ?>
-                            <div style="background: var(--bg-light); padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
-                                <h4 style="margin: 0 0 1rem 0; color: var(--primary-color);">
-                                    <?php echo $reviewer['reviewed_by']; ?>
-                                </h4>
-                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
-                                    <div>
-                                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">
-                                            <?php echo $reviewer['total_reviews']; ?>
+                        <div style="padding: 1.25rem;">
+                            <?php $rank = 1; while($reviewer = $topReviewers->fetch_assoc()): ?>
+                            <div class="reviewer-card">
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
+                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;">
+                                        #<?php echo $rank++; ?>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--primary-color); font-size: 0.95rem;">
+                                            <?php echo htmlspecialchars($reviewer['full_name'] ?? 'Committee Member'); ?>
                                         </div>
-                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Total</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            <?php echo $reviewer['review_count']; ?> total reviews
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; text-align: center; font-size: 0.8rem;">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--success-color);"><?php echo $reviewer['approved']; ?></div>
+                                        <div style="color: var(--text-secondary); font-size: 0.7rem;">Approved</div>
                                     </div>
                                     <div>
-                                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);">
-                                            <?php echo $reviewer['approved_count']; ?>
-                                        </div>
-                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Approved</div>
+                                        <div style="font-weight: 700; color: #ff9800;"><?php echo $reviewer['revisions']; ?></div>
+                                        <div style="color: var(--text-secondary); font-size: 0.7rem;">Revisions</div>
                                     </div>
                                     <div>
-                                        <div style="font-size: 1.5rem; font-weight: 700; color: #ff9800;">
-                                            <?php echo $reviewer['revision_count']; ?>
-                                        </div>
-                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Revision</div>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 1.5rem; font-weight: 700; color: #dc3545;">
-                                            <?php echo $reviewer['rejected_count']; ?>
-                                        </div>
-                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Rejected</div>
+                                        <div style="font-weight: 700; color: #dc3545;"><?php echo $reviewer['rejected']; ?></div>
+                                        <div style="color: var(--text-secondary); font-size: 0.7rem;">Rejected</div>
                                     </div>
                                 </div>
                             </div>
                             <?php endwhile; ?>
-                            <?php else: ?>
-                            <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                                No reviewer statistics available
-                            </div>
-                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
 
             <!-- Export Options -->
-            <div class="card mt-4">
-                <div style="padding: 2rem;">
-                    <h3 style="margin: 0 0 1rem 0; color: var(--primary-color);">📥 Export Options</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+            <div class="card" style="margin-top: 1.5rem;">
+                <div style="padding: 1.25rem;">
+                    <h3 style="margin: 0 0 0.75rem 0; font-size: 1.05rem; color: var(--primary-color);">📥 Export Options</h3>
+                    <p style="margin: 0 0 1rem 0; color: var(--text-secondary); font-size: 0.9rem;">
                         Download approval history for record keeping and analysis
                     </p>
-                    <div style="display: flex; gap: 1rem;">
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                         <button class="btn btn-success" onclick="alert('CSV export feature - Coming soon!')">
                             📊 Export to CSV
                         </button>
@@ -349,7 +432,7 @@ $reviewerStats = $con->query("SELECT reviewed_by,
         </div>
     </div>
 
+    <?php $con->close(); ?>
     <script src="../assets/js/admin-sidebar.js"></script>
 </body>
 </html>
-<?php $con->close(); ?>

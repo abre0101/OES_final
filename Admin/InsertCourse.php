@@ -19,7 +19,7 @@
 	// Select Database
 	$con->select_db("oes");
 	// Specify the query to Insert Record
-	$sql = "insert into course 	(course_id,course_name,credit_hr,semister,dept_name,Inst_Name) 	values('".$Id."','".$Name."','".$Credit."','".$Sem."','".$Dept."','".$Inst."')";
+	$sql = "insert INTO courses 	(course_id,course_name,credit_hr,semester,department_name,full_name) 	values('".$Id."','".$Name."','".$Credit."','".$Sem."','".$Dept."','".$Inst."')";
 	// execute query
 	$con->query ($sql);
 	// Close The Connection

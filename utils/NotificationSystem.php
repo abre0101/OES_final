@@ -1,50 +1,95 @@
 <?php
 /**
  * Notification System
- * Handles in-app and email notifications
+ * Handles all notification creation and management
  */
-
 class NotificationSystem {
     private $con;
     
     public function __construct($connection) {
         $this->con = $connection;
-        $this->initializeTables();
+        $this->ensureTableExists();
     }
     
-    private function initializeTables() {
-        // Create notifications table if not exists
-        $this->con->query("CREATE TABLE IF NOT EXISTS `notifications` (
-            `notification_id` INT AUTO_INCREMENT PRIMARY KEY,
-            `user_id` VARCHAR(100) NOT NULL,
-            `user_type` ENUM('student', 'instructor', 'exam_committee', 'admin') NOT NULL,
-            `notification_type` VARCHAR(50) NOT NULL,
-            `title` VARCHAR(200) NOT NULL,
-            `message` TEXT NOT NULL,
-            `link` VARCHAR(255),
-            `is_read` TINYINT(1) DEFAULT 0,
-            `is_emailed` TINYINT(1) DEFAULT 0,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX `idx_user` (`user_id`, `user_type`),
-            INDEX `idx_read` (`is_read`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    private function ensureTableExists() {
+        // Create notifications table if it doesn't exist
+        $this->con->query("CREATE TABLE IF NOT EXISTS notifications (
+            notification_id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            user_type ENUM('admin', 'instructor', 'student', 'committee') NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            type ENUM('info', 'success', 'warning', 'danger') DEFAULT 'info',
+            related_type ENUM('exam', 'result', 'announcement', 'approval') NULL,
+            related_id INT NULL,
+            is_read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            read_at DATETIME NULL,
+            INDEX idx_user (user_id, user_type),
+            INDEX idx_read (is_read),
+            INDEX idx_created (created_at)
+        ) ENGINE=InnoDB");
     }
     
     /**
-     * Create a new notification
+     * Send notification to user
      */
-    public function createNotification($userId, $userType, $type, $title, $message, $link = null) {
-        $stmt = $this->con->prepare("INSERT INTO notifications (user_id, user_type, notification_type, title, message, link) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssssss", $userId, $userType, $type, $title, $message, $link);
+    public function send($userId, $userType, $title, $message, $type = 'info', $relatedType = null, $relatedId = null) {
+        $stmt = $this->con->prepare("INSERT INTO notifications 
+            (user_id, user_type, title, message, type, related_type, related_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssssi", $userId, $userType, $title, $message, $type, $relatedType, $relatedId);
         return $stmt->execute();
     }
     
     /**
-     * Get unread notifications for a user
+     * Notify exam committee about new exam submission
      */
-    public function getUnreadNotifications($userId, $userType, $limit = 10) {
-        $stmt = $this->con->prepare("SELECT * FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = 0 ORDER BY created_at DESC LIMIT ?");
-        $stmt->bind_param("ssi", $userId, $userType, $limit);
+    public function notifyCommitteeNewExam($scheduleId, $examName, $courseName, $instructorName) {
+        // Get all active committee members
+        $committee = $this->con->query("SELECT committee_id FROM exam_committee WHERE is_active = TRUE");
+        
+        $title = "New Exam Submitted for Approval";
+        $message = "Instructor {$instructorName} has submitted exam '{$examName}' for course '{$courseName}' for your review.";
+        
+        while($member = $committee->fetch_assoc()) {
+            $this->send($member['committee_id'], 'committee', $title, $message, 'info', 'approval', $scheduleId);
+        }
+    }
+    
+    /**
+     * Notify instructor about exam approval
+     */
+    public function notifyInstructorApproval($instructorId, $scheduleId, $examName, $status, $comments = '') {
+        $titles = [
+            'approved' => "Exam Approved ✓",
+            'revision' => "Exam Needs Revision",
+            'rejected' => "Exam Rejected"
+        ];
+        
+        $messages = [
+            'approved' => "Your exam '{$examName}' has been approved and is now available to students.",
+            'revision' => "Your exam '{$examName}' requires revision. Comments: {$comments}",
+            'rejected' => "Your exam '{$examName}' has been rejected. Reason: {$comments}"
+        ];
+        
+        $types = [
+            'approved' => 'success',
+            'revision' => 'warning',
+            'rejected' => 'danger'
+        ];
+        
+        $this->send($instructorId, 'instructor', $titles[$status], $messages[$status], $types[$status], 'approval', $scheduleId);
+    }
+    
+    /**
+     * Get unread notifications for user
+     */
+    public function getUnread($userId, $userType) {
+        $stmt = $this->con->prepare("SELECT * FROM notifications 
+            WHERE user_id = ? AND user_type = ? AND is_read = FALSE 
+            ORDER BY created_at DESC");
+        $stmt->bind_param("is", $userId, $userType);
         $stmt->execute();
         return $stmt->get_result();
     }
@@ -53,123 +98,33 @@ class NotificationSystem {
      * Get unread count
      */
     public function getUnreadCount($userId, $userType) {
-        $stmt = $this->con->prepare("SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = 0");
-        $stmt->bind_param("ss", $userId, $userType);
+        $stmt = $this->con->prepare("SELECT COUNT(*) as count FROM notifications 
+            WHERE user_id = ? AND user_type = ? AND is_read = FALSE");
+        $stmt->bind_param("is", $userId, $userType);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc()['count'];
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result['count'];
     }
     
     /**
      * Mark notification as read
      */
     public function markAsRead($notificationId) {
-        $stmt = $this->con->prepare("UPDATE notifications SET is_read = 1 WHERE notification_id = ?");
+        $stmt = $this->con->prepare("UPDATE notifications 
+            SET is_read = TRUE, read_at = NOW() 
+            WHERE notification_id = ?");
         $stmt->bind_param("i", $notificationId);
         return $stmt->execute();
     }
     
     /**
-     * Mark all as read for a user
+     * Mark all as read for user
      */
     public function markAllAsRead($userId, $userType) {
-        $stmt = $this->con->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND user_type = ?");
-        $stmt->bind_param("ss", $userId, $userType);
+        $stmt = $this->con->prepare("UPDATE notifications 
+            SET is_read = TRUE, read_at = NOW() 
+            WHERE user_id = ? AND user_type = ? AND is_read = FALSE");
+        $stmt->bind_param("is", $userId, $userType);
         return $stmt->execute();
     }
-    
-    /**
-     * Notify when exam is scheduled
-     */
-    public function notifyExamScheduled($studentId, $examName, $examDate, $examTime) {
-        $title = "New Exam Scheduled";
-        $message = "Exam '{$examName}' has been scheduled for {$examDate} at {$examTime}. Please prepare accordingly.";
-        $link = "../Student/Shedule-modern.php";
-        return $this->createNotification($studentId, 'student', 'exam_scheduled', $title, $message, $link);
-    }
-    
-    /**
-     * Notify when results are ready
-     */
-    public function notifyResultsReady($studentId, $examName, $score) {
-        $title = "Exam Results Available";
-        $message = "Your results for '{$examName}' are now available. You scored {$score}%.";
-        $link = "../Student/Result-modern.php";
-        return $this->createNotification($studentId, 'student', 'results_ready', $title, $message, $link);
-    }
-    
-    /**
-     * Notify instructor when revision is requested
-     */
-    public function notifyRevisionRequested($instructorId, $questionId, $comments) {
-        $title = "Revision Requested";
-        $message = "Exam committee has requested revision for Question #{$questionId}. Comments: {$comments}";
-        $link = "../Instructor/EditQuestion.php?id={$questionId}";
-        return $this->createNotification($instructorId, 'instructor', 'revision_requested', $title, $message, $link);
-    }
-    
-    /**
-     * Notify instructor when question is approved
-     */
-    public function notifyQuestionApproved($instructorId, $questionId, $examName) {
-        $title = "Question Approved";
-        $message = "Your question for '{$examName}' (ID: {$questionId}) has been approved and is now available for exams.";
-        $link = "../Instructor/ManageQuestions.php";
-        return $this->createNotification($instructorId, 'instructor', 'question_approved', $title, $message, $link);
-    }
-    
-    /**
-     * Notify exam committee of new questions pending approval
-     */
-    public function notifyPendingApproval($committeeId, $questionCount) {
-        $title = "Questions Pending Approval";
-        $message = "There are {$questionCount} questions waiting for your review and approval.";
-        $link = "../ExamCommittee/CheckQuestions.php?status=pending";
-        return $this->createNotification($committeeId, 'exam_committee', 'pending_approval', $title, $message, $link);
-    }
-    
-    /**
-     * Send email notification (placeholder - requires SMTP configuration)
-     */
-    public function sendEmail($to, $subject, $body) {
-        // This is a placeholder. In production, use PHPMailer or similar
-        // For now, we'll just log that an email would be sent
-        
-        // Example with mail() function (requires server configuration):
-        // $headers = "From: noreply@dmu.edu\r\n";
-        // $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-        // return mail($to, $subject, $body, $headers);
-        
-        return true; // Simulated success
-    }
-    
-    /**
-     * Broadcast notification to all users of a type
-     */
-    public function broadcastNotification($userType, $type, $title, $message, $link = null) {
-        $users = [];
-        
-        switch($userType) {
-            case 'student':
-                $result = $this->con->query("SELECT Id as user_id FROM student WHERE Status='Active'");
-                break;
-            case 'instructor':
-                $result = $this->con->query("SELECT Inst_ID as user_id FROM instructor WHERE Status='Active'");
-                break;
-            case 'exam_committee':
-                $result = $this->con->query("SELECT committee_id as user_id FROM exam_committee WHERE Status='Active'");
-                break;
-            default:
-                return false;
-        }
-        
-        $count = 0;
-        while($user = $result->fetch_assoc()) {
-            if($this->createNotification($user['user_id'], $userType, $type, $title, $message, $link)) {
-                $count++;
-            }
-        }
-        
-        return $count;
-    }
 }
-?>

@@ -1,35 +1,35 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
 // Database connection
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
 // Get instructor data
 $Id = $_GET['Id'];
-$sql = "select * from instructor where Inst_ID='".$Id."'";
+$sql = "select * FROM instructors where instructor_id='".$Id."'";
 $result = $con->query($sql);
 
 if($row = $result->fetch_array()) {
-    $Inst_ID = $row['Inst_ID'];
-    $Inst_Name = $row['Inst_Name'];
+    $instructor_id = $row['instructor_id'];
+    $full_name = $row['full_name'];
     $Email = $row['email'];
     $UserName = $row['username'];
-    $Department = $row['dept_name'];
-    $Status = $row['Status'];
+    $Department = $row['department_name'];
+    $is_active = $row['is_active'];
 } else {
     header("Location: Instructor.php");
     exit();
 }
 
 // Get departments for dropdown
-$query_dept = "SELECT * From department";
+$query_dept = "SELECT * FROM departments";
 $result_dept = $con->query($query_dept);
 ?>
 <!DOCTYPE html>
@@ -153,7 +153,7 @@ $result_dept = $con->query($query_dept);
         <div class="admin-content">
             <div class="page-header">
                 <h1>✏️ Edit Instructor Information</h1>
-                <p>Update instructor details</p>
+                <p>UPDATE instructors details</p>
             </div>
 
             <div class="edit-container">
@@ -181,7 +181,7 @@ $result_dept = $con->query($query_dept);
                             <span class="info-value"><?php echo $Department; ?></span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">Status</span>
+                            <span class="info-label">is_active</span>
                             <span class="info-value"><?php echo $Status; ?></span>
                         </div>
                     </div>
@@ -196,8 +196,8 @@ $result_dept = $con->query($query_dept);
                                 <option value="<?php echo $Department; ?>"><?php echo $Department; ?> (Current)</option>
                                 <?php
                                 while($row_dept = $result_dept->fetch_array()) {
-                                    if($row_dept['dept_name'] != $Department) {
-                                        echo '<option value="'.$row_dept['deptno'].'">'.$row_dept['dept_name'].'</option>';
+                                    if($row_dept['department_name'] != $Department) {
+                                        echo '<option value="'.$row_dept['deptno'].'">'.$row_dept['department_name'].'</option>';
                                     }
                                 }
                                 ?>
@@ -209,15 +209,15 @@ $result_dept = $con->query($query_dept);
                             <select name="cmbStatus" id="cmbStatus">
                                 <option value="<?php echo $Status; ?>"><?php echo $Status; ?> (Current)</option>
                                 <?php 
-                                if($Status != 'Active') echo "<option value='Active'>Active</option>";
-                                if($Status != 'Inactive') echo "<option value='Inactive'>Inactive</option>";
+                                if($is_active != 'Active') echo "<option value='Active'>Active</option>";
+                                if($is_active != 'Inactive') echo "<option value='Inactive'>Inactive</option>";
                                 ?>
                             </select>
                         </div>
                         
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">
-                                ✓ Update Instructor
+                                ✓ UPDATE instructors
                             </button>
                             <a href="Instructor.php" class="btn btn-secondary">
                                 ← Back to Instructors

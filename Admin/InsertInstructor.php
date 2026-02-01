@@ -17,7 +17,7 @@
          $Password=$_POST['instPassword'];
 	$Department=$_POST['cmbDept']; 
 	$cmbCourse=$_POST['cmbCourse'];      
-	$Status=$_POST['cmbStatus'];
+	$is_active=$_POST['cmbStatus'];
 	 $Sex=$_POST['gender'];
 
 	
@@ -28,7 +28,7 @@
 	// Select Database
 	$con->select_db("oes");
 	// Specify the query to Insert Record
-    $sql = "Insert into instructor (Inst_ID,Inst_Name,Stud_Sex,dept_name,username,course_name,password,Status)  
+    $sql = "Insert INTO instructors (instructor_id,full_name,Stud_Sex,department_name,username,course_name,password,is_active)  
              values('".$Id."','".$Name."','".$Sex."','".$Department."','".$UserName."','".$cmbCourse."',".$Password."','".$Status."')";
 	// execute query
 	$con->query ($sql);

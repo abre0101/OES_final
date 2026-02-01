@@ -8,7 +8,7 @@ if(!isset($_SESSION['Name'])){
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 $pageTitle = "Edit Question";
 
 $question_id = $_GET['id'] ?? 0;
@@ -44,10 +44,27 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Get exam categories
-$exams = $con->query("SELECT * FROM exam_category");
+$exams = null;
+$tableCheck = $con->query("SHOW TABLES LIKE 'exam_category'");
+if($tableCheck && $tableCheck->num_rows > 0) {
+    $exams = $con->query("SELECT * FROM exam_category");
+}
 
-// Get all courses
-$courses = $con->query("SELECT * FROM course ORDER BY course_name");
+// Get only courses assigned to this instructor
+$instructor_id = $_SESSION['ID'];
+$courses = null;
+$tableCheck = $con->query("SHOW TABLES LIKE 'course'");
+if($tableCheck && $tableCheck->num_rows > 0) {
+    $icTableCheck = $con->query("SHOW TABLES LIKE 'instructor_courses'");
+    if($icTableCheck && $icTableCheck->num_rows > 0) {
+        $courses = $con->query("SELECT c.* FROM course c 
+            INNER JOIN instructor_courses ic ON c.course_id = ic.course_id 
+            WHERE ic.instructor_id = $instructor_id 
+            ORDER BY c.course_name");
+    } else {
+        $courses = $con->query("SELECT * FROM course ORDER BY course_name");
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -69,7 +86,7 @@ $courses = $con->query("SELECT * FROM course ORDER BY course_name");
         <div class="admin-content">
             <div class="page-header">
                 <h1>✏️ Edit Question</h1>
-                <p>Update question details</p>
+                <p>UPDATE questions details</p>
             </div>
 
             <div class="form-wrapper">
@@ -87,11 +104,17 @@ $courses = $con->query("SELECT * FROM course ORDER BY course_name");
                                 <label>Exam Type *</label>
                                 <select name="exam_id" class="form-control" required>
                                     <option value="">Select Exam</option>
-                                    <?php while($exam = $exams->fetch_assoc()): ?>
+                                    <?php 
+                                    if($exams && $exams->num_rows > 0) {
+                                        while($exam = $exams->fetch_assoc()): 
+                                    ?>
                                     <option value="<?php echo $exam['exam_id']; ?>" <?php echo ($question['exam_id'] == $exam['exam_id']) ? 'selected' : ''; ?>>
                                         <?php echo $exam['exam_name']; ?>
                                     </option>
-                                    <?php endwhile; ?>
+                                    <?php 
+                                        endwhile;
+                                    }
+                                    ?>
                                 </select>
                             </div>
                             
@@ -99,11 +122,17 @@ $courses = $con->query("SELECT * FROM course ORDER BY course_name");
                                 <label>Course Code *</label>
                                 <select name="course_name" class="form-control" required>
                                     <option value="">Select Course</option>
-                                    <?php while($course = $courses->fetch_assoc()): ?>
+                                    <?php 
+                                    if($courses && $courses->num_rows > 0) {
+                                        while($course = $courses->fetch_assoc()): 
+                                    ?>
                                     <option value="<?php echo $course['course_name']; ?>" <?php echo ($question['course_name'] == $course['course_name']) ? 'selected' : ''; ?>>
                                         <?php echo $course['course_name']; ?> - <?php echo $course['course_id']; ?>
                                     </option>
-                                    <?php endwhile; ?>
+                                    <?php 
+                                        endwhile;
+                                    }
+                                    ?>
                                 </select>
                             </div>
                             

@@ -20,7 +20,7 @@ $con = new mysqli("localhost","root");
 $con->select_db("oes");
 // Specify the query to execute
 
-	$sql = "insert into schedule (schedule_id,exam_name,semister,course_name,exam_date,exam_time) 
+	$sql = "insert INTO exam_schedules (schedule_id,exam_name,semester,course_name,exam_date,exam_time) 
 	values('".$SID."','".$cmbExam."','".$cmbSem."','".$cmbCourse."','".$txtDate."','".$txtTime."')";
 // Execute query
 $result = $con->query($sql);

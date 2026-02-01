@@ -1,5 +1,5 @@
 <?php
 // Redirect to home page
-header("Location: ../index-modern.php");
+header("Location: ../index.php");
 exit();
 ?>

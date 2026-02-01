@@ -1,11 +1,11 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 $message = '';
 $messageType = '';
 
@@ -157,17 +157,61 @@ $con->close();
     <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .page-header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            gap: 2rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 197, 253, 0.05) 100%);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 2px solid rgba(59, 130, 246, 0.1);
+        }
+        
+        .page-title-section h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .page-title-section h1 span {
+            -webkit-text-fill-color: initial;
+            background: none;
+        }
+        
+        .page-title-section p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body class="admin-layout">
     <?php include 'sidebar-component.php'; ?>
 
     <div class="admin-main-content">
-        <?php include 'header-component.php'; ?>
+        <?php 
+        $pageTitle = 'Database Backup';
+        include 'header-component.php'; 
+        ?>
 
         <div class="admin-content">
-            <div class="page-header">
-                <h1>💾 Database Backup & Restore</h1>
-                <p>Manage database backups and restore points</p>
+            <!-- Page Header -->
+            <div class="page-header-actions">
+                <div class="page-title-section">
+                    <h1><span>💾</span> Database Backup & Restore</h1>
+                    <p>Manage database backups and restore points</p>
+                </div>
             </div>
 
             <?php if($message): ?>

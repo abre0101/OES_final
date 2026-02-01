@@ -1,7 +1,7 @@
 <?php
 // Quick Database Reset - Inserts test data directly
 
-$conn = new mysqli("localhost", "root", "", "oes");
+$conn = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
@@ -10,17 +10,17 @@ if ($conn->connect_error) {
 echo "<h2>Quick Database Reset</h2>";
 
 // Clear existing data
-$conn->query("DELETE FROM student");
-$conn->query("DELETE FROM result");
+$conn->query("DELETE FROM students");
+$conn->query("DELETE FROM exam_results");
 $conn->query("DELETE FROM question_page");
-$conn->query("DELETE FROM course");
-$conn->query("DELETE FROM instructor");
-$conn->query("DELETE FROM exam_category");
+$conn->query("DELETE FROM courses");
+$conn->query("DELETE FROM instructors");
+$conn->query("DELETE FROM exam_categories");
 
 echo "<p>✓ Cleared existing data</p>";
 
 // Insert students
-$sql = "INSERT INTO student (Id, Name, Sex, dept_name, semister, username, password, Status, email, year) VALUES 
+$sql = "INSERT INTO students (Id, Name, Sex, department_name, semester, username, password, is_active, email, year) VALUES 
 ('1', 'Abraham', 'M', 'Computer Science', 1, 'abre', 'pass123', 'Active', 'abaraham@gmail.com', '2024'),
 ('2', 'Fitse', 'F', 'Information Technology', 2, 'fiste', 'pass123', 'Active', 'student2@test.com', '2024')";
 
@@ -31,7 +31,7 @@ if ($conn->query($sql)) {
 }
 
 // Insert exam categories
-$sql = "INSERT INTO exam_category (exam_id, exam_name) VALUES 
+$sql = "INSERT INTO exam_categories (exam_id, exam_name) VALUES 
 (1, 'Midterm Exam'),
 (2, 'Final Exam'),
 (3, 'Quiz'),
@@ -44,7 +44,7 @@ if ($conn->query($sql)) {
 }
 
 // Insert courses
-$sql = "INSERT INTO course (course_id, course_name, credit_hr, dept_name, semister, Inst_Name) VALUES 
+$sql = "INSERT INTO courses (course_id, course_name, credit_hr, department_name, semester, full_name) VALUES 
 ('CS101', 'Introduction to Programming', 3, 'Computer Science', 1, 'Instructor A'),
 ('CS102', 'Data Structures', 4, 'Computer Science', 2, 'Instructor B'),
 ('IT101', 'Database Systems', 3, 'Information Technology', 1, 'Instructor C')";
@@ -87,7 +87,7 @@ echo "<ul>";
 echo "<li><strong>Student 1:</strong> username = <code>student1</code>, password = <code>pass123</code></li>";
 echo "<li><strong>Student 2:</strong> username = <code>student2</code>, password = <code>pass123</code></li>";
 echo "</ul>";
-echo "<p><a href='index-modern.php' style='padding: 10px 20px; background: #1a2b4a; color: white; text-decoration: none; border-radius: 5px;'>Go to Login</a></p>";
+echo "<p><a href='index.php' style='padding: 10px 20px; background: #1a2b4a; color: white; text-decoration: none; border-radius: 5px;'>Go to Login</a></p>";
 ?>
 <style>
 body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }

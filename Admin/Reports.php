@@ -1,11 +1,11 @@
 <?php
 session_start();
 if(!isset($_SESSION['username'])){
-    header("Location:../index-modern.php");
+    header("Location:../index.php");
     exit();
 }
 
-$con = new mysqli("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 
 // Get selected report type
 $reportType = $_GET['report'] ?? 'overview';
@@ -13,79 +13,82 @@ $startDate = $_GET['start_date'] ?? date('Y-m-01');
 $endDate = $_GET['end_date'] ?? date('Y-m-d');
 
 // System Overview Stats
-$totalStudents = $con->query("SELECT COUNT(*) as count FROM student")->fetch_assoc()['count'];
-$totalInstructors = $con->query("SELECT COUNT(*) as count FROM instructor")->fetch_assoc()['count'];
-$totalDepartments = $con->query("SELECT COUNT(*) as count FROM department")->fetch_assoc()['count'];
-$totalExams = $con->query("SELECT COUNT(*) as count FROM exam_category")->fetch_assoc()['count'];
-$totalResults = $con->query("SELECT COUNT(*) as count FROM result")->fetch_assoc()['count'];
+$totalStudents = $con->query("SELECT COUNT(*) as count FROM students")->fetch_assoc()['count'];
+$totalInstructors = $con->query("SELECT COUNT(*) as count FROM instructors")->fetch_assoc()['count'];
+$totalDepartments = $con->query("SELECT COUNT(*) as count FROM departments")->fetch_assoc()['count'];
+$totalExams = $con->query("SELECT COUNT(*) as count FROM exam_categories")->fetch_assoc()['count'];
+$totalResults = $con->query("SELECT COUNT(*) as count FROM exam_results")->fetch_assoc()['count'];
 
 // Academic Analytics - Department Performance
 $deptPerformance = $con->query("SELECT 
-    d.dept_name,
-    COUNT(DISTINCT s.Id) as total_students,
-    COUNT(DISTINCT i.Inst_ID) as total_instructors,
+    d.department_name,
+    COUNT(DISTINCT s.student_id) as total_students,
+    COUNT(DISTINCT i.instructor_id) as total_instructors,
     COUNT(DISTINCT c.course_id) as total_courses,
-    COUNT(DISTINCT r.Result_ID) as total_exams,
-    AVG(r.Result) as avg_score,
-    SUM(CASE WHEN r.Result >= 50 THEN 1 ELSE 0 END) as passed,
-    SUM(CASE WHEN r.Result < 50 THEN 1 ELSE 0 END) as failed
-    FROM department d
-    LEFT JOIN student s ON d.dept_name = s.dept_name
-    LEFT JOIN instructor i ON d.dept_name = i.dept_name
-    LEFT JOIN course c ON d.dept_name = c.dept_name
-    LEFT JOIN result r ON s.Id = r.Stud_ID
-    GROUP BY d.dept_name
+    COUNT(DISTINCT r.result_id) as total_exams,
+    AVG(r.percentage_score) as avg_score,
+    SUM(CASE WHEN r.percentage_score >= 50 THEN 1 ELSE 0 END) as passed,
+    SUM(CASE WHEN r.percentage_score < 50 THEN 1 ELSE 0 END) as failed
+    FROM departments d
+    LEFT JOIN students s ON d.department_id = s.department_id
+    LEFT JOIN instructors i ON d.department_id = i.department_id
+    LEFT JOIN courses c ON d.department_id = c.department_id
+    LEFT JOIN exam_results r ON s.student_id = r.student_id
+    GROUP BY d.department_id, d.department_name
     ORDER BY avg_score DESC");
 
 // Instructor Effectiveness
 $instructorMetrics = $con->query("SELECT 
-    i.Inst_Name,
-    i.dept_name,
-    COUNT(DISTINCT c.course_id) as courses_taught,
-    COUNT(DISTINCT r.Result_ID) as total_exams,
-    AVG(r.Result) as avg_student_score,
-    SUM(CASE WHEN r.Result >= 50 THEN 1 ELSE 0 END) as students_passed,
-    COUNT(DISTINCT r.Stud_ID) as unique_students
-    FROM instructor i
-    LEFT JOIN course c ON i.Inst_Name = c.Inst_Name
-    LEFT JOIN result r ON c.course_id = r.Course_ID
-    GROUP BY i.Inst_ID, i.Inst_Name, i.dept_name
+    i.full_name,
+    d.department_name,
+    COUNT(DISTINCT ic.course_id) as courses_taught,
+    COUNT(DISTINCT r.result_id) as total_exams,
+    AVG(r.percentage_score) as avg_student_score,
+    SUM(CASE WHEN r.percentage_score >= 50 THEN 1 ELSE 0 END) as students_passed,
+    COUNT(DISTINCT r.student_id) as unique_students
+    FROM instructors i
+    LEFT JOIN departments d ON i.department_id = d.department_id
+    LEFT JOIN instructor_courses ic ON i.instructor_id = ic.instructor_id
+    LEFT JOIN exam_schedules es ON ic.course_id = es.course_id
+    LEFT JOIN exam_results r ON es.schedule_id = r.schedule_id
+    GROUP BY i.instructor_id, i.full_name, d.department_name
     ORDER BY avg_student_score DESC
     LIMIT 20");
 
 // Program Success Rates
 $programSuccess = $con->query("SELECT 
-    d.dept_name as program,
-    COUNT(DISTINCT s.Id) as enrolled_students,
-    COUNT(DISTINCT CASE WHEN s.Status = 'Active' THEN s.Id END) as active_students,
-    AVG(r.Result) as avg_performance,
-    (SUM(CASE WHEN r.Result >= 50 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(r.Result_ID), 0)) as success_rate
-    FROM department d
-    LEFT JOIN student s ON d.dept_name = s.dept_name
-    LEFT JOIN result r ON s.Id = r.Stud_ID
-    GROUP BY d.dept_name
+    d.department_name as program,
+    COUNT(DISTINCT s.student_id) as enrolled_students,
+    COUNT(DISTINCT CASE WHEN s.is_active = 1 THEN s.student_id END) as active_students,
+    AVG(r.percentage_score) as avg_performance,
+    (SUM(CASE WHEN r.percentage_score >= 50 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(r.result_id), 0)) as success_rate
+    FROM departments d
+    LEFT JOIN students s ON d.department_id = s.department_id
+    LEFT JOIN exam_results r ON s.student_id = r.student_id
+    GROUP BY d.department_id, d.department_name
     ORDER BY success_rate DESC");
 
 // System Usage Statistics
 $usageStats = [
-    'active_users_today' => $con->query("SELECT COUNT(DISTINCT username) as count FROM student WHERE Status='Active'")->fetch_assoc()['count'],
-    'exams_completed_today' => $con->query("SELECT COUNT(*) as count FROM result WHERE DATE(Result_ID) = CURDATE()")->fetch_assoc()['count'],
+    'active_users_today' => $con->query("SELECT COUNT(DISTINCT username) as count FROM students WHERE is_active=1")->fetch_assoc()['count'],
+    'exams_completed_today' => $con->query("SELECT COUNT(*) as count FROM exam_results WHERE DATE(created_at) = CURDATE()")->fetch_assoc()['count'],
     'avg_exam_duration' => '45 mins', // Placeholder
     'peak_usage_time' => '10:00 AM - 12:00 PM' // Placeholder
 ];
 
 // Exam Completion Rates
 $examCompletion = $con->query("SELECT 
-    ec.exam_name,
+    es.exam_name,
     c.course_name,
-    COUNT(DISTINCT r.Stud_ID) as students_attempted,
+    COUNT(DISTINCT r.student_id) as students_attempted,
     COUNT(r.result_id) as total_attempts,
-    AVG(r.Result) as avg_score,
-    (SUM(CASE WHEN r.Result >= 50 THEN 1 ELSE 0 END) * 100.0 / COUNT(r.result_id)) as completion_rate
-    FROM exam_category ec
-    LEFT JOIN result r ON ec.exam_id = r.exam_id
-    LEFT JOIN course c ON r.course_id = c.course_id
-    GROUP BY ec.exam_id, ec.exam_name, c.course_name
+    AVG(r.percentage_score) as avg_score,
+    (SUM(CASE WHEN r.percentage_score >= 50 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(r.result_id), 0)) as completion_rate
+    FROM exam_schedules es
+    LEFT JOIN courses c ON es.course_id = c.course_id
+    LEFT JOIN exam_results r ON es.schedule_id = r.schedule_id
+    GROUP BY es.schedule_id, es.exam_name, c.course_name
+    HAVING total_attempts > 0
     ORDER BY total_attempts DESC
     LIMIT 15");
 
@@ -103,18 +106,41 @@ $con->close();
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .page-header-reports {
+        .page-header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 2rem;
+            gap: 2rem;
+            background: linear-gradient(135deg, rgba(0, 51, 102, 0.05) 0%, rgba(0, 85, 170, 0.05) 100%);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 2px solid rgba(0, 51, 102, 0.1);
         }
         
-        .page-header-reports h1 {
+        .page-title-section h1 {
             margin: 0 0 0.5rem 0;
             font-size: 2rem;
             font-weight: 800;
-            color: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             display: flex;
             align-items: center;
             gap: 0.75rem;
+        }
+        
+        .page-title-section h1 span {
+            -webkit-text-fill-color: initial;
+            background: none;
+        }
+        
+        .page-subtitle {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            font-weight: 500;
         }
         
         .report-categories {
@@ -257,10 +283,6 @@ $con->close();
         }
         
         .report-section {
-            background: white;
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             margin-bottom: 2rem;
         }
         
@@ -357,11 +379,11 @@ $con->close();
         ?>
 
         <div class="admin-content">
-            <div class="page-header-reports">
-                <h1><span>📊</span> Administrator Reports & Analytics</h1>
-                <p style="margin: 0; color: var(--text-secondary); font-size: 1.05rem;">
-                    Comprehensive system-wide reports for academic, operational, and compliance analysis
-                </p>
+            <div class="page-header-actions">
+                <div class="page-title-section">
+                    <h1><span>📊</span> Administrator Reports & Analytics</h1>
+                    <p class="page-subtitle">Comprehensive system-wide reports for academic, operational, and compliance analysis</p>
+                </div>
             </div>
 
             <!-- Report Type Selection -->
@@ -435,11 +457,12 @@ $con->close();
             <?php if($reportType == 'overview' || $reportType == 'academic'): ?>
             
             <!-- Department Performance Comparison -->
-            <div class="report-section">
-                <div class="section-header">
-                    <h2 class="section-title"><span>🏛️</span> Department Performance Comparison</h2>
+            <div class="card report-section">
+                <div class="card-header">
+                    <h3 class="card-title"><span>🏛️</span> Department Performance Comparison</h3>
                 </div>
-                <div class="table-responsive">
+                <div class="card-body">
+                    <div class="table-responsive">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -472,7 +495,7 @@ $con->close();
                                 }
                             ?>
                             <tr>
-                                <td><strong><?php echo htmlspecialchars($dept['dept_name']); ?></strong></td>
+                                <td><strong><?php echo htmlspecialchars($dept['department_name']); ?></strong></td>
                                 <td><?php echo number_format($dept['total_students']); ?></td>
                                 <td><?php echo number_format($dept['total_instructors']); ?></td>
                                 <td><?php echo number_format($dept['total_courses']); ?></td>
@@ -488,14 +511,16 @@ $con->close();
                 <div class="chart-container">
                     <canvas id="deptPerformanceChart" style="max-height: 400px;"></canvas>
                 </div>
+                </div>
             </div>
 
             <!-- Instructor Effectiveness Metrics -->
-            <div class="report-section">
-                <div class="section-header">
-                    <h2 class="section-title"><span>👨‍🏫</span> Instructor Effectiveness Metrics</h2>
+            <div class="card report-section">
+                <div class="card-header">
+                    <h3 class="card-title"><span>👨‍🏫</span> Instructor Effectiveness Metrics</h3>
                 </div>
-                <div class="table-responsive">
+                <div class="card-body">
+                    <div class="table-responsive">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -526,8 +551,8 @@ $con->close();
                                 }
                             ?>
                             <tr>
-                                <td><strong><?php echo htmlspecialchars($inst['Inst_Name']); ?></strong></td>
-                                <td><?php echo htmlspecialchars($inst['dept_name']); ?></td>
+                                <td><strong><?php echo htmlspecialchars($inst['full_name']); ?></strong></td>
+                                <td><?php echo htmlspecialchars($inst['department_name']); ?></td>
                                 <td><?php echo $inst['courses_taught']; ?></td>
                                 <td><?php echo number_format($inst['total_exams']); ?></td>
                                 <td><?php echo number_format($inst['unique_students']); ?></td>
@@ -539,14 +564,16 @@ $con->close();
                         </tbody>
                     </table>
                 </div>
+                </div>
             </div>
 
             <!-- Program Success Rates -->
-            <div class="report-section">
-                <div class="section-header">
-                    <h2 class="section-title"><span>🎓</span> Program Success Rates</h2>
+            <div class="card report-section">
+                <div class="card-header">
+                    <h3 class="card-title"><span>🎓</span> Program Success Rates</h3>
                 </div>
-                <div class="table-responsive">
+                <div class="card-body">
+                    <div class="table-responsive">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -555,21 +582,21 @@ $con->close();
                                 <th>Active Students</th>
                                 <th>Avg Performance</th>
                                 <th>Success Rate</th>
-                                <th>Status</th>
+                                <th>is_active</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php while($prog = $programSuccess->fetch_assoc()): 
-                                $status = 'Excellent';
+                                $is_active = 'Excellent';
                                 $badgeClass = 'badge-excellent';
                                 if($prog['success_rate'] < 50) {
-                                    $status = 'Critical';
+                                    $is_active = 'Critical';
                                     $badgeClass = 'badge-poor';
                                 } elseif($prog['success_rate'] < 70) {
-                                    $status = 'Needs Attention';
+                                    $is_active = 'Needs Attention';
                                     $badgeClass = 'badge-average';
                                 } elseif($prog['success_rate'] < 85) {
-                                    $status = 'Good';
+                                    $is_active = 'Good';
                                     $badgeClass = 'badge-good';
                                 }
                             ?>
@@ -579,7 +606,7 @@ $con->close();
                                 <td><?php echo number_format($prog['active_students']); ?></td>
                                 <td><strong><?php echo number_format($prog['avg_performance'], 1); ?>%</strong></td>
                                 <td><strong><?php echo number_format($prog['success_rate'], 1); ?>%</strong></td>
-                                <td><span class="performance-badge <?php echo $badgeClass; ?>"><?php echo $status; ?></span></td>
+                                <td><span class="performance-badge <?php echo $badgeClass; ?>"><?php echo $is_active; ?></span></td>
                             </tr>
                             <?php endwhile; ?>
                         </tbody>
@@ -587,6 +614,7 @@ $con->close();
                 </div>
                 <div class="chart-container">
                     <canvas id="programSuccessChart" style="max-height: 400px;"></canvas>
+                </div>
                 </div>
             </div>
 
@@ -596,11 +624,12 @@ $con->close();
             <?php if($reportType == 'operational'): ?>
             
             <!-- System Usage Statistics -->
-            <div class="report-section">
-                <div class="section-header">
-                    <h2 class="section-title"><span>📊</span> System Usage Statistics</h2>
+            <div class="card report-section">
+                <div class="card-header">
+                    <h3 class="card-title"><span>📊</span> System Usage Statistics</h3>
                 </div>
-                <div class="stats-overview">
+                <div class="card-body">
+                    <div class="stats-overview">
                     <div class="stat-box">
                         <div class="stat-value"><?php echo $usageStats['active_users_today']; ?></div>
                         <div class="stat-label">Active Users Today</div>
@@ -618,14 +647,16 @@ $con->close();
                         <div class="stat-label">Peak Usage Time</div>
                     </div>
                 </div>
+                </div>
             </div>
 
             <!-- Exam Completion Rates -->
-            <div class="report-section">
-                <div class="section-header">
-                    <h2 class="section-title"><span>✅</span> Exam Completion Rates</h2>
+            <div class="card report-section">
+                <div class="card-header">
+                    <h3 class="card-title"><span>✅</span> Exam Completion Rates</h3>
                 </div>
-                <div class="table-responsive">
+                <div class="card-body">
+                    <div class="table-responsive">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -651,6 +682,7 @@ $con->close();
                         </tbody>
                     </table>
                 </div>
+                </div>
             </div>
 
             <?php endif; ?>
@@ -658,11 +690,11 @@ $con->close();
             <!-- Compliance Reports Section -->
             <?php if($reportType == 'compliance'): ?>
             
-            <div class="report-section">
-                <div class="section-header">
-                    <h2 class="section-title"><span>🔒</span> Compliance & Security Overview</h2>
+            <div class="card report-section">
+                <div class="card-header">
+                    <h3 class="card-title"><span>🔒</span> Compliance & Security Overview</h3>
                 </div>
-                <div style="padding: 2rem; text-align: center;">
+                <div class="card-body" style="text-align: center; padding: 3rem 2rem;">
                     <div style="font-size: 3rem; margin-bottom: 1rem;">🔐</div>
                     <h3 style="color: var(--primary-color); margin-bottom: 1rem;">Security & Audit Logs</h3>
                     <p style="color: var(--text-secondary); font-size: 1.05rem; max-width: 600px; margin: 0 auto;">
@@ -695,7 +727,7 @@ $con->close();
                         $deptPerformance->data_seek(0);
                         $labels = [];
                         while($d = $deptPerformance->fetch_assoc()) {
-                            $labels[] = "'" . addslashes($d['dept_name']) . "'";
+                            $labels[] = "'" . addslashes($d['department_name']) . "'";
                         }
                         echo implode(',', $labels);
                         ?>

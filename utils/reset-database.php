@@ -87,7 +87,7 @@ echo "<li>16 Practice Questions across all courses</li>";
 echo "</ul>";
 
 echo "<hr>";
-echo "<p><a href='index-modern.php' style='padding: 10px 20px; background: #1a2b4a; color: white; text-decoration: none; border-radius: 5px;'>Go to Login Page</a></p>";
+echo "<p><a href='index.php' style='padding: 10px 20px; background: #1a2b4a; color: white; text-decoration: none; border-radius: 5px;'>Go to Login Page</a></p>";
 
 $conn->close();
 ?>

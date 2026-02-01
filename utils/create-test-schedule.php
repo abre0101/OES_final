@@ -1,31 +1,31 @@
 <?php
 // Quick script to create test exam schedules
 
-$con = mysqli_connect("localhost","root","","oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
 
 if (!$con) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
 // Get exam categories (1=Quiz, 2=Mid Exam, 3=Final Exam)
-$exam_result = mysqli_query($con, "SELECT * FROM exam_category ORDER BY exam_id");
+$exam_result = mysqli_query($con, "SELECT * FROM exam_categories ORDER BY exam_id");
 $exams = [];
 while($exam = mysqli_fetch_assoc($exam_result)) {
     $exams[] = $exam;
 }
 
 // Check what courses exist
-$course_result = mysqli_query($con, "SELECT * FROM course LIMIT 1");
+$course_result = mysqli_query($con, "SELECT * FROM courses LIMIT 1");
 $course = mysqli_fetch_assoc($course_result);
 
 if (empty($exams) || !$course) {
     echo "Error: No exam categories or courses found. Please create them first.<br>";
-    echo "<a href='Admin/index-modern.php'>Go to Admin Panel</a>";
+    echo "<a href='Admin/index.php'>Go to Admin Panel</a>";
     exit();
 }
 
 // Clear existing schedules (optional)
-mysqli_query($con, "DELETE FROM schedule");
+mysqli_query($con, "DELETE FROM exam_schedules");
 
 // Create sample schedules with proper exam_id references and time windows
 $schedules = [
@@ -37,7 +37,7 @@ $schedules = [
         'exam_time' => '08:00:00',
         'end_time' => '23:59:00',
         'duration_minutes' => 30,
-        'semister' => 1
+        'semester' => 1
     ],
     [
         'schedule_id' => 2,
@@ -47,7 +47,7 @@ $schedules = [
         'exam_time' => '09:00:00',
         'end_time' => '17:00:00',
         'duration_minutes' => 90,
-        'semister' => 1
+        'semester' => 1
     ],
     [
         'schedule_id' => 3,
@@ -57,7 +57,7 @@ $schedules = [
         'exam_time' => '10:00:00',
         'end_time' => '16:00:00',
         'duration_minutes' => 120,
-        'semister' => 2
+        'semester' => 2
     ]
 ];
 
@@ -65,7 +65,7 @@ echo "<h2>Creating Exam Schedules...</h2>";
 
 $success_count = 0;
 foreach ($schedules as $schedule) {
-    $sql = "INSERT INTO schedule (schedule_id, exam_name, course_name, exam_date, exam_time, end_time, duration_minutes, semister) 
+    $sql = "INSERT INTO exam_schedules (schedule_id, exam_name, course_name, exam_date, exam_time, end_time, duration_minutes, semester) 
             VALUES (
                 {$schedule['schedule_id']}, 
                 {$schedule['exam_name']}, 
@@ -74,7 +74,7 @@ foreach ($schedules as $schedule) {
                 '{$schedule['exam_time']}',
                 '{$schedule['end_time']}',
                 {$schedule['duration_minutes']},
-                {$schedule['semister']}
+                {$schedule['semester']}
             )";
     
     if (mysqli_query($con, $sql)) {
