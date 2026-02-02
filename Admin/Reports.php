@@ -49,8 +49,8 @@ $instructorMetrics = $con->query("SELECT
     FROM instructors i
     LEFT JOIN departments d ON i.department_id = d.department_id
     LEFT JOIN instructor_courses ic ON i.instructor_id = ic.instructor_id
-    LEFT JOIN exam_schedules es ON ic.course_id = es.course_id
-    LEFT JOIN exam_results r ON es.schedule_id = r.schedule_id
+    LEFT JOIN exams es ON ic.course_id = es.course_id
+    LEFT JOIN exam_results r ON es.exam_id = r.exam_id
     GROUP BY i.instructor_id, i.full_name, d.department_name
     ORDER BY avg_student_score DESC
     LIMIT 20");
@@ -84,10 +84,10 @@ $examCompletion = $con->query("SELECT
     COUNT(r.result_id) as total_attempts,
     AVG(r.percentage_score) as avg_score,
     (SUM(CASE WHEN r.percentage_score >= 50 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(r.result_id), 0)) as completion_rate
-    FROM exam_schedules es
+    FROM exams es
     LEFT JOIN courses c ON es.course_id = c.course_id
-    LEFT JOIN exam_results r ON es.schedule_id = r.schedule_id
-    GROUP BY es.schedule_id, es.exam_name, c.course_name
+    LEFT JOIN exam_results r ON es.exam_id = r.exam_id
+    GROUP BY es.exam_id, es.exam_name, c.course_name
     HAVING total_attempts > 0
     ORDER BY total_attempts DESC
     LIMIT 15");

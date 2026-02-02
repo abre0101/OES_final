@@ -20,13 +20,13 @@ $schedulesQuery = $con->prepare("SELECT
     c.semester,
     ec.category_name,
     COUNT(DISTINCT eq.question_id) as question_count
-    FROM exam_schedules es
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    LEFT JOIN exam_questions eq ON es.schedule_id = eq.schedule_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE
-    GROUP BY es.schedule_id
+    LEFT JOIN exam_questions eq ON es.exam_id = eq.exam_id
+    WHERE ic.instructor_id = ?
+    GROUP BY es.exam_id
     ORDER BY es.exam_date DESC, es.start_time DESC");
 $schedulesQuery->bind_param("i", $instructor_id);
 $schedulesQuery->execute();
@@ -174,7 +174,7 @@ $schedules = $schedulesQuery->get_result();
                                     <?php 
                                     $canSubmit = $schedule['question_count'] >= 5;
                                     ?>
-                                    <a href="SubmitExamForApproval.php?schedule_id=<?php echo $schedule['schedule_id']; ?>" 
+                                    <a href="SubmitExamForApproval.php?exam_id=<?php echo $schedule['exam_id']; ?>" 
                                        class="btn-modern btn-success btn-sm <?php echo !$canSubmit ? 'disabled' : ''; ?>" 
                                        <?php if(!$canSubmit): ?>
                                        onclick="alert('Minimum 5 questions required. Current: <?php echo $schedule['question_count']; ?>'); return false;" 
@@ -188,20 +188,20 @@ $schedules = $schedulesQuery->get_result();
                                 <?php endif; ?>
                                 
                                 <?php if($schedule['approval_status'] == 'revision'): ?>
-                                <a href="EditSchedule.php?id=<?php echo $schedule['schedule_id']; ?>" class="btn-modern btn-warning btn-sm">
+                                <a href="EditSchedule.php?id=<?php echo $schedule['exam_id']; ?>" class="btn-modern btn-warning btn-sm">
                                     ✏️ Revise & Resubmit
                                 </a>
                                 <?php endif; ?>
                                 
-                                <a href="ViewExam.php?id=<?php echo $schedule['schedule_id']; ?>" class="btn-modern btn-primary btn-sm">
+                                <a href="ViewExam.php?id=<?php echo $schedule['exam_id']; ?>" class="btn-modern btn-primary btn-sm">
                                     👁️ View
                                 </a>
                                 
                                 <?php if($schedule['approval_status'] == 'draft' || $schedule['approval_status'] == 'revision'): ?>
-                                <a href="EditSchedule.php?id=<?php echo $schedule['schedule_id']; ?>" class="btn-modern btn-warning btn-sm">
+                                <a href="EditSchedule.php?id=<?php echo $schedule['exam_id']; ?>" class="btn-modern btn-warning btn-sm">
                                     ✏️ Edit
                                 </a>
-                                <button class="btn-modern btn-danger btn-sm" onclick="deleteSchedule(<?php echo $schedule['schedule_id']; ?>)">
+                                <button class="btn-modern btn-danger btn-sm" onclick="deleteSchedule(<?php echo $schedule['exam_id']; ?>)">
                                     🗑️ Delete
                                 </button>
                                 <?php endif; ?>
@@ -296,8 +296,8 @@ $schedules = $schedulesQuery->get_result();
                                 </p>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
-                                <a href="ViewExam.php?id=<?php echo $schedule['schedule_id']; ?>" class="btn-modern btn-primary btn-sm">👁️</a>
-                                <a href="EditSchedule.php?id=<?php echo $schedule['schedule_id']; ?>" class="btn-modern btn-warning btn-sm">✏️</a>
+                                <a href="ViewExam.php?id=<?php echo $schedule['exam_id']; ?>" class="btn-modern btn-primary btn-sm">👁️</a>
+                                <a href="EditSchedule.php?id=<?php echo $schedule['exam_id']; ?>" class="btn-modern btn-warning btn-sm">✏️</a>
                             </div>
                         </div>
                     </div>
@@ -338,7 +338,7 @@ $schedules = $schedulesQuery->get_result();
                                 </p>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
-                                <a href="ViewExam.php?id=<?php echo $schedule['schedule_id']; ?>" class="btn-modern btn-primary btn-sm">👁️</a>
+                                <a href="ViewExam.php?id=<?php echo $schedule['exam_id']; ?>" class="btn-modern btn-primary btn-sm">👁️</a>
                             </div>
                         </div>
                     </div>
@@ -378,8 +378,8 @@ $schedules = $schedulesQuery->get_result();
                                 </p>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
-                                <a href="ViewExam.php?id=<?php echo $schedule['schedule_id']; ?>" class="btn-modern btn-primary btn-sm">👁️</a>
-                                <a href="ResultsOverview.php?schedule_id=<?php echo $schedule['schedule_id']; ?>" class="btn-modern btn-success btn-sm">📊 Results</a>
+                                <a href="ViewExam.php?id=<?php echo $schedule['exam_id']; ?>" class="btn-modern btn-primary btn-sm">👁️</a>
+                                <a href="ResultsOverview.php?exam_id=<?php echo $schedule['exam_id']; ?>" class="btn-modern btn-success btn-sm">📊 Results</a>
                             </div>
                         </div>
                     </div>

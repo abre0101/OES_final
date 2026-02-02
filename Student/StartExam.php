@@ -277,12 +277,12 @@ $studentSemester = $_SESSION['Sem'];
                     $currentTime = date('H:i:s');
                     
                     // Get exams for student's semester (via courses)
-                    $sql = "SELECT s.*, ec.category_name as exam_type_name, c.course_name, c.semester
-                            FROM exam_schedules s 
-                            LEFT JOIN exam_categories ec ON s.exam_category_id = ec.exam_category_id
-                            INNER JOIN courses c ON s.course_id = c.course_id
-                            WHERE c.semester = ? AND s.is_active = 1
-                            ORDER BY s.exam_date ASC, s.start_time ASC";
+                    $sql = "SELECT e.*, ec.category_name as exam_type_name, c.course_name, c.semester
+                            FROM exams e 
+                            LEFT JOIN exam_categories ec ON e.exam_category_id = ec.exam_category_id
+                            INNER JOIN courses c ON e.course_id = c.course_id
+                            WHERE c.semester = ? AND e.is_active = 1
+                            ORDER BY e.exam_date ASC, e.start_time ASC";
                     
                     $stmt = $con->prepare($sql);
                     $stmt->bind_param("i", $studentSemester);
@@ -291,7 +291,7 @@ $studentSemester = $_SESSION['Sem'];
                     
                     if ($result->num_rows > 0) {
                         while($row = $result->fetch_assoc()) {
-                            $scheduleId = $row['schedule_id'];
+                            $scheduleId = $row['exam_id'];
                             $examType = $row['exam_type_name'] ? $row['exam_type_name'] : 'Unknown';
                             $course = $row['course_name'];
                             $examDate = $row['exam_date'];
@@ -300,7 +300,7 @@ $studentSemester = $_SESSION['Sem'];
                             $duration = $row['duration_minutes'] ? $row['duration_minutes'] : 60;
                             
                             // Check if student has already taken this exam
-                            $checkResult = $con->prepare("SELECT * FROM exam_results WHERE student_id = ? AND schedule_id = ?");
+                            $checkResult = $con->prepare("SELECT * FROM exam_results WHERE student_id = ? AND exam_id = ?");
                             $checkResult->bind_param("ii", $studentId, $scheduleId);
                             $checkResult->execute();
                             $hasCompleted = $checkResult->get_result()->num_rows > 0;
@@ -380,7 +380,7 @@ $studentSemester = $_SESSION['Sem'];
                         
                         <div class="exam-actions">
                             <?php if ($canTake): ?>
-                                <a href="exam-instructions.php?schedule_id=<?php echo $scheduleId; ?>" class="btn btn-success" style="font-size: 1.1rem;">
+                                <a href="exam-instructions.php?exam_id=<?php echo $scheduleId; ?>" class="btn btn-success" style="font-size: 1.1rem;">
                                     🚀 Start Exam
                                 </a>
                                 <div class="countdown">

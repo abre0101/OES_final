@@ -31,7 +31,7 @@ $questionsQuery = $con->prepare("SELECT q.*, c.course_name, c.course_code, qt.to
     FROM questions q
     INNER JOIN courses c ON q.course_id = c.course_id
     LEFT JOIN question_topics qt ON q.topic_id = qt.topic_id
-    WHERE q.instructor_id = ? AND q.approval_status = ?
+    WHERE q.created_by = ? AND q.approval_status = ?
     ORDER BY q.created_at DESC");
 $questionsQuery->bind_param("is", $instructor_id, $status);
 $questionsQuery->execute();

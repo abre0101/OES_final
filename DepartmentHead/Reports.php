@@ -17,12 +17,12 @@ $dept_stats = "SELECT
                COUNT(DISTINCT s.student_id) as total_students,
                COUNT(DISTINCT i.instructor_id) as total_instructors,
                COUNT(DISTINCT c.course_id) as total_courses,
-               COUNT(DISTINCT es.schedule_id) as total_exams
+               COUNT(DISTINCT es.exam_id) as total_exams
                FROM departments d
                LEFT JOIN students s ON d.department_id = s.department_id AND s.is_active = 1
                LEFT JOIN instructors i ON d.department_id = i.department_id AND i.is_active = 1
                LEFT JOIN courses c ON d.department_id = c.department_id AND c.is_active = 1
-               LEFT JOIN exam_schedules es ON c.course_id = es.course_id AND es.is_active = 1
+               LEFT JOIN exams es ON c.course_id = es.course_id AND es.is_active = 1
                WHERE d.department_id = ?";
 $stmt = $con->prepare($dept_stats);
 $stmt->bind_param("i", $deptId);
@@ -31,13 +31,13 @@ $stats = $stmt->get_result()->fetch_assoc();
 
 // Get recent exam statistics
 $exam_stats = "SELECT 
-               COUNT(DISTINCT es.schedule_id) as total_scheduled,
-               COUNT(DISTINCT CASE WHEN es.exam_date >= CURDATE() THEN es.schedule_id END) as upcoming,
-               COUNT(DISTINCT CASE WHEN es.exam_date < CURDATE() THEN es.schedule_id END) as completed,
+               COUNT(DISTINCT es.exam_id) as total_scheduled,
+               COUNT(DISTINCT CASE WHEN es.exam_date >= CURDATE() THEN es.exam_id END) as upcoming,
+               COUNT(DISTINCT CASE WHEN es.exam_date < CURDATE() THEN es.exam_id END) as completed,
                COUNT(DISTINCT er.result_id) as total_attempts
-               FROM exam_schedules es
+               FROM exams es
                LEFT JOIN courses c ON es.course_id = c.course_id
-               LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+               LEFT JOIN exam_results er ON es.exam_id = er.exam_id
                WHERE c.department_id = ? AND es.is_active = 1";
 $stmt = $con->prepare($exam_stats);
 $stmt->bind_param("i", $deptId);
@@ -48,11 +48,11 @@ $exam_data = $stmt->get_result()->fetch_assoc();
 $course_stats = "SELECT c.course_code, c.course_name,
                  COUNT(DISTINCT sc.student_id) as enrolled_students,
                  COUNT(DISTINCT ic.instructor_id) as assigned_instructors,
-                 COUNT(DISTINCT es.schedule_id) as scheduled_exams
+                 COUNT(DISTINCT es.exam_id) as scheduled_exams
                  FROM courses c
                  LEFT JOIN student_courses sc ON c.course_id = sc.course_id
                  LEFT JOIN instructor_courses ic ON c.course_id = ic.course_id
-                 LEFT JOIN exam_schedules es ON c.course_id = es.course_id
+                 LEFT JOIN exams es ON c.course_id = es.course_id
                  WHERE c.department_id = ? AND c.is_active = 1
                  GROUP BY c.course_id
                  ORDER BY c.course_code";

@@ -16,7 +16,7 @@ $instructor_id = $_SESSION['ID'];
 $coursesQuery = $con->prepare("SELECT DISTINCT c.course_id, c.course_name, c.course_code, c.semester
     FROM instructor_courses ic
     INNER JOIN courses c ON ic.course_id = c.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE
+    WHERE ic.instructor_id = ?
     ORDER BY c.course_name");
 $coursesQuery->bind_param("i", $instructor_id);
 $coursesQuery->execute();
@@ -31,11 +31,11 @@ $existingExamsQuery = $con->prepare("SELECT
     c.semester,
     ec.category_name,
     COUNT(*) as exam_count
-    FROM exam_schedules es
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE
+    WHERE ic.instructor_id = ?
     AND ec.category_name IN ('Midterm', 'Final')
     GROUP BY es.course_id, c.semester, ec.category_name");
 $existingExamsQuery->bind_param("i", $instructor_id);

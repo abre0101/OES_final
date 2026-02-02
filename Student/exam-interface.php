@@ -11,22 +11,22 @@ if(!isset($_SESSION['Name'])){
 // Get questions and course info from database
 $con = require_once(__DIR__ . "/../Connections/OES.php");
 
-// Get schedule_id from URL or session
-$schedule_id = $_GET['schedule_id'] ?? $_SESSION['current_exam_schedule'] ?? 0;
+// Get exam_id from URL or session
+$exam_id = $_GET['exam_id'] ?? $_SESSION['current_exam_schedule'] ?? 0;
 
-if (!$schedule_id) {
+if (!$exam_id) {
     echo "<script>alert('Invalid exam session'); window.close();</script>";
     exit();
 }
 
 // Get exam details
 $exam_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name
-    FROM exam_schedules es
+    FROM exams es
     LEFT JOIN courses c ON es.course_id = c.course_id
     LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
-    WHERE es.schedule_id = ?";
+    WHERE es.exam_id = ?";
 $stmt = $con->prepare($exam_query);
-$stmt->bind_param("i", $schedule_id);
+$stmt->bind_param("i", $exam_id);
 $stmt->execute();
 $exam = $stmt->get_result()->fetch_assoc();
 $stmt->close();
@@ -43,10 +43,10 @@ $examDuration = $exam['duration_minutes'] ?? 30;
 $questions_query = "SELECT q.*, eq.question_order
     FROM exam_questions eq
     INNER JOIN questions q ON eq.question_id = q.question_id
-    WHERE eq.schedule_id = ?
+    WHERE eq.exam_id = ?
     ORDER BY eq.question_order";
 $stmt = $con->prepare($questions_query);
-$stmt->bind_param("i", $schedule_id);
+$stmt->bind_param("i", $exam_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -76,9 +76,9 @@ if ($totalQuestions == 0) {
 // Check if student has already taken this exam
 $student_id = intval($_SESSION['ID']);
 $check_query = "SELECT result_id, percentage_score, pass_status FROM exam_results 
-    WHERE student_id = ? AND schedule_id = ?";
+    WHERE student_id = ? AND exam_id = ?";
 $check_stmt = $con->prepare($check_query);
-$check_stmt->bind_param("ii", $student_id, $schedule_id);
+$check_stmt->bind_param("ii", $student_id, $exam_id);
 $check_stmt->execute();
 $existing_result = $check_stmt->get_result()->fetch_assoc();
 $check_stmt->close();
@@ -810,7 +810,7 @@ mysqli_close($con);
             form.action = 'save-exam-result.php';
             
             const fields = {
-                'schedule_id': <?php echo $schedule_id; ?>,
+                'exam_id': <?php echo $exam_id; ?>,
                 'correct': correct,
                 'wrong': wrong,
                 'total': totalQuestions,

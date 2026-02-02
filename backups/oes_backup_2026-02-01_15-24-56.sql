@@ -164,7 +164,7 @@ INSERT INTO `departments` VALUES
 DROP TABLE IF EXISTS `exam_approval_history`;
 CREATE TABLE `exam_approval_history` (
   `history_id` int(11) NOT NULL AUTO_INCREMENT,
-  `schedule_id` int(11) NOT NULL,
+  `exam_id` int(11) NOT NULL,
   `action` enum('submitted','approved','revision_requested','rejected','resubmitted') NOT NULL,
   `performed_by` int(11) NOT NULL,
   `performed_by_type` enum('instructor','committee') NOT NULL,
@@ -173,10 +173,10 @@ CREATE TABLE `exam_approval_history` (
   `new_status` enum('pending','approved','revision','rejected') DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`history_id`),
-  KEY `idx_schedule` (`schedule_id`),
+  KEY `idx_schedule` (`exam_id`),
   KEY `idx_action` (`action`),
   KEY `idx_created` (`created_at`),
-  CONSTRAINT `exam_approval_history_ibfk_1` FOREIGN KEY (`schedule_id`) REFERENCES `exam_schedules` (`schedule_id`) ON DELETE CASCADE
+  CONSTRAINT `exam_approval_history_ibfk_1` FOREIGN KEY (`exam_id`) REFERENCES `exams` (`exam_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `exam_approval_history` VALUES
@@ -240,15 +240,15 @@ INSERT INTO `exam_committee_members` VALUES
 DROP TABLE IF EXISTS `exam_questions`;
 CREATE TABLE `exam_questions` (
   `exam_question_id` int(11) NOT NULL AUTO_INCREMENT,
-  `schedule_id` int(11) NOT NULL,
+  `exam_id` int(11) NOT NULL,
   `question_id` int(11) NOT NULL,
   `question_order` int(11) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`exam_question_id`),
-  UNIQUE KEY `unique_exam_question` (`schedule_id`,`question_id`),
-  KEY `idx_schedule` (`schedule_id`),
+  UNIQUE KEY `unique_exam_question` (`exam_id`,`question_id`),
+  KEY `idx_schedule` (`exam_id`),
   KEY `idx_question` (`question_id`),
-  CONSTRAINT `exam_questions_ibfk_1` FOREIGN KEY (`schedule_id`) REFERENCES `exam_schedules` (`schedule_id`) ON DELETE CASCADE,
+  CONSTRAINT `exam_questions_ibfk_1` FOREIGN KEY (`exam_id`) REFERENCES `exams` (`exam_id`) ON DELETE CASCADE,
   CONSTRAINT `exam_questions_ibfk_2` FOREIGN KEY (`question_id`) REFERENCES `questions` (`question_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -284,7 +284,7 @@ DROP TABLE IF EXISTS `exam_results`;
 CREATE TABLE `exam_results` (
   `result_id` int(11) NOT NULL AUTO_INCREMENT,
   `student_id` int(11) NOT NULL,
-  `schedule_id` int(11) NOT NULL,
+  `exam_id` int(11) NOT NULL,
   `total_questions` int(11) NOT NULL,
   `correct_answers` int(11) DEFAULT 0,
   `wrong_answers` int(11) DEFAULT 0,
@@ -300,13 +300,13 @@ CREATE TABLE `exam_results` (
   `time_taken_minutes` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`result_id`),
-  UNIQUE KEY `unique_student_exam` (`student_id`,`schedule_id`),
+  UNIQUE KEY `unique_student_exam` (`student_id`,`exam_id`),
   KEY `idx_student` (`student_id`),
-  KEY `idx_schedule` (`schedule_id`),
+  KEY `idx_schedule` (`exam_id`),
   KEY `idx_grade` (`letter_grade`),
   KEY `idx_pass_status` (`pass_status`),
   CONSTRAINT `exam_results_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
-  CONSTRAINT `exam_results_ibfk_2` FOREIGN KEY (`schedule_id`) REFERENCES `exam_schedules` (`schedule_id`) ON DELETE CASCADE
+  CONSTRAINT `exam_results_ibfk_2` FOREIGN KEY (`exam_id`) REFERENCES `exams` (`exam_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `exam_results` VALUES
@@ -317,10 +317,10 @@ INSERT INTO `exam_results` VALUES
 ("5","9","7","3","3","0","0","100.00","100.00","100.00","A+","4.00","Pass","2026-02-21 09:00:00","2026-02-21 10:20:00","80","2026-01-31 11:14:42"),
 ("6","11","9","3","2","0","1","66.67","100.00","66.67","B-","2.50","Pass","2026-02-23 09:00:00","2026-02-23 10:40:00","100","2026-01-31 11:14:43");
 
--- Table: exam_schedules
-DROP TABLE IF EXISTS `exam_schedules`;
-CREATE TABLE `exam_schedules` (
-  `schedule_id` int(11) NOT NULL AUTO_INCREMENT,
+-- Table: exams
+DROP TABLE IF EXISTS `exams`;
+CREATE TABLE `exams` (
+  `exam_id` int(11) NOT NULL AUTO_INCREMENT,
   `course_id` int(11) NOT NULL,
   `exam_category_id` int(11) NOT NULL,
   `exam_name` varchar(200) NOT NULL,
@@ -345,7 +345,7 @@ CREATE TABLE `exam_schedules` (
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`schedule_id`),
+  PRIMARY KEY (`exam_id`),
   KEY `exam_category_id` (`exam_category_id`),
   KEY `created_by` (`created_by`),
   KEY `idx_course` (`course_id`),
@@ -354,12 +354,12 @@ CREATE TABLE `exam_schedules` (
   KEY `idx_approval_status` (`approval_status`),
   KEY `idx_submitted` (`submitted_for_approval`),
   KEY `idx_reviewed_by` (`reviewed_by`),
-  CONSTRAINT `exam_schedules_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`course_id`) ON DELETE CASCADE,
-  CONSTRAINT `exam_schedules_ibfk_2` FOREIGN KEY (`exam_category_id`) REFERENCES `exam_categories` (`exam_category_id`),
-  CONSTRAINT `exam_schedules_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `instructors` (`instructor_id`) ON DELETE SET NULL
+  CONSTRAINT `exams_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`course_id`) ON DELETE CASCADE,
+  CONSTRAINT `exams_ibfk_2` FOREIGN KEY (`exam_category_id`) REFERENCES `exam_categories` (`exam_category_id`),
+  CONSTRAINT `exams_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `instructors` (`instructor_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `exam_schedules` VALUES
+INSERT INTO `exams` VALUES
 ("1","1","1","Fundamentals of Nursing - Midterm","2026-02-15","09:00:00","11:00:00","120","100","50","Read all questions carefully. Choose the best answer. No calculators allowed.","1","pending","0","NULL","NULL","NULL","NULL","NULL","NULL","NULL","0","1","2026-01-31 11:14:40","2026-01-31 11:14:40"),
 ("2","2","1","Anatomy and Physiology - Midterm","2026-02-16","09:00:00","11:00:00","120","100","50","Answer all questions. Diagrams may be required for some questions.","1","pending","0","NULL","NULL","NULL","NULL","NULL","NULL","NULL","0","1","2026-01-31 11:14:40","2026-01-31 11:14:40"),
 ("3","6","1","Introduction to Midwifery - Midterm","2026-02-17","09:00:00","10:30:00","90","100","50","Multiple choice questions. Select the most appropriate answer.","1","pending","0","NULL","NULL","NULL","NULL","NULL","NULL","NULL","0","3","2026-01-31 11:14:40","2026-01-31 11:14:40"),

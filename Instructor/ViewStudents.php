@@ -17,7 +17,7 @@ $semesterFilter = $_GET['semester'] ?? '';
 $coursesQuery = "SELECT DISTINCT c.course_id, c.course_name, c.semester 
     FROM courses c 
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id 
-    WHERE ic.instructor_id = ? AND ic.is_active = 1 
+    WHERE ic.instructor_id = ?
     ORDER BY c.course_name";
 
 $stmt = $con->prepare($coursesQuery);
@@ -35,14 +35,13 @@ $studentQuery = "SELECT DISTINCT
     c.course_name,
     c.course_id,
     c.course_code,
-    sc.semester as enrolled_semester,
     d.department_name
 FROM students s
 INNER JOIN student_courses sc ON s.student_id = sc.student_id
 INNER JOIN courses c ON sc.course_id = c.course_id
 INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
 LEFT JOIN departments d ON s.department_id = d.department_id
-WHERE ic.instructor_id = ? AND ic.is_active = 1 AND sc.is_active = 1";
+WHERE ic.instructor_id = ?";
 
 $params = [$instructor_id];
 $types = "i";
@@ -54,7 +53,7 @@ if ($courseFilter) {
 }
 
 if ($semesterFilter) {
-    $studentQuery .= " AND sc.semester = ?";
+    $studentQuery .= " AND s.semester = ?";
     $params[] = $semesterFilter;
     $types .= "i";
 }
@@ -75,7 +74,7 @@ FROM students s
 INNER JOIN student_courses sc ON s.student_id = sc.student_id
 INNER JOIN courses c ON sc.course_id = c.course_id
 INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-WHERE ic.instructor_id = ? AND ic.is_active = 1 AND sc.is_active = 1";
+WHERE ic.instructor_id = ?";
 
 $stmt = $con->prepare($statsQuery);
 $stmt->bind_param("i", $instructor_id);

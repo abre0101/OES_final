@@ -15,8 +15,8 @@ $stats = [
     'active_instructors' => $con->query("SELECT COUNT(*) as count FROM instructors WHERE is_active=1")->fetch_assoc()['count'] ?? 0,
     'courses' => $con->query("SELECT COUNT(*) as count FROM courses")->fetch_assoc()['count'] ?? 0,
     'departments' => $con->query("SELECT COUNT(*) as count FROM departments")->fetch_assoc()['count'] ?? 0,
-    'pending_exams' => $con->query("SELECT COUNT(*) as count FROM exam_schedules WHERE approval_status='pending' AND submitted_for_approval=1")->fetch_assoc()['count'] ?? 0,
-    'total_exams' => $con->query("SELECT COUNT(*) as count FROM exam_schedules")->fetch_assoc()['count'] ?? 0,
+    'pending_exams' => $con->query("SELECT COUNT(*) as count FROM exams WHERE approval_status='pending' AND submitted_for_approval=1")->fetch_assoc()['count'] ?? 0,
+    'total_exams' => $con->query("SELECT COUNT(*) as count FROM exams")->fetch_assoc()['count'] ?? 0,
 ];
 
 // Recent activities - Combined registrations
@@ -33,7 +33,7 @@ $recent_registrations = $con->query($recent_registrations_query);
 $recent_exams = $con->query("
     SELECT es.exam_name, c.course_code, es.created_at, 
            COALESCE(i.full_name, 'System') as instructor_name
-    FROM exam_schedules es 
+    FROM exams es 
     JOIN courses c ON es.course_id = c.course_id 
     LEFT JOIN instructors i ON es.created_by = i.instructor_id
     ORDER BY es.created_at DESC 
@@ -44,7 +44,7 @@ $recent_exams = $con->query("
 $recent_approvals = $con->query("
     SELECT es.exam_name, c.course_code, es.approval_status, 
            COALESCE(es.reviewed_at, es.updated_at) as updated_at
-    FROM exam_schedules es 
+    FROM exams es 
     JOIN courses c ON es.course_id = c.course_id 
     WHERE es.approval_status IN ('approved', 'rejected')
     ORDER BY COALESCE(es.reviewed_at, es.updated_at) DESC 

@@ -27,7 +27,7 @@ $query = "SELECT
     d.department_name,
     f.faculty_name,
     COUNT(DISTINCT sc.student_id) as student_count,
-    COUNT(DISTINCT es.schedule_id) as total_exams,
+    COUNT(DISTINCT es.exam_id) as total_exams,
     SUM(CASE WHEN es.exam_date >= CURDATE() THEN 1 ELSE 0 END) as upcoming_exams,
     SUM(CASE WHEN es.exam_date < CURDATE() THEN 1 ELSE 0 END) as past_exams,
     COUNT(DISTINCT eq.question_id) as total_questions,
@@ -37,11 +37,11 @@ $query = "SELECT
     INNER JOIN courses c ON ic.course_id = c.course_id
     INNER JOIN departments d ON c.department_id = d.department_id
     INNER JOIN faculties f ON d.faculty_id = f.faculty_id
-    LEFT JOIN student_courses sc ON c.course_id = sc.course_id AND sc.is_active = TRUE
-    LEFT JOIN exam_schedules es ON c.course_id = es.course_id AND es.is_active = TRUE
-    LEFT JOIN exam_questions eq ON es.schedule_id = eq.schedule_id
-    LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE";
+    LEFT JOIN student_courses sc ON c.course_id = sc.course_id
+    LEFT JOIN exams es ON c.course_id = es.course_id AND es.is_active = TRUE
+    LEFT JOIN exam_questions eq ON es.exam_id = eq.exam_id
+    LEFT JOIN exam_results er ON es.exam_id = er.exam_id
+    WHERE ic.instructor_id = ?";
 
 $params = [$instructor_id];
 $types = "i";
@@ -70,7 +70,7 @@ $deptQuery = $con->prepare("SELECT DISTINCT d.department_id, d.department_name
     FROM instructor_courses ic
     INNER JOIN courses c ON ic.course_id = c.course_id
     INNER JOIN departments d ON c.department_id = d.department_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE
+    WHERE ic.instructor_id = ?
     ORDER BY d.department_name");
 $deptQuery->bind_param("i", $instructor_id);
 $deptQuery->execute();
@@ -80,14 +80,14 @@ $departments = $deptQuery->get_result();
 $statsQuery = $con->prepare("SELECT 
     COUNT(DISTINCT c.course_id) as total_courses,
     COUNT(DISTINCT sc.student_id) as total_students,
-    COUNT(DISTINCT es.schedule_id) as total_exams,
+    COUNT(DISTINCT es.exam_id) as total_exams,
     COUNT(DISTINCT eq.question_id) as total_questions
     FROM instructor_courses ic
     INNER JOIN courses c ON ic.course_id = c.course_id
-    LEFT JOIN student_courses sc ON c.course_id = sc.course_id AND sc.is_active = TRUE
-    LEFT JOIN exam_schedules es ON c.course_id = es.course_id AND es.is_active = TRUE
-    LEFT JOIN exam_questions eq ON es.schedule_id = eq.schedule_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE");
+    LEFT JOIN student_courses sc ON c.course_id = sc.course_id
+    LEFT JOIN exams es ON c.course_id = es.course_id AND es.is_active = TRUE
+    LEFT JOIN exam_questions eq ON es.exam_id = eq.exam_id
+    WHERE ic.instructor_id = ?");
 $statsQuery->bind_param("i", $instructor_id);
 $statsQuery->execute();
 $stats = $statsQuery->get_result()->fetch_assoc();
@@ -331,85 +331,6 @@ $statsQuery->close();
                     </div>
                     <button type="submit" class="btn-filter"><span>🔍</span> Apply Filters</button>
                 </form>
-            </div>
-
-            <!-- Key Statistics -->
-            <div class="stats-grid" style="margin-bottom: 2rem;">
-                <div class="stat-card stat-primary">
-                    <div class="stat-icon">📚</div>
-                    <div class="stat-details">
-                        <div class="stat-value"><?php echo $stats['total_courses']; ?></div>
-                        <div class="stat-label">Total Courses</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card stat-success">
-                    <div class="stat-icon">👨‍🎓</div>
-                    <div class="stat-details">
-                        <div class="stat-value"><?php echo $stats['total_students']; ?></div>
-                        <div class="stat-label">Total Students</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card stat-warning">
-                    <div class="stat-icon">📋</div>
-                    <div class="stat-details">
-                        <div class="stat-value"><?php echo $stats['total_exams']; ?></div>
-                        <div class="stat-label">Scheduled Exams</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card stat-info">
-                    <div class="stat-icon">❓</div>
-                    <div class="stat-details">
-                        <div class="stat-value"><?php echo $stats['total_questions']; ?></div>
-                        <div class="stat-label">Question Bank</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filters -->
-            <div class="card" style="margin-bottom: 2rem;">
-                <div class="card-header">
-                    <h3 class="card-title">🔍 Filter Courses</h3>
-                </div>
-                <div style="padding: 1.5rem;">
-                    <form method="GET" action="">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                            <div class="form-group" style="margin: 0;">
-                                <label>Department</label>
-                                <select name="department" class="form-control">
-                                    <option value="">All Departments</option>
-                                    <?php 
-                                    while($dept = $departments->fetch_assoc()): 
-                                    ?>
-                                    <option value="<?php echo $dept['department_id']; ?>" <?php echo ($department_filter == $dept['department_id']) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($dept['department_name']); ?>
-                                    </option>
-                                    <?php endwhile; ?>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group" style="margin: 0;">
-                                <label>Semester</label>
-                                <select name="semester" class="form-control">
-                                    <option value="">All Semesters</option>
-                                    <?php 
-                                    $semesters = ['Fall 2024', 'Spring 2025', 'Summer 2025', 'Fall 2025'];
-                                    foreach($semesters as $sem): 
-                                    ?>
-                                    <option value="<?php echo $sem; ?>" <?php echo ($semester_filter == $sem) ? 'selected' : ''; ?>><?php echo $sem; ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            
-                            <div style="display: flex; gap: 0.5rem; align-items: end;">
-                                <button type="submit" class="btn btn-primary">Apply</button>
-                                <a href="MyCourses.php" class="btn btn-secondary">Clear</a>
-                            </div>
-                        </div>
-                    </form>
-                </div>
             </div>
 
             <!-- Courses List -->

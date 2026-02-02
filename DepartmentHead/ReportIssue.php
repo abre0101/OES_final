@@ -59,8 +59,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_issue'])) {
 
 // Get recent exams for dropdown
 $deptId = $_SESSION['DeptId'] ?? null;
-$exams_query = "SELECT es.schedule_id, es.exam_name, c.course_code 
-                FROM exam_schedules es
+$exams_query = "SELECT es.exam_id, es.exam_name, c.course_code 
+                FROM exams es
                 LEFT JOIN courses c ON es.course_id = c.course_id
                 WHERE c.department_id = ? AND es.is_active = 1
                 ORDER BY es.exam_date DESC LIMIT 50";
@@ -135,7 +135,7 @@ $recent_issues = $stmt->get_result();
                                 <select name="exam_id" class="form-control">
                                     <option value="">-- Not related to specific exam --</option>
                                     <?php while($exam = $exams->fetch_assoc()): ?>
-                                    <option value="<?php echo $exam['schedule_id']; ?>">
+                                    <option value="<?php echo $exam['exam_id']; ?>">
                                         <?php echo htmlspecialchars($exam['course_code'] . ' - ' . $exam['exam_name']); ?>
                                     </option>
                                     <?php endwhile; ?>

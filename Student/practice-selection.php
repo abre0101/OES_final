@@ -11,7 +11,7 @@ if(!isset($_SESSION['Name'])){
 // Get available courses with practice questions
 require_once(__DIR__ . "/../Connections/OES.php");
 // Use practice_questions table instead of questions table
-$sql = "SELECT c.course_name, COUNT(pq.practice_question_id) as question_count 
+$sql = "SELECT c.course_name, COUNT(pq.practice_id) as question_count 
         FROM courses c
         INNER JOIN practice_questions pq ON c.course_id = pq.course_id
         WHERE pq.is_active = 1

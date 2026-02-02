@@ -32,15 +32,15 @@ if($export_type == 'departmental') {
     fputcsv($output, ['Course Code', 'Course Name', 'Total Exams', 'Total Students', 'Avg Score', 'Pass Rate']);
     
     $query = "SELECT c.course_code, c.course_name,
-              COUNT(DISTINCT es.schedule_id) as total_exams,
+              COUNT(DISTINCT es.exam_id) as total_exams,
               COUNT(DISTINCT sc.student_id) as total_students,
               AVG(er.marks_obtained) as avg_score,
               (COUNT(DISTINCT CASE WHEN er.marks_obtained >= es.passing_marks THEN er.result_id END) / 
                NULLIF(COUNT(DISTINCT er.result_id), 0) * 100) as pass_rate
               FROM courses c
-              LEFT JOIN exam_schedules es ON c.course_id = es.course_id
+              LEFT JOIN exams es ON c.course_id = es.course_id
               LEFT JOIN student_courses sc ON c.course_id = sc.course_id
-              LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+              LEFT JOIN exam_results er ON es.exam_id = er.exam_id
               WHERE c.department_id = ? AND c.is_active = 1
               GROUP BY c.course_id
               ORDER BY c.course_code";
@@ -100,7 +100,7 @@ if($export_type == 'departmental') {
     
     $query = "SELECT es.exam_name, c.course_code, ec.category_name, es.exam_date, es.start_time, 
               es.duration_minutes, es.total_marks, es.approval_status
-              FROM exam_schedules es
+              FROM exams es
               LEFT JOIN courses c ON es.course_id = c.course_id
               LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
               WHERE c.department_id = ? AND es.is_active = 1

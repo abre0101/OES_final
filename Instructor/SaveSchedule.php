@@ -91,7 +91,7 @@ $categoryName = $categoryResult->fetch_assoc()['category_name'];
 
 // Check if Midterm or Final already exists for this course/semester
 if($categoryName === 'Midterm' || $categoryName === 'Final') {
-    $checkQuery = $con->prepare("SELECT es.schedule_id FROM exam_schedules es
+    $checkQuery = $con->prepare("SELECT es.exam_id FROM exams es
         INNER JOIN courses c ON es.course_id = c.course_id
         INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
         WHERE es.course_id = ? AND c.semester = ? AND ec.category_name = ?");
@@ -106,13 +106,13 @@ if($categoryName === 'Midterm' || $categoryName === 'Final') {
 
 // Insert exam schedule with 'draft' status (will be submitted for approval later)
 $temp_pass_marks = 0; // Temporary, will be calculated from percentage
-$insertQuery = $con->prepare("INSERT INTO exam_schedules 
+$insertQuery = $con->prepare("INSERT INTO exams 
     (exam_name, course_id, exam_category_id, exam_date, start_time, end_time, duration_minutes, total_marks, pass_marks, instructions, approval_status, is_active, created_at) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', TRUE, NOW())");
 $insertQuery->bind_param("siisssiiss", $exam_name, $course_id, $exam_category_id, $exam_date, $start_time, $end_time, $duration_minutes, $total_marks, $temp_pass_marks, $instructions);
 
 if($insertQuery->execute()) {
-    $schedule_id = $con->insert_id;
+    $exam_id = $con->insert_id;
     
     // Auto-add questions from this course (with optional topic filter)
     // Get all active questions for this course (no approval needed for questions)
@@ -146,9 +146,9 @@ if($insertQuery->execute()) {
     
     while($question = $availableQuestions->fetch_assoc()) {
         $addQuestionQuery = $con->prepare("INSERT INTO exam_questions 
-            (schedule_id, question_id, question_order) 
+            (exam_id, question_id, question_order) 
             VALUES (?, ?, ?)");
-        $addQuestionQuery->bind_param("iii", $schedule_id, $question['question_id'], $questionOrder);
+        $addQuestionQuery->bind_param("iii", $exam_id, $question['question_id'], $questionOrder);
         
         if($addQuestionQuery->execute()) {
             $calculatedTotal += $question['point_value'];
@@ -162,19 +162,19 @@ if($insertQuery->execute()) {
     
     // Update total marks and pass marks based on added questions
     if($addedCount > 0) {
-        $updateMarksQuery = $con->prepare("UPDATE exam_schedules SET total_marks = ?, pass_marks = ? WHERE schedule_id = ?");
-        $updateMarksQuery->bind_param("iii", $calculatedTotal, $pass_marks, $schedule_id);
+        $updateMarksQuery = $con->prepare("UPDATE exams SET total_marks = ?, pass_marks = ? WHERE exam_id = ?");
+        $updateMarksQuery->bind_param("iii", $calculatedTotal, $pass_marks, $exam_id);
         $updateMarksQuery->execute();
     } else {
         // No questions added, just update pass marks based on percentage
         $pass_marks = round(($total_marks * $pass_percentage) / 100);
-        $updateMarksQuery = $con->prepare("UPDATE exam_schedules SET pass_marks = ? WHERE schedule_id = ?");
-        $updateMarksQuery->bind_param("ii", $pass_marks, $schedule_id);
+        $updateMarksQuery = $con->prepare("UPDATE exams SET pass_marks = ? WHERE exam_id = ?");
+        $updateMarksQuery->bind_param("ii", $pass_marks, $exam_id);
         $updateMarksQuery->execute();
     }
     
     $_SESSION['success'] = "Exam schedule created successfully! $addedCount questions automatically added.";
-    header("Location: ViewExam.php?id=" . $schedule_id);
+    header("Location: ViewExam.php?id=" . $exam_id);
 } else {
     $_SESSION['error'] = "Failed to create exam schedule: " . $con->error;
     header("Location: CreateSchedule.php");

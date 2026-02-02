@@ -17,8 +17,8 @@ $messageType = '';
 
 // Handle publish/unpublish
 if(isset($_GET['toggle_publish'])) {
-    $schedule_id = intval($_GET['toggle_publish']);
-    $con->query("UPDATE exam_schedules SET is_active = NOT is_active WHERE schedule_id = $schedule_id");
+    $exam_id = intval($_GET['toggle_publish']);
+    $con->query("UPDATE exams SET is_active = NOT is_active WHERE exam_id = $exam_id");
     header("Location: DepartmentExams.php?published=1");
     exit();
 }
@@ -70,16 +70,16 @@ $exams_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name,
                 i.full_name as instructor_name,
                 COUNT(DISTINCT sc.student_id) as enrolled_count,
                 COUNT(DISTINCT er.result_id) as attempts_count,
-                (SELECT COUNT(*) FROM exam_questions eq WHERE eq.schedule_id = es.schedule_id) as question_count
-                FROM exam_schedules es
+                (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = es.exam_id) as question_count
+                FROM exams es
                 LEFT JOIN courses c ON es.course_id = c.course_id
                 LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
                 LEFT JOIN instructors i ON es.created_by = i.instructor_id
-                LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+                LEFT JOIN exam_results er ON es.exam_id = er.exam_id
                 LEFT JOIN student_courses sc ON c.course_id = sc.course_id
                 WHERE c.department_id = ?
                 $status_condition $course_condition $year_condition
-                GROUP BY es.schedule_id
+                GROUP BY es.exam_id
                 ORDER BY es.exam_date DESC, es.start_time DESC";
 $stmt = $con->prepare($exams_query);
 $stmt->bind_param("i", $deptId);
@@ -95,12 +95,12 @@ $courses = $stmt->get_result();
 
 // Get statistics
 $stats_query = "SELECT 
-                COUNT(DISTINCT es.schedule_id) as total_exams,
-                COUNT(DISTINCT CASE WHEN es.exam_date >= CURDATE() THEN es.schedule_id END) as upcoming_exams,
-                COUNT(DISTINCT CASE WHEN es.exam_date < CURDATE() THEN es.schedule_id END) as past_exams,
-                COUNT(DISTINCT CASE WHEN es.exam_date = CURDATE() THEN es.schedule_id END) as today_exams,
-                COUNT(DISTINCT CASE WHEN es.approval_status = 'pending' THEN es.schedule_id END) as pending_exams
-                FROM exam_schedules es
+                COUNT(DISTINCT es.exam_id) as total_exams,
+                COUNT(DISTINCT CASE WHEN es.exam_date >= CURDATE() THEN es.exam_id END) as upcoming_exams,
+                COUNT(DISTINCT CASE WHEN es.exam_date < CURDATE() THEN es.exam_id END) as past_exams,
+                COUNT(DISTINCT CASE WHEN es.exam_date = CURDATE() THEN es.exam_id END) as today_exams,
+                COUNT(DISTINCT CASE WHEN es.approval_status = 'pending' THEN es.exam_id END) as pending_exams
+                FROM exams es
                 LEFT JOIN courses c ON es.course_id = c.course_id
                 WHERE c.department_id = ?";
 $stmt = $con->prepare($stats_query);
@@ -110,7 +110,7 @@ $stats = $stmt->get_result()->fetch_assoc();
 
 // Get available years for filter
 $years_query = "SELECT DISTINCT YEAR(exam_date) as exam_year 
-                FROM exam_schedules es
+                FROM exams es
                 LEFT JOIN courses c ON es.course_id = c.course_id
                 WHERE c.department_id = ? AND exam_date IS NOT NULL
                 ORDER BY exam_year DESC";
@@ -331,15 +331,15 @@ $years = $stmt->get_result();
                     </div>
 
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <a href="ViewExamDetails.php?id=<?php echo $exam['schedule_id']; ?>" class="btn btn-sm btn-primary">📊 View Details</a>
+                        <a href="ViewExamDetails.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-primary">📊 View Details</a>
                         <?php if($is_pending): ?>
                             <a href="PendingApprovals.php" class="btn btn-sm btn-warning">⏳ Review</a>
                         <?php endif; ?>
                         <?php if($exam['attempts_count'] > 0): ?>
-                            <a href="ExamResults.php?id=<?php echo $exam['schedule_id']; ?>" class="btn btn-sm btn-info">📈 View Results</a>
+                            <a href="ExamResults.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-info">📈 View Results</a>
                         <?php endif; ?>
                         <?php if($exam['approval_status'] == 'approved'): ?>
-                            <a href="?toggle_publish=<?php echo $exam['schedule_id']; ?>&status=<?php echo $status_filter; ?>&course=<?php echo $course_filter; ?>" 
+                            <a href="?toggle_publish=<?php echo $exam['exam_id']; ?>&status=<?php echo $status_filter; ?>&course=<?php echo $course_filter; ?>" 
                                class="btn btn-sm btn-warning" 
                                onclick="return confirm('Are you sure you want to <?php echo $exam['is_active'] ? 'unpublish' : 'publish'; ?> this exam?')">
                                 <?php echo $exam['is_active'] ? '👁️ Unpublish' : '📢 Publish'; ?>

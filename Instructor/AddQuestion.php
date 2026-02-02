@@ -13,18 +13,18 @@ $pageTitle = "Add New Question";
 $instructor_id = $_SESSION['ID'];
 
 // Get URL parameters for pre-filling
-$preselect_schedule_id = $_GET['schedule_id'] ?? null;
+$preselect_exam_id = $_GET['exam_id'] ?? null;
 $preselect_course_id = $_GET['course_id'] ?? null;
 
-// Get pre-selected exam details if schedule_id is provided
+// Get pre-selected exam details if exam_id is provided
 $preselectedExam = null;
-if($preselect_schedule_id) {
+if($preselect_exam_id) {
     $examQuery = $con->prepare("SELECT es.*, c.course_id, c.course_name, c.course_code, ec.exam_category_id, ec.category_name
-        FROM exam_schedules es
+        FROM exams es
         INNER JOIN courses c ON es.course_id = c.course_id
         INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
-        WHERE es.schedule_id = ?");
-    $examQuery->bind_param("i", $preselect_schedule_id);
+        WHERE es.exam_id = ?");
+    $examQuery->bind_param("i", $preselect_exam_id);
     $examQuery->execute();
     $preselectedExam = $examQuery->get_result()->fetch_assoc();
     $examQuery->close();
@@ -32,7 +32,7 @@ if($preselect_schedule_id) {
     // Check if exam is locked (submitted for approval)
     if($preselectedExam && $preselectedExam['approval_status'] != 'draft' && $preselectedExam['approval_status'] != 'revision') {
         $_SESSION['error'] = "Cannot add questions to an exam that has been submitted for approval.";
-        header("Location: ViewExam.php?id=" . $preselect_schedule_id);
+        header("Location: ViewExam.php?id=" . $preselect_exam_id);
         exit();
     }
     
@@ -56,8 +56,8 @@ $courses = $coursesQuery->get_result();
 $examCategories = $con->query("SELECT * FROM exam_categories WHERE is_active = TRUE ORDER BY category_name");
 
 // Get exam schedules for instructor's courses
-$examsQuery = $con->prepare("SELECT es.schedule_id, es.exam_name, c.course_name, c.course_code, ec.category_name
-    FROM exam_schedules es
+$examsQuery = $con->prepare("SELECT es.exam_id, es.exam_name, c.course_name, c.course_code, ec.category_name
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
@@ -128,8 +128,8 @@ $topics = $topicsQuery->get_result();
             <div class="form-wrapper">
                 <form method="POST" action="InsertQuestion.php">
                     <input type="hidden" name="instructor_id" value="<?php echo $instructor_id; ?>">
-                    <?php if($preselect_schedule_id): ?>
-                    <input type="hidden" name="schedule_id" value="<?php echo $preselect_schedule_id; ?>">
+                    <?php if($preselect_exam_id): ?>
+                    <input type="hidden" name="exam_id" value="<?php echo $preselect_exam_id; ?>">
                     <?php endif; ?>
                     
                     <div class="form-section">
@@ -278,7 +278,7 @@ $topics = $topicsQuery->get_result();
                         <button type="submit" name="save_and_add_another" value="1" class="btn btn-success">
                             💾 Save & Add Another
                         </button>
-                        <a href="<?php echo $preselect_schedule_id ? 'ManageQuestions.php' : 'ManageQuestions.php'; ?>" class="btn btn-secondary">
+                        <a href="<?php echo $preselect_exam_id ? 'ManageQuestions.php' : 'ManageQuestions.php'; ?>" class="btn btn-secondary">
                             Cancel
                         </a>
                     </div>

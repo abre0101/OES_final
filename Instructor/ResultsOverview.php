@@ -31,16 +31,16 @@ $query = "SELECT
     s.student_code,
     s.full_name as student_name,
     es.exam_name,
-    es.schedule_id,
+    es.exam_id,
     c.course_name,
     c.course_code,
     c.course_id
     FROM exam_results er
     INNER JOIN students s ON er.student_id = s.student_id
-    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE";
+    WHERE ic.instructor_id = ?";
 
 $params = [$instructor_id];
 $types = "i";
@@ -52,7 +52,7 @@ if($course_filter) {
 }
 
 if($exam_filter) {
-    $query .= " AND es.schedule_id = ?";
+    $query .= " AND es.exam_id = ?";
     $params[] = $exam_filter;
     $types .= "i";
 }
@@ -80,18 +80,18 @@ $results = $stmt->get_result();
 $coursesQuery = $con->prepare("SELECT DISTINCT c.course_id, c.course_name, c.course_code
     FROM instructor_courses ic
     INNER JOIN courses c ON ic.course_id = c.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE
+    WHERE ic.instructor_id = ?
     ORDER BY c.course_name");
 $coursesQuery->bind_param("i", $instructor_id);
 $coursesQuery->execute();
 $courses = $coursesQuery->get_result();
 
 // Get exams for filter
-$examsQuery = $con->prepare("SELECT DISTINCT es.schedule_id, es.exam_name, c.course_name
-    FROM exam_schedules es
+$examsQuery = $con->prepare("SELECT DISTINCT es.exam_id, es.exam_name, c.course_name
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE AND es.is_active = TRUE
+    WHERE ic.instructor_id = ?
     ORDER BY es.exam_date DESC");
 $examsQuery->bind_param("i", $instructor_id);
 $examsQuery->execute();
@@ -112,10 +112,10 @@ $statsQueryStr = "SELECT
     SUM(CASE WHEN er.letter_grade = 'D' THEN 1 ELSE 0 END) as grade_d,
     SUM(CASE WHEN er.letter_grade = 'F' THEN 1 ELSE 0 END) as grade_f
     FROM exam_results er
-    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE";
+    WHERE ic.instructor_id = ?";
 
 $statsParams = [$instructor_id];
 $statsTypes = "i";
@@ -128,7 +128,7 @@ if($course_filter) {
 }
 
 if($exam_filter) {
-    $statsQueryStr .= " AND es.schedule_id = ?";
+    $statsQueryStr .= " AND es.exam_id = ?";
     $statsParams[] = $exam_filter;
     $statsTypes .= "i";
 }
@@ -271,7 +271,7 @@ $pass_rate = $stats['total_results'] > 0 ? round(($stats['passed'] / $stats['tot
                                 $exams->data_seek(0);
                                 while($exam = $exams->fetch_assoc()): 
                                 ?>
-                                <option value="<?php echo $exam['schedule_id']; ?>" <?php echo $exam_filter == $exam['schedule_id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $exam['exam_id']; ?>" <?php echo $exam_filter == $exam['exam_id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($exam['exam_name']); ?> - <?php echo htmlspecialchars($exam['course_name']); ?>
                                 </option>
                                 <?php endwhile; ?>
@@ -417,7 +417,7 @@ $pass_rate = $stats['total_results'] > 0 ? round(($stats['passed'] / $stats['tot
                                     <?php 
                                     while($exam = $exams->fetch_assoc()): 
                                     ?>
-                                    <option value="<?php echo $exam['schedule_id']; ?>" <?php echo ($exam_filter == $exam['schedule_id']) ? 'selected' : ''; ?>>
+                                    <option value="<?php echo $exam['exam_id']; ?>" <?php echo ($exam_filter == $exam['exam_id']) ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($exam['exam_name']); ?>
                                     </option>
                                     <?php endwhile; ?>

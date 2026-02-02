@@ -467,7 +467,7 @@ if($Recordseti->num_rows > 0) {
                         GROUP_CONCAT(i.full_name SEPARATOR ', ') as instructor_names
                         FROM courses c 
                         LEFT JOIN departments d ON c.department_id = d.department_id 
-                        LEFT JOIN instructor_courses ic ON c.course_id = ic.course_id AND ic.is_active = 1
+                        LEFT JOIN instructor_courses ic ON c.course_id = ic.course_id
                         LEFT JOIN instructors i ON ic.instructor_id = i.instructor_id
                         GROUP BY c.course_id
                         ORDER BY c.course_name ASC";

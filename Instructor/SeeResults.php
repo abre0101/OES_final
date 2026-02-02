@@ -13,7 +13,7 @@ $pageTitle = "See Results";
 $instructor_id = $_SESSION['ID'];
 
 // Get filter parameters
-$schedule_id = $_GET['schedule_id'] ?? null;
+$exam_id = $_GET['exam_id'] ?? null;
 $course_id = $_GET['course_id'] ?? null;
 $grade_filter = $_GET['grade'] ?? null;
 $pass_status = $_GET['pass_status'] ?? null;
@@ -35,7 +35,7 @@ $query = "SELECT
     c.course_code
     FROM exam_results er
     INNER JOIN students s ON er.student_id = s.student_id
-    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
     WHERE ic.instructor_id = ? AND ic.is_active = TRUE";
@@ -43,9 +43,9 @@ $query = "SELECT
 $params = [$instructor_id];
 $types = "i";
 
-if($schedule_id) {
-    $query .= " AND er.schedule_id = ?";
-    $params[] = $schedule_id;
+if($exam_id) {
+    $query .= " AND er.exam_id = ?";
+    $params[] = $exam_id;
     $types .= "i";
 }
 
@@ -91,7 +91,7 @@ $statsQuery = $con->prepare("SELECT
     AVG(er.percentage_score) as avg_score,
     SUM(CASE WHEN er.pass_status = 'Pass' THEN 1 ELSE 0 END) as passed_count
     FROM exam_results er
-    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
     WHERE ic.instructor_id = ? AND ic.is_active = TRUE");

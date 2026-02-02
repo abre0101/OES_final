@@ -8,13 +8,13 @@
 <body>
 <?php
 
-	$Id=$_GET['schedule_id'];
+	$Id=$_GET['exam_id'];
 	// Establish Connection with MYSQL
 	$con = new mysqli("localhost","root");
 	// Select Database
 	$con->select_db("oes");
 	// Specify the query to Insert Record
-	$sql = "delete FROM exam_schedules where schedule_id='".$Id."'";
+	$sql = "delete FROM exams where exam_id='".$Id."'";
 	// execute query
 	$con->query ($sql);
 	// Close The Connection

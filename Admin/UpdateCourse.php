@@ -41,14 +41,14 @@ $stmt->execute();
 $stmt->close();
 
 // Update instructor assignment in instructor_courses table
-// First, deactivate all current assignments for this course
-$stmt2 = $con->prepare("UPDATE instructor_courses SET is_active=0 WHERE course_id=?");
+// First, delete all current assignments for this course
+$stmt2 = $con->prepare("DELETE FROM instructor_courses WHERE course_id=?");
 $stmt2->bind_param("s", $Id);
 $stmt2->execute();
 $stmt2->close();
 
-// Then add/activate the new instructor assignment
-$stmt3 = $con->prepare("INSERT INTO instructor_courses (course_id, instructor_id, is_active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE is_active=1");
+// Then add the new instructor assignment
+$stmt3 = $con->prepare("INSERT INTO instructor_courses (course_id, instructor_id) VALUES (?, ?)");
 $stmt3->bind_param("ss", $Id, $Inst);
 $stmt3->execute();
 $stmt3->close();

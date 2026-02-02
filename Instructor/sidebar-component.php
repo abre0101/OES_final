@@ -31,9 +31,9 @@
             <span class="sidebar-nav-icon">📝</span>
             <span>Questions</span>
         </a>
-        <a href="ManageSchedules.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'ManageSchedules.php' || basename($_SERVER['PHP_SELF']) == 'CreateSchedule.php' || basename($_SERVER['PHP_SELF']) == 'EditSchedule.php') ? 'active' : ''; ?>" data-tooltip="Exam Schedules">
-            <span class="sidebar-nav-icon">📅</span>
-            <span>Exam Schedules</span>
+        <a href="MyExams.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'MyExams.php' || basename($_SERVER['PHP_SELF']) == 'CreateExam.php' || basename($_SERVER['PHP_SELF']) == 'ManageExamQuestions.php' || basename($_SERVER['PHP_SELF']) == 'SubmitExamForApproval.php') ? 'active' : ''; ?>" data-tooltip="My Exams">
+            <span class="sidebar-nav-icon">📋</span>
+            <span>My Exams</span>
         </a>
         <a href="ViewStudents.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'ViewStudents.php') ? 'active' : ''; ?>" data-tooltip="Students">
             <span class="sidebar-nav-icon">👨‍🎓</span>
@@ -59,10 +59,6 @@
         <div class="sidebar-divider"></div>
         
         <!-- Settings -->
-        <a href="Notifications.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Notifications.php') ? 'active' : ''; ?>" data-tooltip="Notifications">
-            <span class="sidebar-nav-icon">🔔</span>
-            <span>Notifications</span>
-        </a>
         <a href="Settings.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Settings.php') ? 'active' : ''; ?>" data-tooltip="Settings">
             <span class="sidebar-nav-icon">⚙️</span>
             <span>Settings</span>

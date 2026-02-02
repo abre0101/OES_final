@@ -24,7 +24,7 @@ $resultQuery = $con->prepare("SELECT
     s.email as student_email
     FROM exam_results er
     INNER JOIN students s ON er.student_id = s.student_id
-    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
@@ -55,9 +55,9 @@ $questionsQuery = $con->prepare("SELECT
     FROM exam_questions eq
     INNER JOIN questions q ON eq.question_id = q.question_id
     LEFT JOIN student_answers sa ON q.question_id = sa.question_id AND sa.result_id = ?
-    WHERE eq.schedule_id = ?
+    WHERE eq.exam_id = ?
     ORDER BY eq.question_order");
-$questionsQuery->bind_param("ii", $result_id, $result['schedule_id']);
+$questionsQuery->bind_param("ii", $result_id, $result['exam_id']);
 $questionsQuery->execute();
 $questions = $questionsQuery->get_result();
 ?>

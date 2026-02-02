@@ -18,17 +18,17 @@ $live_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name,
                 COUNT(DISTINCT sc.student_id) as enrolled_count,
                 COUNT(DISTINCT er.result_id) as completed_count,
                 COUNT(DISTINCT CASE WHEN er.exam_submitted_at IS NULL THEN er.result_id END) as in_progress_count
-                FROM exam_schedules es
+                FROM exams es
                 LEFT JOIN courses c ON es.course_id = c.course_id
                 LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
                 LEFT JOIN instructors i ON es.created_by = i.instructor_id
                 LEFT JOIN student_courses sc ON c.course_id = sc.course_id
-                LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+                LEFT JOIN exam_results er ON es.exam_id = er.exam_id
                 WHERE c.department_id = ? 
                 AND es.is_active = 1 
                 AND es.exam_date = CURDATE()
                 AND TIME(NOW()) BETWEEN es.start_time AND es.end_time
-                GROUP BY es.schedule_id
+                GROUP BY es.exam_id
                 ORDER BY es.start_time ASC";
 $stmt = $con->prepare($live_query);
 $stmt->bind_param("i", $deptId);
@@ -40,16 +40,16 @@ $today_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name,
                 i.full_name as instructor_name,
                 COUNT(DISTINCT sc.student_id) as enrolled_count,
                 COUNT(DISTINCT er.result_id) as completed_count
-                FROM exam_schedules es
+                FROM exams es
                 LEFT JOIN courses c ON es.course_id = c.course_id
                 LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
                 LEFT JOIN instructors i ON es.created_by = i.instructor_id
                 LEFT JOIN student_courses sc ON c.course_id = sc.course_id
-                LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+                LEFT JOIN exam_results er ON es.exam_id = er.exam_id
                 WHERE c.department_id = ? 
                 AND es.is_active = 1 
                 AND es.exam_date = CURDATE()
-                GROUP BY es.schedule_id
+                GROUP BY es.exam_id
                 ORDER BY es.start_time ASC";
 $stmt = $con->prepare($today_query);
 $stmt->bind_param("i", $deptId);
@@ -58,11 +58,11 @@ $today_exams = $stmt->get_result();
 
 // Get students currently taking exams
 $active_students_query = "SELECT s.full_name, s.student_code, c.course_code, es.exam_name,
-                          er.exam_started_at, es.duration_minutes, es.schedule_id,
+                          er.exam_started_at, es.duration_minutes, es.exam_id,
                           TIMESTAMPDIFF(MINUTE, er.exam_started_at, NOW()) as elapsed_minutes
                           FROM exam_results er
                           INNER JOIN students s ON er.student_id = s.student_id
-                          INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+                          INNER JOIN exams es ON er.exam_id = es.exam_id
                           INNER JOIN courses c ON es.course_id = c.course_id
                           WHERE c.department_id = ?
                           AND er.exam_submitted_at IS NULL
@@ -290,7 +290,7 @@ $active_students_count = $active_students->num_rows;
                                 </div>
                             </div>
                             <div>
-                                <a href="ViewExamDetails.php?id=<?php echo $exam['schedule_id']; ?>" class="btn btn-sm btn-primary">
+                                <a href="ViewExamDetails.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-primary">
                                     📊 View Details
                                 </a>
                             </div>
@@ -446,7 +446,7 @@ $active_students_count = $active_students->num_rows;
                                     </td>
                                     <td><?php echo $status_badge; ?></td>
                                     <td>
-                                        <a href="ViewExamDetails.php?id=<?php echo $exam['schedule_id']; ?>" class="btn btn-sm btn-info">
+                                        <a href="ViewExamDetails.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-info">
                                             View
                                         </a>
                                     </td>

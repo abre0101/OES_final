@@ -15,12 +15,12 @@ $courseFilter = $_GET['course'] ?? '';
 // Build query
 $query = "SELECT es.*, c.course_name, c.course_code, d.department_name, 
     ec.category_name,
-    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.schedule_id = es.schedule_id) as question_count
-    FROM exam_schedules es
+    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = es.exam_id) as question_count
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN departments d ON c.department_id = d.department_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
-    WHERE es.approval_status = 'pending' AND es.submitted_for_approval = TRUE";
+    WHERE es.approval_status = 'pending'";
 
 $params = [];
 $types = "";
@@ -50,14 +50,14 @@ $pendingExams = $stmt->get_result();
 $departments = $con->query("SELECT DISTINCT d.department_id, d.department_name 
     FROM departments d 
     INNER JOIN courses c ON d.department_id = c.department_id
-    INNER JOIN exam_schedules es ON c.course_id = es.course_id
+    INNER JOIN exams es ON c.course_id = es.course_id
     WHERE es.approval_status = 'pending'
     ORDER BY d.department_name");
 
 // Get courses for filter
 $courses = $con->query("SELECT DISTINCT c.course_id, c.course_name, c.course_code
     FROM courses c
-    INNER JOIN exam_schedules es ON c.course_id = es.course_id
+    INNER JOIN exams es ON c.course_id = es.course_id
     WHERE es.approval_status = 'pending'
     ORDER BY c.course_name");
 
@@ -66,8 +66,8 @@ $stats = $con->query("SELECT
     COUNT(*) as total_pending,
     SUM(CASE WHEN es.submitted_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1 ELSE 0 END) as new_today,
     SUM(CASE WHEN es.submitted_at < DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as overdue
-    FROM exam_schedules es
-    WHERE es.approval_status = 'pending' AND es.submitted_for_approval = TRUE")->fetch_assoc();
+    FROM exams es
+    WHERE es.approval_status = 'pending'")->fetch_assoc();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -247,16 +247,16 @@ $stats = $con->query("SELECT
                     </div>
 
                     <div class="action-buttons">
-                        <button class="btn-approve" onclick="showApprovalModal(<?php echo $exam['schedule_id']; ?>, 'approve', '<?php echo htmlspecialchars($exam['exam_name']); ?>')">
+                        <button class="btn-approve" onclick="showApprovalModal(<?php echo $exam['exam_id']; ?>, 'approve', '<?php echo htmlspecialchars($exam['exam_name']); ?>')">
                             ✓ Approve
                         </button>
-                        <button class="btn-revision" onclick="showApprovalModal(<?php echo $exam['schedule_id']; ?>, 'revision', '<?php echo htmlspecialchars($exam['exam_name']); ?>')">
+                        <button class="btn-revision" onclick="showApprovalModal(<?php echo $exam['exam_id']; ?>, 'revision', '<?php echo htmlspecialchars($exam['exam_name']); ?>')">
                             ✏️ Request Revision
                         </button>
-                        <button class="btn-reject" onclick="showApprovalModal(<?php echo $exam['schedule_id']; ?>, 'reject', '<?php echo htmlspecialchars($exam['exam_name']); ?>')">
+                        <button class="btn-reject" onclick="showApprovalModal(<?php echo $exam['exam_id']; ?>, 'reject', '<?php echo htmlspecialchars($exam['exam_name']); ?>')">
                             ✗ Reject
                         </button>
-                        <a href="ViewExamDetails.php?schedule_id=<?php echo $exam['schedule_id']; ?>" class="btn-filter" style="background: #6c757d;">
+                        <a href="ViewExamDetails.php?exam_id=<?php echo $exam['exam_id']; ?>" class="btn-filter" style="background: #6c757d;">
                             👁️ View Details
                         </a>
                     </div>
@@ -280,7 +280,7 @@ $stats = $con->query("SELECT
                 <span class="close" onclick="closeModal()">&times;</span>
             </div>
             <form method="POST" action="ProcessApproval.php">
-                <input type="hidden" name="schedule_id" id="modalScheduleId">
+                <input type="hidden" name="exam_id" id="modalScheduleId">
                 <input type="hidden" name="action" id="modalAction">
                 
                 <p id="modalMessage" style="margin-bottom: 1.5rem; color: #6c757d;"></p>

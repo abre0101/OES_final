@@ -16,7 +16,7 @@ $instructor_id = $_SESSION['ID'];
 $coursesQuery = $con->prepare("SELECT DISTINCT c.course_id, c.course_name, c.course_code
     FROM instructor_courses ic
     INNER JOIN courses c ON ic.course_id = c.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE
+    WHERE ic.instructor_id = ?
     ORDER BY c.course_name");
 $coursesQuery->bind_param("i", $instructor_id);
 $coursesQuery->execute();
@@ -100,19 +100,19 @@ $instructorCourses = $coursesQuery->get_result();
                     <?php
                     // Get exams for instructor's courses with question counts
                     $examsQuery = $con->prepare("SELECT 
-                        es.schedule_id,
+                        es.exam_id,
                         es.exam_name,
                         c.course_name,
                         c.course_code,
                         ec.category_name,
                         COUNT(DISTINCT eq.question_id) as question_count
-                        FROM exam_schedules es
+                        FROM exams es
                         INNER JOIN courses c ON es.course_id = c.course_id
                         INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
                         INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-                        LEFT JOIN exam_questions eq ON es.schedule_id = eq.schedule_id
-                        WHERE ic.instructor_id = ? AND ic.is_active = TRUE
-                        GROUP BY es.schedule_id
+                        LEFT JOIN exam_questions eq ON es.exam_id = eq.exam_id
+                        WHERE ic.instructor_id = ?
+                        GROUP BY es.exam_id
                         ORDER BY es.exam_date DESC");
                     $examsQuery->bind_param("i", $instructor_id);
                     $examsQuery->execute();
@@ -134,10 +134,10 @@ $instructorCourses = $coursesQuery->get_result();
                                 </p>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
-                                <a href="ViewExam.php?id=<?php echo $exam['schedule_id']; ?>" class="btn-modern btn-primary btn-sm">
+                                <a href="ViewExam.php?id=<?php echo $exam['exam_id']; ?>" class="btn-modern btn-primary btn-sm">
                                     👁️ View All
                                 </a>
-                                <a href="AddQuestion.php?schedule_id=<?php echo $exam['schedule_id']; ?>" class="btn-modern btn-success btn-sm">
+                                <a href="AddQuestion.php?exam_id=<?php echo $exam['exam_id']; ?>" class="btn-modern btn-success btn-sm">
                                     ➕ Add Question
                                 </a>
                             </div>
@@ -148,10 +148,10 @@ $instructorCourses = $coursesQuery->get_result();
                         $questionsQuery = $con->prepare("SELECT q.question_id, q.question_text
                             FROM exam_questions eq
                             INNER JOIN questions q ON eq.question_id = q.question_id
-                            WHERE eq.schedule_id = ?
+                            WHERE eq.exam_id = ?
                             ORDER BY eq.question_order
                             LIMIT 3");
-                        $questionsQuery->bind_param("i", $exam['schedule_id']);
+                        $questionsQuery->bind_param("i", $exam['exam_id']);
                         $questionsQuery->execute();
                         $examQuestions = $questionsQuery->get_result();
                         
@@ -175,7 +175,7 @@ $instructorCourses = $coursesQuery->get_result();
                         </div>
                         <?php else: ?>
                         <div style="text-align: center; padding: 1rem; color: #6c757d; border-top: 2px solid #e0e0e0; margin-top: 1rem;">
-                            No questions yet. <a href="AddQuestion.php?schedule_id=<?php echo $exam['schedule_id']; ?>">Add your first question</a>
+                            No questions yet. <a href="AddQuestion.php?exam_id=<?php echo $exam['exam_id']; ?>">Add your first question</a>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -397,8 +397,8 @@ $instructorCourses = $coursesQuery->get_result();
                         FROM question_topics qt
                         INNER JOIN courses c ON qt.course_id = c.course_id
                         INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-                        LEFT JOIN questions q ON qt.topic_id = q.topic_id AND q.instructor_id = ?
-                        WHERE ic.instructor_id = ? AND ic.is_active = TRUE
+                        LEFT JOIN questions q ON qt.topic_id = q.topic_id AND q.created_by = ?
+                        WHERE ic.instructor_id = ?
                         GROUP BY qt.topic_id
                         HAVING question_count > 0
                         ORDER BY c.course_name, qt.chapter_number, qt.topic_name");

@@ -21,7 +21,7 @@ if($count > 0) {
     while($row = $records->fetch_assoc()) {
         echo "<tr>";
         echo "<td>" . $row['history_id'] . "</td>";
-        echo "<td>" . $row['schedule_id'] . "</td>";
+        echo "<td>" . $row['exam_id'] . "</td>";
         echo "<td>" . $row['action'] . "</td>";
         echo "<td>" . $row['performed_by'] . "</td>";
         echo "<td>" . $row['performed_by_type'] . "</td>";
@@ -33,9 +33,9 @@ if($count > 0) {
     
     // Check if exams exist for these records
     echo "<h3>4. Checking if related exams exist:</h3>";
-    $check = $con->query("SELECT eah.history_id, eah.schedule_id, es.exam_name, c.course_name
+    $check = $con->query("SELECT eah.history_id, eah.exam_id, es.exam_name, c.course_name
         FROM exam_approval_history eah
-        LEFT JOIN exam_schedules es ON eah.schedule_id = es.schedule_id
+        LEFT JOIN exams es ON eah.exam_id = es.exam_id
         LEFT JOIN courses c ON es.course_id = c.course_id
         ORDER BY eah.created_at DESC");
     
@@ -44,7 +44,7 @@ if($count > 0) {
     while($row = $check->fetch_assoc()) {
         echo "<tr>";
         echo "<td>" . $row['history_id'] . "</td>";
-        echo "<td>" . $row['schedule_id'] . "</td>";
+        echo "<td>" . $row['exam_id'] . "</td>";
         echo "<td>" . ($row['exam_name'] ?? '<span style="color:red;">NOT FOUND</span>') . "</td>";
         echo "<td>" . ($row['course_name'] ?? '<span style="color:red;">NOT FOUND</span>') . "</td>";
         echo "</tr>";
@@ -56,9 +56,9 @@ if($count > 0) {
     echo "<p>Go to <a href='PendingApprovals.php'>Pending Approvals</a> and approve an exam to create history records.</p>";
 }
 
-// Check exam_schedules
+// Check exams
 echo "<h3>5. Exam Schedules Status:</h3>";
-$exams = $con->query("SELECT approval_status, COUNT(*) as count FROM exam_schedules GROUP BY approval_status");
+$exams = $con->query("SELECT approval_status, COUNT(*) as count FROM exams GROUP BY approval_status");
 echo "<table border='1' cellpadding='5' style='border-collapse: collapse;'>";
 echo "<tr><th>Status</th><th>Count</th></tr>";
 while($row = $exams->fetch_assoc()) {

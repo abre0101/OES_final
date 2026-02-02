@@ -15,7 +15,7 @@ $studentSemester = $_SESSION['Sem'];
 // Get scheduled exams for student's semester
 $scheduledExams = $con->query("SELECT s.*, ec.exam_name, 
     TIMESTAMPDIFF(SECOND, NOW(), CONCAT(s.date, ' ', s.time)) as seconds_until_exam
-    FROM exam_schedules s
+    FROM exams s
     LEFT JOIN exam_categories ec ON s.exam_id = ec.exam_id
     WHERE s.semester = '$studentSemester'
     ORDER BY s.date ASC, s.time ASC");
@@ -277,20 +277,20 @@ $con->close();
                         </div>
 
                         <?php if($is_active == 'upcoming'): ?>
-                        <div class="countdown-timer" id="countdown-<?php echo $exam['schedule_id']; ?>">
+                        <div class="countdown-timer" id="countdown-<?php echo $exam['exam_id']; ?>">
                             <div style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">Starts in:</div>
                             <div class="countdown-display">Calculating...</div>
                         </div>
                         <?php elseif($is_active == 'open'): ?>
                         <div class="countdown-timer" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.2) 100%);">
                             <div style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--success-color);">? Exam is LIVE!</div>
-                            <div class="countdown-display" id="countdown-<?php echo $exam['schedule_id']; ?>">Time remaining...</div>
+                            <div class="countdown-display" id="countdown-<?php echo $exam['exam_id']; ?>">Time remaining...</div>
                         </div>
                         <?php endif; ?>
 
                         <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
                             <?php if($is_active == 'open'): ?>
-                            <a href="exam-instructions.php?schedule_id=<?php echo $exam['schedule_id']; ?>" class="btn btn-success" style="flex: 1;">
+                            <a href="exam-instructions.php?exam_id=<?php echo $exam['exam_id']; ?>" class="btn btn-success" style="flex: 1;">
                                 ?? Start Exam Now
                             </a>
                             <?php elseif($is_active == 'upcoming'): ?>
@@ -303,7 +303,7 @@ $con->close();
                             </button>
                             <?php endif; ?>
                             
-                            <a href="exam-instructions.php?schedule_id=<?php echo $exam['schedule_id']; ?>" class="btn btn-primary">
+                            <a href="exam-instructions.php?exam_id=<?php echo $exam['exam_id']; ?>" class="btn btn-primary">
                                 ?? View Instructions
                             </a>
                         </div>

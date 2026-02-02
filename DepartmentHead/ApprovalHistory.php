@@ -19,7 +19,7 @@ $searchQuery = $_GET['search'] ?? '';
 $query = "SELECT eah.*, es.exam_name, c.course_name, c.course_code, ec.category_name,
     ecm.full_name as reviewer_name
     FROM exam_approval_history eah
-    INNER JOIN exam_schedules es ON eah.schedule_id = es.schedule_id
+    INNER JOIN exams es ON eah.exam_id = es.exam_id
     LEFT JOIN courses c ON es.course_id = c.course_id
     LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     LEFT JOIN exam_committee_members ecm ON eah.performed_by = ecm.committee_member_id AND eah.performed_by_type = 'committee'

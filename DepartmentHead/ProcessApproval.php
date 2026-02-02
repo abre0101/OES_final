@@ -8,11 +8,11 @@ if(!isset($_SESSION['Name'])){
 $con = require_once(__DIR__ . "/../Connections/OES.php");
 
 // Get parameters
-$schedule_id = $_POST['schedule_id'] ?? $_GET['schedule_id'] ?? 0;
+$exam_id = $_POST['exam_id'] ?? $_GET['exam_id'] ?? 0;
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $comments = $_POST['comments'] ?? $_GET['comments'] ?? '';
 
-if(!$schedule_id || !$action) {
+if(!$exam_id || !$action) {
     $_SESSION['error'] = "Invalid request parameters.";
     header("Location: PendingApprovals.php");
     exit();
@@ -20,9 +20,9 @@ if(!$schedule_id || !$action) {
 
 // Get exam details - exclude draft exams
 $exam = $con->query("SELECT es.*, c.course_name
-    FROM exam_schedules es
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
-    WHERE es.schedule_id = $schedule_id AND es.approval_status != 'draft'
+    WHERE es.exam_id = $exam_id AND es.approval_status != 'draft'
     LIMIT 1")->fetch_assoc();
 
 if(!$exam) {
@@ -39,21 +39,21 @@ try {
     switch($action) {
         case 'approve':
             // Update exam status to approved
-            $stmt = $con->prepare("UPDATE exam_schedules SET 
+            $stmt = $con->prepare("UPDATE exams SET 
                 approval_status = 'approved',
                 approved_by = ?,
                 approval_date = ?,
                 reviewer_comments = ?
-                WHERE schedule_id = ?");
-            $stmt->bind_param("sssi", $reviewer_name, $review_date, $comments, $schedule_id);
+                WHERE exam_id = ?");
+            $stmt->bind_param("sssi", $reviewer_name, $review_date, $comments, $exam_id);
             
             if($stmt->execute()) {
                 // Log approval in history
                 $log_stmt = $con->prepare("INSERT INTO exam_approval_history 
-                    (schedule_id, action, performed_by, performed_by_type, comments, previous_status, new_status, created_at) 
+                    (exam_id, action, performed_by, performed_by_type, comments, previous_status, new_status, created_at) 
                     VALUES (?, 'approved', ?, 'committee', ?, ?, 'approved', ?)");
                 $prev_status = $exam['approval_status'];
-                $log_stmt->bind_param("iisss", $schedule_id, $reviewer_id, $comments, $prev_status, $review_date);
+                $log_stmt->bind_param("iisss", $exam_id, $reviewer_id, $comments, $prev_status, $review_date);
                 $log_stmt->execute();
                 
                 $_SESSION['success'] = "✓ Exam approved successfully!";
@@ -71,22 +71,22 @@ try {
             
             // Update exam status to revision
             $revision_count = $exam['revision_count'] + 1;
-            $stmt = $con->prepare("UPDATE exam_schedules SET 
+            $stmt = $con->prepare("UPDATE exams SET 
                 approval_status = 'revision',
                 reviewer_comments = ?,
                 reviewed_by = ?,
                 reviewed_at = ?,
                 revision_count = ?
-                WHERE schedule_id = ?");
-            $stmt->bind_param("sssii", $comments, $reviewer_name, $review_date, $revision_count, $schedule_id);
+                WHERE exam_id = ?");
+            $stmt->bind_param("sssii", $comments, $reviewer_name, $review_date, $revision_count, $exam_id);
             
             if($stmt->execute()) {
                 // Log revision request in history
                 $log_stmt = $con->prepare("INSERT INTO exam_approval_history 
-                    (schedule_id, action, performed_by, performed_by_type, comments, previous_status, new_status, created_at) 
+                    (exam_id, action, performed_by, performed_by_type, comments, previous_status, new_status, created_at) 
                     VALUES (?, 'revision_requested', ?, 'committee', ?, ?, 'revision', ?)");
                 $prev_status = $exam['approval_status'];
-                $log_stmt->bind_param("iisss", $schedule_id, $reviewer_id, $comments, $prev_status, $review_date);
+                $log_stmt->bind_param("iisss", $exam_id, $reviewer_id, $comments, $prev_status, $review_date);
                 $log_stmt->execute();
                 
                 $_SESSION['success'] = "✏️ Revision request sent to instructor.";
@@ -103,21 +103,21 @@ try {
             }
             
             // Update exam status to rejected
-            $stmt = $con->prepare("UPDATE exam_schedules SET 
+            $stmt = $con->prepare("UPDATE exams SET 
                 approval_status = 'rejected',
                 reviewer_comments = ?,
                 reviewed_by = ?,
                 reviewed_at = ?
-                WHERE schedule_id = ?");
-            $stmt->bind_param("sssi", $comments, $reviewer_name, $review_date, $schedule_id);
+                WHERE exam_id = ?");
+            $stmt->bind_param("sssi", $comments, $reviewer_name, $review_date, $exam_id);
             
             if($stmt->execute()) {
                 // Log rejection in history
                 $log_stmt = $con->prepare("INSERT INTO exam_approval_history 
-                    (schedule_id, action, performed_by, performed_by_type, comments, previous_status, new_status, created_at) 
+                    (exam_id, action, performed_by, performed_by_type, comments, previous_status, new_status, created_at) 
                     VALUES (?, 'rejected', ?, 'committee', ?, ?, 'rejected', ?)");
                 $prev_status = $exam['approval_status'];
-                $log_stmt->bind_param("iisss", $schedule_id, $reviewer_id, $comments, $prev_status, $review_date);
+                $log_stmt->bind_param("iisss", $exam_id, $reviewer_id, $comments, $prev_status, $review_date);
                 $log_stmt->execute();
                 
                 $_SESSION['success'] = "✗ Exam rejected.";

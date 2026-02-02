@@ -19,7 +19,7 @@ $category_filter = $_GET['category'] ?? null;
 
 // Build query for exams
 $query = "SELECT 
-    es.schedule_id,
+    es.exam_id,
     es.exam_name,
     es.exam_date,
     es.start_time,
@@ -36,13 +36,13 @@ $query = "SELECT
     COUNT(DISTINCT eq.question_id) as question_count,
     COUNT(DISTINCT er.student_id) as students_taken,
     AVG(er.percentage_score) as avg_score
-    FROM exam_schedules es
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     INNER JOIN departments d ON c.department_id = d.department_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    LEFT JOIN exam_questions eq ON es.schedule_id = eq.schedule_id
-    LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+    LEFT JOIN exam_questions eq ON es.exam_id = eq.exam_id
+    LEFT JOIN exam_results er ON es.exam_id = er.exam_id
     WHERE ic.instructor_id = ? AND ic.is_active = TRUE";
 
 $params = [$instructor_id];
@@ -66,7 +66,7 @@ if($category_filter) {
     $types .= "i";
 }
 
-$query .= " GROUP BY es.schedule_id ORDER BY es.exam_date DESC, es.start_time DESC";
+$query .= " GROUP BY es.exam_id ORDER BY es.exam_date DESC, es.start_time DESC";
 
 $stmt = $con->prepare($query);
 $stmt->bind_param($types, ...$params);
@@ -88,15 +88,15 @@ $categories = $con->query("SELECT * FROM exam_categories WHERE is_active = TRUE 
 
 // Get statistics
 $statsQuery = $con->prepare("SELECT 
-    COUNT(DISTINCT es.schedule_id) as total_exams,
+    COUNT(DISTINCT es.exam_id) as total_exams,
     COUNT(DISTINCT c.course_id) as courses_with_exams,
     SUM(CASE WHEN es.exam_date >= CURDATE() THEN 1 ELSE 0 END) as upcoming_exams,
     SUM(CASE WHEN es.exam_date < CURDATE() THEN 1 ELSE 0 END) as past_exams,
     COUNT(DISTINCT er.student_id) as total_students_examined
-    FROM exam_schedules es
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+    LEFT JOIN exam_results er ON es.exam_id = er.exam_id
     WHERE ic.instructor_id = ? AND ic.is_active = TRUE");
 $statsQuery->bind_param("i", $instructor_id);
 $statsQuery->execute();
@@ -390,13 +390,13 @@ $statsQuery->close();
                     </div>
 
                     <div class="exam-actions">
-                        <a href="ViewExam.php?id=<?php echo $exam['schedule_id']; ?>" class="btn btn-primary btn-sm">
+                        <a href="ViewExam.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-primary btn-sm">
                             👁️ View Questions (<?php echo $exam['question_count']; ?>)
                         </a>
-                        <a href="ResultsOverview.php?exam=<?php echo $exam['schedule_id']; ?>" class="btn btn-success btn-sm">
+                        <a href="ResultsOverview.php?exam=<?php echo $exam['exam_id']; ?>" class="btn btn-success btn-sm">
                             📊 Results (<?php echo $exam['students_taken']; ?>)
                         </a>
-                        <a href="EditSchedule.php?id=<?php echo $exam['schedule_id']; ?>" class="btn btn-secondary btn-sm">
+                        <a href="EditSchedule.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-secondary btn-sm">
                             ⚙️ Settings
                         </a>
                     </div>

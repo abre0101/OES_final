@@ -14,9 +14,9 @@ $statusFilter = $_GET['status'] ?? 'all';
 
 // Build query
 $query = "SELECT es.*, c.course_name, c.course_code, ec.category_name,
-    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.schedule_id = es.schedule_id) as question_count,
-    (SELECT COUNT(DISTINCT er.student_id) FROM exam_results er WHERE er.schedule_id = es.schedule_id) as student_count
-    FROM exam_schedules es
+    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = es.exam_id) as question_count,
+    (SELECT COUNT(DISTINCT er.student_id) FROM exam_results er WHERE er.exam_id = es.exam_id) as student_count
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
@@ -44,7 +44,7 @@ $stats = $con->query("SELECT
     SUM(CASE WHEN approval_status = 'approved' THEN 1 ELSE 0 END) as approved,
     SUM(CASE WHEN approval_status = 'revision' THEN 1 ELSE 0 END) as revision,
     SUM(CASE WHEN approval_status = 'rejected' THEN 1 ELSE 0 END) as rejected
-    FROM exam_schedules es
+    FROM exams es
     INNER JOIN instructor_courses ic ON es.course_id = ic.course_id
     WHERE ic.instructor_id = $instructor_id AND ic.is_active = TRUE")->fetch_assoc();
 ?>
@@ -205,7 +205,7 @@ $stats = $con->query("SELECT
                     <?php endif; ?>
 
                     <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
-                        <a href="ManageQuestions.php?schedule_id=<?php echo $exam['schedule_id']; ?>" class="btn-submit" style="background: #6c757d;">
+                        <a href="ManageQuestions.php?exam_id=<?php echo $exam['exam_id']; ?>" class="btn-submit" style="background: #6c757d;">
                             📝 Manage Questions
                         </a>
                         
@@ -221,7 +221,7 @@ $stats = $con->query("SELECT
                             <button type="button" 
                                     class="btn-submit <?php echo !$canSubmit ? 'disabled' : ''; ?>" 
                                     <?php if($canSubmit): ?>
-                                    onclick="if(confirm('Submit this exam for approval?')) { window.location.href='SubmitExamForApproval.php?schedule_id=<?php echo $exam['schedule_id']; ?>'; }"
+                                    onclick="if(confirm('Submit this exam for approval?')) { window.location.href='SubmitExamForApproval.php?exam_id=<?php echo $exam['exam_id']; ?>'; }"
                                     <?php else: ?>
                                     onclick="alert('Minimum 5 questions required. Current: <?php echo $exam['question_count']; ?>');" 
                                     style="opacity: 0.5; cursor: not-allowed;"
@@ -243,7 +243,7 @@ $stats = $con->query("SELECT
                                     class="btn-submit <?php echo !$canResubmit ? 'disabled' : ''; ?>" 
                                     style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); <?php echo !$canResubmit ? 'opacity: 0.5; cursor: not-allowed;' : ''; ?>" 
                                     <?php if($canResubmit): ?>
-                                    onclick="if(confirm('Resubmit this exam for approval?')) { window.location.href='SubmitExamForApproval.php?schedule_id=<?php echo $exam['schedule_id']; ?>'; }"
+                                    onclick="if(confirm('Resubmit this exam for approval?')) { window.location.href='SubmitExamForApproval.php?exam_id=<?php echo $exam['exam_id']; ?>'; }"
                                     <?php else: ?>
                                     onclick="alert('Minimum 5 questions required. Current: <?php echo $exam['question_count']; ?>');"
                                     <?php endif; ?>>

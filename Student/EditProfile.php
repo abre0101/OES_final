@@ -44,6 +44,7 @@ mysqli_close($con);
     <link href="../assets/css/modern-v2.css" rel="stylesheet">
     <link href="../assets/css/student-modern.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .edit-profile-container {
             max-width: 900px;
@@ -287,24 +288,24 @@ mysqli_close($con);
                         </div>
                         <div class="dropdown-menu">
                             <a href="Profile.php" class="dropdown-item">
-                                <span class="dropdown-icon">??</span>
+                                <i class="fas fa-user"></i>
                                 <span>My Profile</span>
                             </a>
                             <a href="EditProfile.php?Id=<?php echo $_SESSION['ID']; ?>" class="dropdown-item">
-                                <span class="dropdown-icon">??</span>
+                                <i class="fas fa-cog"></i>
                                 <span>Account Settings</span>
                             </a>
                             <a href="../Help.php" class="dropdown-item">
-                                <span class="dropdown-icon">?</span>
+                                <i class="fas fa-question-circle"></i>
                                 <span>Help</span>
                             </a>
                             <a href="../AboutUs.php" class="dropdown-item">
-                                <span class="dropdown-icon">??</span>
+                                <i class="fas fa-info-circle"></i>
                                 <span>About</span>
                             </a>
                             <div class="dropdown-divider"></div>
                             <a href="Logout.php" class="dropdown-item logout">
-                                <span class="dropdown-icon">??</span>
+                                <i class="fas fa-sign-out-alt"></i>
                                 <span>Log Out</span>
                             </a>
                         </div>
@@ -340,14 +341,14 @@ mysqli_close($con);
 
                     <div class="profile-card-body">
                         <div class="alert alert-info">
-                            <span class="alert-icon">??</span>
+                            <i class="fas fa-info-circle alert-icon"></i>
                             <span>You can only change your username and password. Other information is managed by the administration.</span>
                         </div>
 
                         <!-- Student Information (Read-only) -->
                         <div class="info-section">
                             <div class="info-section-title">
-                                <span>??</span>
+                                <i class="fas fa-user"></i>
                                 <span>Student Information</span>
                             </div>
                             <div class="info-grid">
@@ -381,7 +382,7 @@ mysqli_close($con);
                         <!-- Edit Form -->
                         <div class="info-section">
                             <div class="info-section-title">
-                                <span>??</span>
+                                <i class="fas fa-lock"></i>
                                 <span>Account Credentials</span>
                             </div>
                             <form method="post" action="UpdateProfile.php?Id=<?php echo $Id; ?>" id="editProfileForm">

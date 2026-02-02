@@ -11,7 +11,7 @@ if(!isset($_SESSION['Name'])){
 $con = require_once(__DIR__ . "/../Connections/OES.php");
 $pageTitle = "Edit Exam Schedule";
 $instructor_id = $_SESSION['ID'];
-$schedule_id = $_GET['id'] ?? 0;
+$exam_id = $_GET['id'] ?? 0;
 
 // Get exam schedule details
 $examQuery = $con->prepare("SELECT 
@@ -19,11 +19,11 @@ $examQuery = $con->prepare("SELECT
     c.course_id,
     c.course_name,
     c.course_code
-    FROM exam_schedules es
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    WHERE es.schedule_id = ? AND ic.instructor_id = ? AND ic.is_active = TRUE");
-$examQuery->bind_param("ii", $schedule_id, $instructor_id);
+    WHERE es.exam_id = ? AND ic.instructor_id = ?");
+$examQuery->bind_param("ii", $exam_id, $instructor_id);
 $examQuery->execute();
 $exam = $examQuery->get_result()->fetch_assoc();
 $examQuery->close();
@@ -70,7 +70,7 @@ $categories = $con->query("SELECT * FROM exam_categories WHERE is_active = TRUE 
             <!-- Edit Form -->
             <div class="form-wrapper">
                 <form method="POST" action="UpdateSchedule.php">
-                    <input type="hidden" name="schedule_id" value="<?php echo $schedule_id; ?>">
+                    <input type="hidden" name="exam_id" value="<?php echo $exam_id; ?>">
                     
                     <div class="form-section">
                         <h3 class="form-section-title">Exam Details</h3>
@@ -182,7 +182,7 @@ $categories = $con->query("SELECT * FROM exam_categories WHERE is_active = TRUE 
     <script>
         function confirmDelete() {
             if(confirm('Are you sure you want to delete this exam schedule? This action cannot be undone.')) {
-                window.location.href = 'DeleteSchedule.php?id=<?php echo $schedule_id; ?>';
+                window.location.href = 'DeleteSchedule.php?id=<?php echo $exam_id; ?>';
             }
         }
     </script>

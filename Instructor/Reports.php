@@ -40,7 +40,7 @@ $coursesQuery = $con->prepare("
     FROM courses c
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
     INNER JOIN departments d ON c.department_id = d.department_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE
+    WHERE ic.instructor_id = ?
     ORDER BY c.course_name
 ");
 $coursesQuery->bind_param("i", $instructorId);
@@ -58,7 +58,7 @@ $studentsQuery = $con->prepare("
     INNER JOIN student_courses sc ON s.student_id = sc.student_id
     INNER JOIN instructor_courses ic ON sc.course_id = ic.course_id
     INNER JOIN departments d ON s.department_id = d.department_id
-    WHERE ic.instructor_id = ? AND sc.is_active = TRUE
+    WHERE ic.instructor_id = ?
     ORDER BY s.full_name
 ");
 $studentsQuery->bind_param("i", $instructorId);
@@ -71,8 +71,8 @@ while($row = $studentsResult->fetch_assoc()) {
 
 // Get exams for instructor's courses
 $examsQuery = $con->prepare("
-    SELECT DISTINCT es.schedule_id, es.exam_name, es.exam_date, c.course_name, ec.category_name
-    FROM exam_schedules es
+    SELECT DISTINCT es.exam_id, es.exam_name, es.exam_date, c.course_name, ec.category_name
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
@@ -96,7 +96,7 @@ $statsQuery = $con->prepare("
         SUM(CASE WHEN er.pass_status = 'Pass' THEN 1 ELSE 0 END) as total_passed,
         SUM(CASE WHEN er.pass_status = 'Fail' THEN 1 ELSE 0 END) as total_failed
     FROM exam_results er
-    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
     WHERE ic.instructor_id = ?
@@ -117,7 +117,7 @@ $gradeDistQuery = $con->prepare("
         COUNT(*) as count,
         AVG(er.percentage_score) as avg_percentage
     FROM exam_results er
-    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
     WHERE ic.instructor_id = ?
@@ -146,8 +146,8 @@ $coursePerformanceQuery = $con->prepare("
         SUM(CASE WHEN er.pass_status = 'Fail' THEN 1 ELSE 0 END) as failed
     FROM courses c
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    LEFT JOIN exam_schedules es ON c.course_id = es.course_id
-    LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+    LEFT JOIN exams es ON c.course_id = es.course_id
+    LEFT JOIN exam_results er ON es.exam_id = er.exam_id
     WHERE ic.instructor_id = ?
     GROUP BY c.course_id, c.course_code, c.course_name
     ORDER BY c.course_name
@@ -179,7 +179,7 @@ if($studentFilter) {
             er.result_id
         FROM exam_results er
         INNER JOIN students s ON er.student_id = s.student_id
-        INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+        INNER JOIN exams es ON er.exam_id = es.exam_id
         INNER JOIN courses c ON es.course_id = c.course_id
         INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
         INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
@@ -209,7 +209,7 @@ if($examFilter) {
             er.exam_submitted_at
         FROM exam_results er
         INNER JOIN students s ON er.student_id = s.student_id
-        WHERE er.schedule_id = ?
+        WHERE er.exam_id = ?
         ORDER BY er.percentage_score DESC
     ");
     $examPerfQuery->bind_param("i", $examFilter);
@@ -227,7 +227,7 @@ $topPerformersQuery = $con->prepare("
         COUNT(er.result_id) as exams_taken
     FROM exam_results er
     INNER JOIN students s ON er.student_id = s.student_id
-    INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+    INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
     WHERE ic.instructor_id = ?
@@ -246,7 +246,6 @@ $questionAnalysisQuery = $con->prepare("
         q.question_id,
         LEFT(q.question_text, 100) as question_preview,
         qt.topic_name,
-        q.difficulty_level,
         COUNT(sa.answer_id) as times_answered,
         SUM(CASE WHEN sa.is_correct = TRUE THEN 1 ELSE 0 END) as correct_count,
         (SUM(CASE WHEN sa.is_correct = TRUE THEN 1 ELSE 0 END) * 100.0 / COUNT(sa.answer_id)) as success_rate
@@ -256,7 +255,7 @@ $questionAnalysisQuery = $con->prepare("
     LEFT JOIN question_topics qt ON q.topic_id = qt.topic_id
     LEFT JOIN student_answers sa ON q.question_id = sa.question_id
     WHERE ic.instructor_id = ?
-    GROUP BY q.question_id, q.question_text, qt.topic_name, q.difficulty_level
+    GROUP BY q.question_id, q.question_text, qt.topic_name
     HAVING COUNT(sa.answer_id) > 0
     ORDER BY success_rate ASC
     LIMIT 20
@@ -377,7 +376,7 @@ $questionAnalysisResult = $questionAnalysisQuery->get_result();
                             <select name="exam">
                                 <option value="">All Exams</option>
                                 <?php foreach($exams as $exam): ?>
-                                <option value="<?php echo $exam['schedule_id']; ?>" <?php echo $examFilter == $exam['schedule_id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $exam['exam_id']; ?>" <?php echo $examFilter == $exam['exam_id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($exam['exam_name']); ?> (<?php echo date('M d, Y', strtotime($exam['exam_date'])); ?>)
                                 </option>
                                 <?php endforeach; ?>
@@ -534,7 +533,7 @@ $questionAnalysisResult = $questionAnalysisQuery->get_result();
             <div class="report-section">
                 <div class="section-header"><h2 class="section-title"><span>❓</span> Question Difficulty Analysis</h2><p style="margin: 0; color: #6c757d; font-size: 0.9rem;">Questions with lowest success rates (most difficult)</p></div>
                 <table class="data-table">
-                    <thead><tr><th style="width: 40%;">Question Preview</th><th>Topic</th><th>Difficulty</th><th>Times Answered</th><th>Correct</th><th>Success Rate</th></tr></thead>
+                    <thead><tr><th style="width: 40%;">Question Preview</th><th>Topic</th><th>Times Answered</th><th>Correct</th><th>Success Rate</th></tr></thead>
                     <tbody>
                         <?php while($row = $questionAnalysisResult->fetch_assoc()): 
                             $successRate = $row['success_rate'] ?? 0;
@@ -543,7 +542,6 @@ $questionAnalysisResult = $questionAnalysisQuery->get_result();
                         <tr>
                             <td><?php echo htmlspecialchars($row['question_preview']); ?>...</td>
                             <td><?php echo htmlspecialchars($row['topic_name'] ?? 'N/A'); ?></td>
-                            <td><span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; <?php if($row['difficulty_level'] == 'Easy') echo 'background: #d4edda; color: #155724;'; elseif($row['difficulty_level'] == 'Medium') echo 'background: #fff3cd; color: #856404;'; else echo 'background: #f8d7da; color: #721c24;'; ?>"><?php echo $row['difficulty_level']; ?></span></td>
                             <td><?php echo $row['times_answered']; ?></td>
                             <td style="color: #28a745; font-weight: 600;"><?php echo $row['correct_count']; ?></td>
                             <td><span class="score-badge <?php echo $badgeClass; ?>"><?php echo number_format($successRate, 1); ?>%</span></td>

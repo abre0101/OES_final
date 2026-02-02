@@ -62,16 +62,16 @@ $query = "SELECT
           es.is_active,
           COUNT(DISTINCT sc.student_id) as enrolled_count,
           COUNT(DISTINCT er.result_id) as attempts_count,
-          (SELECT COUNT(*) FROM exam_questions eq WHERE eq.schedule_id = es.schedule_id) as question_count
-          FROM exam_schedules es
+          (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = es.exam_id) as question_count
+          FROM exams es
           LEFT JOIN courses c ON es.course_id = c.course_id
           LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
           LEFT JOIN instructors i ON es.created_by = i.instructor_id
-          LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+          LEFT JOIN exam_results er ON es.exam_id = er.exam_id
           LEFT JOIN student_courses sc ON c.course_id = sc.course_id
           WHERE c.department_id = ?
           $status_condition $course_condition $year_condition
-          GROUP BY es.schedule_id
+          GROUP BY es.exam_id
           ORDER BY es.exam_date DESC";
 
 $stmt = $con->prepare($query);

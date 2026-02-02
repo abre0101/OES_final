@@ -30,8 +30,8 @@
 	$con->query($sql);
 	
 	// Insert instructor assignment
-	$sql2 = "INSERT INTO instructor_courses (course_id, instructor_id, is_active) 
-	         VALUES('".$Id."',".$Inst.", 1)";
+	$sql2 = "INSERT INTO instructor_courses (course_id, instructor_id) 
+	         VALUES('".$Id."',".$Inst.")";
 	$con->query($sql2);
 	
 	// Close The Connection

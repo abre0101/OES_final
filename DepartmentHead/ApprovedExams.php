@@ -16,8 +16,8 @@ $searchQuery = $_GET['search'] ?? '';
 
 // Build query
 $query = "SELECT es.*, c.course_name, c.course_code, d.department_name, ec.category_name,
-    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.schedule_id = es.schedule_id) as question_count
-    FROM exam_schedules es
+    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = es.exam_id) as question_count
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN departments d ON c.department_id = d.department_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
@@ -40,7 +40,7 @@ $approvedExams = $con->query($query);
 $departments = $con->query("SELECT DISTINCT d.department_id, d.department_name 
     FROM departments d 
     INNER JOIN courses c ON d.department_id = c.department_id
-    INNER JOIN exam_schedules es ON c.course_id = es.course_id
+    INNER JOIN exams es ON c.course_id = es.course_id
     WHERE es.approval_status = 'approved'
     ORDER BY d.department_name");
 
@@ -49,7 +49,7 @@ $stats = $con->query("SELECT
     COUNT(*) as total_approved,
     SUM(CASE WHEN DATE(es.approval_date) = CURDATE() THEN 1 ELSE 0 END) as approved_today,
     SUM(CASE WHEN es.exam_date >= CURDATE() THEN 1 ELSE 0 END) as upcoming
-    FROM exam_schedules es
+    FROM exams es
     WHERE es.approval_status = 'approved'")->fetch_assoc();
 ?>
 <!DOCTYPE html>
@@ -201,7 +201,7 @@ $stats = $con->query("SELECT
                         </div>
                     </div>
                     
-                    <a href="ViewExamDetails.php?schedule_id=<?php echo $exam['schedule_id']; ?>" class="btn btn-primary btn-sm" style="width: 100%;">
+                    <a href="ViewExamDetails.php?exam_id=<?php echo $exam['exam_id']; ?>" class="btn btn-primary btn-sm" style="width: 100%;">
                         👁️ View Details
                     </a>
                 </div>

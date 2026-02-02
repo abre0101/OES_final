@@ -20,7 +20,7 @@ $activeTab = $_GET['tab'] ?? 'pending';
 
 // Get pending exams (approved but not scheduled)
 $pending_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name, i.full_name as instructor_name
-                  FROM exam_schedules es
+                  FROM exams es
                   LEFT JOIN courses c ON es.course_id = c.course_id
                   LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
                   LEFT JOIN instructors i ON es.created_by = i.instructor_id
@@ -35,7 +35,7 @@ $pending_exams = $stmt->get_result();
 
 // Get scheduled exams (future exams)
 $scheduled_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name, i.full_name as instructor_name
-                    FROM exam_schedules es
+                    FROM exams es
                     LEFT JOIN courses c ON es.course_id = c.course_id
                     LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
                     LEFT JOIN instructors i ON es.created_by = i.instructor_id
@@ -52,7 +52,7 @@ $scheduled_exams = $stmt->get_result();
 
 // Get past exams
 $past_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name, i.full_name as instructor_name
-               FROM exam_schedules es
+               FROM exams es
                LEFT JOIN courses c ON es.course_id = c.course_id
                LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
                LEFT JOIN instructors i ON es.created_by = i.instructor_id
@@ -69,7 +69,7 @@ $past_exams = $stmt->get_result();
 
 // Handle scheduling
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['schedule_exam'])) {
-    $schedule_id = $_POST['schedule_id'];
+    $exam_id = $_POST['exam_id'];
     $exam_date = $_POST['exam_date'];
     $start_time = $_POST['start_time'];
     $duration = $_POST['duration_minutes'];
@@ -83,7 +83,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['schedule_exam'])) {
     
     $instructions_append = !empty($room_lab) ? "\nRoom/Lab: " . $room_lab : '';
     
-    $update_query = "UPDATE exam_schedules 
+    $update_query = "UPDATE exams 
                      SET exam_date = ?, 
                          start_time = ?, 
                          end_time = ?,
@@ -91,9 +91,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['schedule_exam'])) {
                          instructions = CONCAT(COALESCE(instructions, ''), ?),
                          is_active = 1,
                          updated_at = NOW()
-                     WHERE schedule_id = ? AND approval_status = 'approved'";
+                     WHERE exam_id = ? AND approval_status = 'approved'";
     $stmt = $con->prepare($update_query);
-    $stmt->bind_param("sssisi", $exam_date, $start_time, $end_time, $duration, $instructions_append, $schedule_id);
+    $stmt->bind_param("sssisi", $exam_date, $start_time, $end_time, $duration, $instructions_append, $exam_id);
     
     if($stmt->execute()) {
         $message = "Exam scheduled successfully!";
@@ -108,20 +108,20 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['schedule_exam'])) {
 
 // Handle publish/unpublish
 if(isset($_GET['action']) && isset($_GET['id'])) {
-    $schedule_id = $_GET['id'];
+    $exam_id = $_GET['id'];
     $action = $_GET['action'];
     
     if($action == 'publish') {
-        $update = "UPDATE exam_schedules SET is_active = 1 WHERE schedule_id = ?";
+        $update = "UPDATE exams SET is_active = 1 WHERE exam_id = ?";
         $msg = "Exam published successfully!";
     } elseif($action == 'unpublish') {
-        $update = "UPDATE exam_schedules SET is_active = 0 WHERE schedule_id = ?";
+        $update = "UPDATE exams SET is_active = 0 WHERE exam_id = ?";
         $msg = "Exam unpublished successfully!";
     }
     
     if(isset($update)) {
         $stmt = $con->prepare($update);
-        $stmt->bind_param("i", $schedule_id);
+        $stmt->bind_param("i", $exam_id);
         if($stmt->execute()) {
             header("Location: ScheduleExam.php?tab=" . $activeTab . "&success=1&msg=" . urlencode($msg));
             exit();
@@ -261,10 +261,10 @@ if(isset($_GET['success']) && isset($_GET['msg'])) {
                                         <td><?php echo $exam['duration_minutes']; ?> min</td>
                                         <td><?php echo $exam['total_marks']; ?></td>
                                         <td>
-                                            <button class="btn btn-sm btn-primary" onclick="openScheduleModal(<?php echo $exam['schedule_id']; ?>, '<?php echo htmlspecialchars(addslashes($exam['exam_name'])); ?>', <?php echo $exam['duration_minutes']; ?>)">
+                                            <button class="btn btn-sm btn-primary" onclick="openScheduleModal(<?php echo $exam['exam_id']; ?>, '<?php echo htmlspecialchars(addslashes($exam['exam_name'])); ?>', <?php echo $exam['duration_minutes']; ?>)">
                                                 📅 Schedule
                                             </button>
-                                            <a href="ViewExamDetails.php?id=<?php echo $exam['schedule_id']; ?>" class="btn btn-sm btn-info">View</a>
+                                            <a href="ViewExamDetails.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-info">View</a>
                                         </td>
                                     </tr>
                                     <?php endwhile; ?>
@@ -321,13 +321,13 @@ if(isset($_GET['success']) && isset($_GET['msg'])) {
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <a href="ViewExamDetails.php?id=<?php echo $exam['schedule_id']; ?>" class="btn btn-sm btn-info">View</a>
+                                            <a href="ViewExamDetails.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-info">View</a>
                                             <?php if($exam['is_active']): ?>
-                                            <a href="?action=unpublish&id=<?php echo $exam['schedule_id']; ?>&tab=scheduled" class="btn btn-sm btn-warning" onclick="return confirm('Unpublish this exam? Students will not be able to see it.')">
+                                            <a href="?action=unpublish&id=<?php echo $exam['exam_id']; ?>&tab=scheduled" class="btn btn-sm btn-warning" onclick="return confirm('Unpublish this exam? Students will not be able to see it.')">
                                                 Unpublish
                                             </a>
                                             <?php else: ?>
-                                            <a href="?action=publish&id=<?php echo $exam['schedule_id']; ?>&tab=scheduled" class="btn btn-sm btn-success">
+                                            <a href="?action=publish&id=<?php echo $exam['exam_id']; ?>&tab=scheduled" class="btn btn-sm btn-success">
                                                 Publish
                                             </a>
                                             <?php endif; ?>
@@ -383,7 +383,7 @@ if(isset($_GET['success']) && isset($_GET['msg'])) {
                                             <span class="badge badge-secondary">Completed</span>
                                         </td>
                                         <td>
-                                            <a href="ViewExamDetails.php?id=<?php echo $exam['schedule_id']; ?>" class="btn btn-sm btn-info">View</a>
+                                            <a href="ViewExamDetails.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-info">View</a>
                                         </td>
                                     </tr>
                                     <?php endwhile; ?>
@@ -406,7 +406,7 @@ if(isset($_GET['success']) && isset($_GET['msg'])) {
         <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
             <h3 style="margin: 0 0 1.5rem 0; color: var(--primary-color);">Schedule Exam</h3>
             <form method="POST" action="">
-                <input type="hidden" name="schedule_id" id="modal_schedule_id">
+                <input type="hidden" name="exam_id" id="modal_exam_id">
                 <input type="hidden" name="duration_minutes" id="modal_duration">
                 
                 <div style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
@@ -451,7 +451,7 @@ if(isset($_GET['success']) && isset($_GET['msg'])) {
 
     <script>
         function openScheduleModal(scheduleId, examName, duration) {
-            document.getElementById('modal_schedule_id').value = scheduleId;
+            document.getElementById('modal_exam_id').value = scheduleId;
             document.getElementById('modal_duration').value = duration;
             document.getElementById('modal_exam_name').textContent = examName + ' (' + duration + ' minutes)';
             document.getElementById('scheduleModal').style.display = 'flex';

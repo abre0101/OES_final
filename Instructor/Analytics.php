@@ -80,8 +80,8 @@ if($examResultsExists) {
         SUM(CASE WHEN er.pass_status = 'Pass' THEN 1 ELSE 0 END) as pass_count,
         ROUND((SUM(CASE WHEN er.pass_status = 'Pass' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(er.result_id), 0)), 2) as pass_rate
         FROM courses c
-        INNER JOIN exam_schedules es ON c.course_id = es.course_id
-        INNER JOIN exam_results er ON es.schedule_id = er.schedule_id
+        INNER JOIN exams es ON c.course_id = es.course_id
+        INNER JOIN exam_results er ON es.exam_id = er.exam_id
         GROUP BY c.course_id
         HAVING exam_count > 0
         ORDER BY avg_score DESC");
@@ -97,10 +97,10 @@ if($questionTopicsExists && $questionsExists && $studentAnswersExists) {
         COUNT(DISTINCT sa.answer_id) as attempt_count,
         ROUND(AVG(CASE WHEN sa.is_correct = 1 THEN 100 ELSE 0 END), 2) as avg_accuracy
         FROM question_topics qt
-        INNER JOIN courses c ON qt.course_id = c.course_id
         LEFT JOIN questions q ON qt.topic_id = q.topic_id
+        LEFT JOIN courses c ON q.course_id = c.course_id
         LEFT JOIN student_answers sa ON q.question_id = sa.question_id
-        GROUP BY qt.topic_id
+        GROUP BY qt.topic_id, qt.topic_name, c.course_name
         HAVING question_count > 0 AND attempt_count > 0
         ORDER BY avg_accuracy ASC
         LIMIT 10");

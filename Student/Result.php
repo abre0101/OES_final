@@ -192,9 +192,9 @@ if(!isset($_SESSION['Name'])){
                         er.correct_answers as Correct, er.wrong_answers as Wrong, 
                         er.percentage_score as Result
                         FROM exam_results er
-                        INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
-                        INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
-                        INNER JOIN courses c ON es.course_id = c.course_id
+                        INNER JOIN exams e ON er.exam_id = e.exam_id
+                        INNER JOIN exam_categories ec ON e.exam_category_id = ec.exam_category_id
+                        INNER JOIN courses c ON e.course_id = c.course_id
                         INNER JOIN students s ON er.student_id = s.student_id
                         WHERE er.student_id=?
                         ORDER BY er.result_id DESC";

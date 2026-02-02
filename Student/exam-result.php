@@ -17,7 +17,7 @@ $con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
 if ($resultId > 0) {
     $sql = "SELECT er.*, es.exam_name, c.course_name, c.course_code, ec.category_name
             FROM exam_results er
-            LEFT JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+            LEFT JOIN exams es ON er.exam_id = es.exam_id
             LEFT JOIN courses c ON es.course_id = c.course_id
             LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
             WHERE er.result_id = ? AND er.student_id = ?";

@@ -34,7 +34,7 @@ if(!$topic) {
 
 // Get all questions for this topic
 $questionsQuery = $con->prepare("SELECT * FROM questions 
-    WHERE topic_id = ? AND instructor_id = ?
+    WHERE topic_id = ? AND created_by = ?
     ORDER BY created_at DESC");
 $questionsQuery->bind_param("ii", $topic_id, $instructor_id);
 $questionsQuery->execute();

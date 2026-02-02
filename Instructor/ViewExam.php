@@ -12,7 +12,7 @@ $con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connecti
 $pageTitle = "View Exam";
 $instructor_id = $_SESSION['ID'];
 
-$schedule_id = $_GET['id'] ?? 0;
+$exam_id = $_GET['id'] ?? 0;
 
 // Get exam schedule details
 $examQuery = $con->prepare("SELECT 
@@ -21,13 +21,13 @@ $examQuery = $con->prepare("SELECT
     c.course_code,
     ec.category_name,
     d.department_name
-    FROM exam_schedules es
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     INNER JOIN departments d ON c.department_id = d.department_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    WHERE es.schedule_id = ? AND ic.instructor_id = ? AND ic.is_active = TRUE");
-$examQuery->bind_param("ii", $schedule_id, $instructor_id);
+    WHERE es.exam_id = ? AND ic.instructor_id = ? AND ic.is_active = TRUE");
+$examQuery->bind_param("ii", $exam_id, $instructor_id);
 $examQuery->execute();
 $exam = $examQuery->get_result()->fetch_assoc();
 $examQuery->close();
@@ -45,9 +45,9 @@ $questionsQuery = $con->prepare("SELECT
     FROM exam_questions eq
     INNER JOIN questions q ON eq.question_id = q.question_id
     LEFT JOIN question_topics qt ON q.topic_id = qt.topic_id
-    WHERE eq.schedule_id = ?
+    WHERE eq.exam_id = ?
     ORDER BY eq.question_order");
-$questionsQuery->bind_param("i", $schedule_id);
+$questionsQuery->bind_param("i", $exam_id);
 $questionsQuery->execute();
 $questions = $questionsQuery->get_result();
 ?>
@@ -181,7 +181,7 @@ $questions = $questionsQuery->get_result();
                             </p>
                         </div>
                         <?php endif; ?>
-                        <a href="SubmitExamForApproval.php?schedule_id=<?php echo $schedule_id; ?>" 
+                        <a href="SubmitExamForApproval.php?exam_id=<?php echo $exam_id; ?>" 
                            class="btn btn-success <?php echo !$canSubmit ? 'disabled' : ''; ?>" 
                            <?php echo !$canSubmit ? 'onclick="return false;" style="opacity: 0.5; cursor: not-allowed;" title="Add at least 5 questions before submitting"' : 'onclick="return confirm(\'Submit this exam to the Exam Committee for approval?\')"'; ?>>
                             ✅ Submit for Approval
@@ -189,11 +189,11 @@ $questions = $questionsQuery->get_result();
                     <?php endif; ?>
                     
                     <?php if($exam['approval_status'] == 'draft' || $exam['approval_status'] == 'revision'): ?>
-                    <a href="AddQuestion.php?schedule_id=<?php echo $schedule_id; ?>" class="btn btn-success">
+                    <a href="AddQuestion.php?exam_id=<?php echo $exam_id; ?>" class="btn btn-success">
                         ➕ Add Question
                     </a>
                     <?php if($actualTotal != $exam['total_marks']): ?>
-                    <a href="UpdateExamTotalMarks.php?schedule_id=<?php echo $schedule_id; ?>" class="btn btn-warning">
+                    <a href="UpdateExamTotalMarks.php?exam_id=<?php echo $exam_id; ?>" class="btn btn-warning">
                         🔄 Update Total Marks
                     </a>
                     <?php endif; ?>
@@ -300,7 +300,7 @@ $questions = $questionsQuery->get_result();
                     <div style="text-align: center; padding: 4rem; background: white; border-radius: var(--radius-lg);">
                         <h3 style="color: var(--text-secondary);">No questions in this exam</h3>
                         <p>Add questions to this exam to get started</p>
-                        <a href="AddQuestion.php?schedule_id=<?php echo $schedule_id; ?>" class="btn btn-primary" style="margin-top: 1rem;">
+                        <a href="AddQuestion.php?exam_id=<?php echo $exam_id; ?>" class="btn btn-primary" style="margin-top: 1rem;">
                             ➕ Add Questions
                         </a>
                     </div>

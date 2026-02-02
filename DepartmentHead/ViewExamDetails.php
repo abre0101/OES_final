@@ -6,22 +6,22 @@ if(!isset($_SESSION['Name'])){
 }
 
 $con = require_once(__DIR__ . "/../Connections/OES.php");
-$schedule_id = $_GET['id'] ?? $_GET['schedule_id'] ?? 0;
+$exam_id = $_GET['id'] ?? $_GET['exam_id'] ?? 0;
 
 // Get exam details - include all approved exams
 $exam = $con->query("SELECT es.*, c.course_name, c.course_code, c.credit_hours,
     d.department_name, 
     i.full_name as instructor_name, i.email as instructor_email,
     ec.category_name,
-    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.schedule_id = es.schedule_id) as question_count,
+    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.exam_id = es.exam_id) as question_count,
     (SELECT COUNT(*) FROM student_courses sc WHERE sc.course_id = c.course_id) as enrolled_count,
-    (SELECT COUNT(*) FROM exam_results er WHERE er.schedule_id = es.schedule_id) as completed_count
-    FROM exam_schedules es
+    (SELECT COUNT(*) FROM exam_results er WHERE er.exam_id = es.exam_id) as completed_count
+    FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN departments d ON c.department_id = d.department_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     LEFT JOIN instructors i ON es.created_by = i.instructor_id
-    WHERE es.schedule_id = $schedule_id
+    WHERE es.exam_id = $exam_id
     LIMIT 1")->fetch_assoc();
 
 if(!$exam) {
@@ -35,7 +35,7 @@ $questions = $con->query("SELECT q.*, qt.topic_name
     FROM exam_questions eq
     INNER JOIN questions q ON eq.question_id = q.question_id
     LEFT JOIN question_topics qt ON q.topic_id = qt.topic_id
-    WHERE eq.schedule_id = $schedule_id
+    WHERE eq.exam_id = $exam_id
     ORDER BY eq.question_order");
 ?>
 <!DOCTYPE html>
@@ -240,14 +240,14 @@ $questions = $con->query("SELECT q.*, qt.topic_name
         
         function approveExam() {
             if(confirm('Are you sure you want to approve this exam?\n\nThis will make it available to students on the scheduled date.')) {
-                window.location.href = 'ProcessApproval.php?schedule_id=<?php echo $schedule_id; ?>&action=approve';
+                window.location.href = 'ProcessApproval.php?exam_id=<?php echo $exam_id; ?>&action=approve';
             }
         }
         
         function requestRevision() {
             const comments = prompt('Please provide feedback for revision:');
             if(comments && comments.trim()) {
-                window.location.href = 'ProcessApproval.php?schedule_id=<?php echo $schedule_id; ?>&action=revision&comments=' + encodeURIComponent(comments);
+                window.location.href = 'ProcessApproval.php?exam_id=<?php echo $exam_id; ?>&action=revision&comments=' + encodeURIComponent(comments);
             }
         }
         
@@ -255,7 +255,7 @@ $questions = $con->query("SELECT q.*, qt.topic_name
             const reason = prompt('Please provide a reason for rejection:');
             if(reason && reason.trim()) {
                 if(confirm('Are you sure you want to reject this exam?')) {
-                    window.location.href = 'ProcessApproval.php?schedule_id=<?php echo $schedule_id; ?>&action=reject&comments=' + encodeURIComponent(reason);
+                    window.location.href = 'ProcessApproval.php?exam_id=<?php echo $exam_id; ?>&action=reject&comments=' + encodeURIComponent(reason);
                 }
             }
         }

@@ -48,10 +48,10 @@ if ($enrollmentYear) {
 
 // Count available exams for student's courses
 $studentSemester = $_SESSION['Sem'];
-$examCountQuery = $con->prepare("SELECT COUNT(DISTINCT es.schedule_id) as count 
-    FROM exam_schedules es 
-    INNER JOIN courses c ON es.course_id = c.course_id 
-    WHERE c.semester = ? AND es.is_active = 1");
+$examCountQuery = $con->prepare("SELECT COUNT(DISTINCT e.exam_id) as count 
+    FROM exams e 
+    INNER JOIN courses c ON e.course_id = c.course_id 
+    WHERE c.semester = ? AND e.is_active = 1");
 $examCountQuery->bind_param("i", $studentSemester);
 $examCountQuery->execute();
 $examCount = $examCountQuery->get_result()->fetch_assoc()['count'];
@@ -75,6 +75,7 @@ $con->close();
     <link href="../assets/css/modern-v2.css" rel="stylesheet">
     <link href="../assets/css/student-modern.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Enhanced Student Dashboard Styles */
         * {
@@ -234,6 +235,12 @@ $con->close();
             text-decoration: none;
             transition: all 0.3s ease;
             font-weight: 600;
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 1.1rem;
         }
 
         .dropdown-item:hover {
@@ -675,24 +682,24 @@ $con->close();
                         </div>
                         <div class="dropdown-menu">
                             <a href="Profile.php" class="dropdown-item">
-                                <span class="dropdown-icon">👤</span>
+                                <i class="fas fa-user"></i>
                                 <span>My Profile</span>
                             </a>
                             <a href="EditProfile.php?Id=<?php echo $_SESSION['ID']; ?>" class="dropdown-item">
-                                <span class="dropdown-icon">⚙️</span>
+                                <i class="fas fa-cog"></i>
                                 <span>Account Settings</span>
                             </a>
                             <a href="../Help.php" class="dropdown-item">
-                                <span class="dropdown-icon">❓</span>
+                                <i class="fas fa-question-circle"></i>
                                 <span>Help</span>
                             </a>
                             <a href="../AboutUs.php" class="dropdown-item">
-                                <span class="dropdown-icon">ℹ️</span>
+                                <i class="fas fa-info-circle"></i>
                                 <span>About</span>
                             </a>
                             <div class="dropdown-divider"></div>
                             <a href="Logout.php" class="dropdown-item logout">
-                                <span class="dropdown-icon">🚪</span>
+                                <i class="fas fa-sign-out-alt"></i>
                                 <span>Log Out</span>
                             </a>
                         </div>

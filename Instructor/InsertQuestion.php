@@ -18,7 +18,7 @@ $con = require_once(__DIR__ . "/../Connections/OES.php");
 // Get form data
 $instructor_id = $_POST['instructor_id'] ?? $_SESSION['ID'];
 $course_id = $_POST['course_id'] ?? null;
-$schedule_id = $_POST['schedule_id'] ?? null;
+$exam_id = $_POST['exam_id'] ?? null;
 $topic_id = !empty($_POST['topic_id']) ? $_POST['topic_id'] : null;
 $question_text = $_POST['question_text'] ?? '';
 $option_a = $_POST['option_a'] ?? '';
@@ -36,10 +36,10 @@ if(empty($course_id) || empty($question_text) || empty($option_a) || empty($opti
     exit();
 }
 
-// If schedule_id is provided, check if exam is locked
-if($schedule_id) {
-    $checkExam = $con->prepare("SELECT approval_status FROM exam_schedules WHERE schedule_id = ?");
-    $checkExam->bind_param("i", $schedule_id);
+// If exam_id is provided, check if exam is locked
+if($exam_id) {
+    $checkExam = $con->prepare("SELECT approval_status FROM exams WHERE exam_id = ?");
+    $checkExam->bind_param("i", $exam_id);
     $checkExam->execute();
     $examStatus = $checkExam->get_result()->fetch_assoc();
     $checkExam->close();
@@ -47,7 +47,7 @@ if($schedule_id) {
     if($examStatus && $examStatus['approval_status'] != 'draft' && $examStatus['approval_status'] != 'revision') {
         echo '<script type="text/javascript">
             alert("Cannot add questions to an exam that has been submitted for approval.");
-            window.location="ViewExam.php?id=' . $schedule_id . '";
+            window.location="ViewExam.php?id=' . $exam_id . '";
         </script>';
         exit();
     }
@@ -76,12 +76,12 @@ try {
     $question_id = $con->insert_id;
     $insertQuestion->close();
     
-    // If schedule_id is provided, link question to exam
-    if($schedule_id) {
+    // If exam_id is provided, link question to exam
+    if($exam_id) {
         // Get the current max question order for this exam
         $orderQuery = $con->prepare("SELECT COALESCE(MAX(question_order), 0) + 1 as next_order 
-            FROM exam_questions WHERE schedule_id = ?");
-        $orderQuery->bind_param("i", $schedule_id);
+            FROM exam_questions WHERE exam_id = ?");
+        $orderQuery->bind_param("i", $exam_id);
         $orderQuery->execute();
         $orderResult = $orderQuery->get_result();
         $next_order = $orderResult->fetch_assoc()['next_order'];
@@ -89,9 +89,9 @@ try {
         
         // Insert into exam_questions
         $insertExamQuestion = $con->prepare("INSERT INTO exam_questions 
-            (schedule_id, question_id, question_order) 
+            (exam_id, question_id, question_order) 
             VALUES (?, ?, ?)");
-        $insertExamQuestion->bind_param("iii", $schedule_id, $question_id, $next_order);
+        $insertExamQuestion->bind_param("iii", $exam_id, $question_id, $next_order);
         
         if(!$insertExamQuestion->execute()) {
             throw new Exception("Failed to link question to exam: " . $insertExamQuestion->error);
@@ -104,7 +104,7 @@ try {
     
     // Success message and redirect
     if($save_and_add_another) {
-        $redirect = $schedule_id ? "AddQuestion.php?schedule_id=$schedule_id" : "AddQuestion.php";
+        $redirect = $exam_id ? "AddQuestion.php?exam_id=$exam_id" : "AddQuestion.php";
         echo '<script type="text/javascript">
             alert("Question added successfully! Add another question.");
             window.location="' . $redirect . '";

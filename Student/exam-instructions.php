@@ -9,16 +9,16 @@ if(!isset($_SESSION['Name'])){
 }
 
 // Get schedule information
-$scheduleId = isset($_GET['schedule_id']) ? $_GET['schedule_id'] : null;
+$scheduleId = isset($_GET['exam_id']) ? $_GET['exam_id'] : null;
 $examInfo = null;
 
 if ($scheduleId) {
     $con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
     $stmt = $con->prepare("SELECT es.*, ec.category_name as exam_type_name, c.course_name, c.course_code
-                           FROM exam_schedules es 
+                           FROM exams es 
                            LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id 
                            LEFT JOIN courses c ON es.course_id = c.course_id
-                           WHERE es.schedule_id = ?");
+                           WHERE es.exam_id = ?");
     $stmt->bind_param("i", $scheduleId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -143,8 +143,8 @@ if (!$examInfo) {
         });
 
         function startExam() {
-            // Redirect to exam interface with schedule_id
-            window.location.href = 'exam-interface.php?schedule_id=<?php echo $scheduleId; ?>';
+            // Redirect to exam interface with exam_id
+            window.location.href = 'exam-interface.php?exam_id=<?php echo $scheduleId; ?>';
         }
     </script>
 </body>

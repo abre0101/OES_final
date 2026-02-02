@@ -18,7 +18,7 @@ $top_students = "SELECT s.student_code, s.full_name,
                  COUNT(er.result_id) as exams_taken
                  FROM students s
                  INNER JOIN exam_results er ON s.student_id = er.student_id
-                 INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+                 INNER JOIN exams es ON er.exam_id = es.exam_id
                  INNER JOIN courses c ON es.course_id = c.course_id
                  WHERE s.department_id = ? AND s.is_active = 1
                  GROUP BY s.student_id
@@ -37,8 +37,8 @@ $course_performance = "SELECT c.course_code, c.course_name,
                        MAX(er.marks_obtained) as highest_marks,
                        MIN(er.marks_obtained) as lowest_marks
                        FROM courses c
-                       LEFT JOIN exam_schedules es ON c.course_id = es.course_id
-                       LEFT JOIN exam_results er ON es.schedule_id = er.schedule_id
+                       LEFT JOIN exams es ON c.course_id = es.course_id
+                       LEFT JOIN exam_results er ON es.exam_id = er.exam_id
                        WHERE c.department_id = ? AND c.is_active = 1
                        GROUP BY c.course_id
                        ORDER BY avg_marks DESC";
@@ -53,7 +53,7 @@ $pass_fail = "SELECT
               COUNT(CASE WHEN er.marks_obtained < es.passing_marks THEN 1 END) as failed,
               COUNT(er.result_id) as total
               FROM exam_results er
-              INNER JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+              INNER JOIN exams es ON er.exam_id = es.exam_id
               INNER JOIN courses c ON es.course_id = c.course_id
               WHERE c.department_id = ?";
 $stmt = $con->prepare($pass_fail);

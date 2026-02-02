@@ -17,7 +17,7 @@ $instructor_name = $_SESSION['Name'];
 // Get instructor's courses count
 $coursesQuery = $con->prepare("SELECT COUNT(DISTINCT course_id) as count 
     FROM instructor_courses 
-    WHERE instructor_id = ? AND is_active = TRUE");
+    WHERE instructor_id = ?");
 $coursesQuery->bind_param("i", $instructor_id);
 $coursesQuery->execute();
 $total_courses = $coursesQuery->get_result()->fetch_assoc()['count'];
@@ -26,17 +26,17 @@ $coursesQuery->close();
 // Get total questions created by this instructor
 $questionsQuery = $con->prepare("SELECT COUNT(*) as count 
     FROM questions 
-    WHERE instructor_id = ?");
+    WHERE created_by = ?");
 $questionsQuery->bind_param("i", $instructor_id);
 $questionsQuery->execute();
 $total_questions = $questionsQuery->get_result()->fetch_assoc()['count'];
 $questionsQuery->close();
 
 // Get total exams created for instructor's courses
-$examsQuery = $con->prepare("SELECT COUNT(DISTINCT es.schedule_id) as count 
-    FROM exam_schedules es
+$examsQuery = $con->prepare("SELECT COUNT(DISTINCT es.exam_id) as count 
+    FROM exams es
     INNER JOIN instructor_courses ic ON es.course_id = ic.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE");
+    WHERE ic.instructor_id = ?");
 $examsQuery->bind_param("i", $instructor_id);
 $examsQuery->execute();
 $total_exams = $examsQuery->get_result()->fetch_assoc()['count'];
@@ -46,7 +46,7 @@ $examsQuery->close();
 $studentsQuery = $con->prepare("SELECT COUNT(DISTINCT sc.student_id) as count 
     FROM student_courses sc
     INNER JOIN instructor_courses ic ON sc.course_id = ic.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE AND sc.is_active = TRUE");
+    WHERE ic.instructor_id = ?");
 $studentsQuery->bind_param("i", $instructor_id);
 $studentsQuery->execute();
 $total_students = $studentsQuery->get_result()->fetch_assoc()['count'];
@@ -223,7 +223,7 @@ $studentsQuery->close();
                         <div class="activity-item">
                             <div class="activity-icon" style="background: var(--success-color);">✓</div>
                             <div class="activity-content">
-                                <div class="activity-title">System is_active</div>
+                                <div class="activity-title">System Active</div>
                                 <div class="activity-time">All systems operational</div>
                             </div>
                         </div>

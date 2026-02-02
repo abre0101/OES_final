@@ -15,7 +15,7 @@ $total = isset($_POST['total']) ? intval($_POST['total']) : 0;
 $score = isset($_POST['score']) ? intval($_POST['score']) : 0;
 $answers = isset($_POST['answers']) ? $_POST['answers'] : '{}';
 $tab_switches = isset($_POST['tab_switches']) ? intval($_POST['tab_switches']) : 0;
-$schedule_id = isset($_POST['schedule_id']) ? intval($_POST['schedule_id']) : (isset($_GET['schedule_id']) ? intval($_GET['schedule_id']) : 0);
+$exam_id = isset($_POST['exam_id']) ? intval($_POST['exam_id']) : (isset($_GET['exam_id']) ? intval($_GET['exam_id']) : 0);
 
 $studentID = $_SESSION['ID'];
 
@@ -28,12 +28,12 @@ if (!$con) {
 
 // Get exam schedule information
 $schedule_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name
-    FROM exam_schedules es
+    FROM exams es
     LEFT JOIN courses c ON es.course_id = c.course_id
     LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
-    WHERE es.schedule_id = ?";
+    WHERE es.exam_id = ?";
 $stmt = $con->prepare($schedule_query);
-$stmt->bind_param("i", $schedule_id);
+$stmt->bind_param("i", $exam_id);
 $stmt->execute();
 $exam = $stmt->get_result()->fetch_assoc();
 $stmt->close();
@@ -81,9 +81,9 @@ if ($verify_result->num_rows == 0) {
 
 // Check if student has already taken this exam
 $check_query = "SELECT result_id, percentage_score, pass_status FROM exam_results 
-    WHERE student_id = ? AND schedule_id = ?";
+    WHERE student_id = ? AND exam_id = ?";
 $check_stmt = $con->prepare($check_query);
-$check_stmt->bind_param("ii", $student_db_id, $schedule_id);
+$check_stmt->bind_param("ii", $student_db_id, $exam_id);
 $check_stmt->execute();
 $existing_result = $check_stmt->get_result()->fetch_assoc();
 $check_stmt->close();
@@ -106,7 +106,7 @@ if ($existing_result) {
 // Insert result into exam_results table
 $insert_query = "INSERT INTO exam_results (
     student_id, 
-    schedule_id, 
+    exam_id, 
     total_questions, 
     correct_answers, 
     wrong_answers, 
@@ -127,7 +127,7 @@ $time_taken = $exam['duration_minutes'] ?? 30; // Default to exam duration
 $stmt = $con->prepare($insert_query);
 $stmt->bind_param("iiiiiiddssdsi", 
     $student_db_id, 
-    $schedule_id, 
+    $exam_id, 
     $total, 
     $correct, 
     $wrong, 
@@ -152,10 +152,10 @@ if ($stmt->execute()) {
         $questions_query = "SELECT q.question_id, q.correct_answer, q.point_value, eq.question_order
             FROM exam_questions eq
             INNER JOIN questions q ON eq.question_id = q.question_id
-            WHERE eq.schedule_id = ?
+            WHERE eq.exam_id = ?
             ORDER BY eq.question_order";
         $stmt = $con->prepare($questions_query);
-        $stmt->bind_param("i", $schedule_id);
+        $stmt->bind_param("i", $exam_id);
         $stmt->execute();
         $questions_result = $stmt->get_result();
         
