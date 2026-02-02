@@ -16,7 +16,97 @@ if(!isset($_SESSION['Name'])){
     <title>My Results - Debre Markos University Health Campus</title>
     <link href="../assets/css/modern-v2.css" rel="stylesheet">
     <link href="../assets/css/student-modern.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <?php include 'includes/modern-header-styles.php'; ?>
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border: 2px solid;
+            transition: all 0.3s ease;
+        }
+
+        .result-card.pass {
+            border-color: #28a745;
+        }
+
+        .result-card.fail {
+            border-color: #dc3545;
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a2b4a;
+        }
+
+        .result-score {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #1a2b4a;
+        }
+
+        .result-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .result-detail {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 15px;
+        }
+
+        .result-detail-value {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #1a2b4a;
+        }
+
+        .result-detail-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .result-details {
+                grid-template-columns: 1fr;
+            }
+
+            .result-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Header -->
@@ -46,24 +136,24 @@ if(!isset($_SESSION['Name'])){
                         </div>
                         <div class="dropdown-menu">
                             <a href="Profile.php" class="dropdown-item">
-                                <span class="dropdown-icon">??</span>
+                                <span class="dropdown-icon">👤</span>
                                 <span>My Profile</span>
                             </a>
                             <a href="EditProfile.php?Id=<?php echo $_SESSION['ID']; ?>" class="dropdown-item">
-                                <span class="dropdown-icon">??</span>
+                                <span class="dropdown-icon">⚙️</span>
                                 <span>Account Settings</span>
                             </a>
                             <a href="../Help.php" class="dropdown-item">
-                                <span class="dropdown-icon">?</span>
+                                <span class="dropdown-icon">❓</span>
                                 <span>Help</span>
                             </a>
                             <a href="../AboutUs.php" class="dropdown-item">
-                                <span class="dropdown-icon">??</span>
+                                <span class="dropdown-icon">ℹ️</span>
                                 <span>About</span>
                             </a>
                             <div class="dropdown-divider"></div>
                             <a href="Logout.php" class="dropdown-item logout">
-                                <span class="dropdown-icon">??</span>
+                                <span class="dropdown-icon">🚪</span>
                                 <span>Log Out</span>
                             </a>
                         </div>
@@ -88,7 +178,7 @@ if(!isset($_SESSION['Name'])){
     <main class="main-content">
         <div class="container">
             <div class="content-wrapper">
-                <h1>?? My Exam Results</h1>
+                <h1>📊 My Exam Results</h1>
                 <p class="text-secondary">Welcome <?php echo $_SESSION['Name']; ?>! View all your examination results below.</p>
 
                 <?php
@@ -159,16 +249,16 @@ if(!isset($_SESSION['Name'])){
                             <div>
                                 <?php if($isPassed): ?>
                                 <span class="status-badge status-active" style="font-size: 1rem; padding: 0.75rem 1.5rem;">
-                                    ? PASSED
+                                    ✅ PASSED
                                 </span>
                                 <?php else: ?>
                                 <span class="status-badge status-inactive" style="font-size: 1rem; padding: 0.75rem 1.5rem;">
-                                    ? FAILED
+                                    ❌ FAILED
                                 </span>
                                 <?php endif; ?>
                             </div>
                             <a href="review-answers.php?result_id=<?php echo $row['result_id']; ?>" class="btn btn-primary">
-                                ?? Review Answers
+                                📝 Review Answers
                             </a>
                         </div>
                     </div>
@@ -178,7 +268,7 @@ if(!isset($_SESSION['Name'])){
                 } else {
                 ?>
                 <div class="card mt-4" style="text-align: center; padding: 4rem 2rem;">
-                    <div style="font-size: 4rem; margin-bottom: 1rem;">??</div>
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
                     <h3>No Results Yet</h3>
                     <p style="color: var(--text-secondary); margin: 1rem 0 2rem 0;">
                         You haven't taken any exams yet. Start your first exam to see results here.

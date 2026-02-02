@@ -18,10 +18,10 @@ if (empty($selectedCourse)) {
 
 // Get practice questions from database for selected course
 require_once(__DIR__ . "/../Connections/OES.php");
-$stmt = $con->prepare("SELECT q.*, c.course_name 
-    FROM questions q 
-    INNER JOIN courses c ON q.course_id = c.course_id 
-    WHERE c.course_name = ? AND q.approval_status = 'approved' 
+$stmt = $con->prepare("SELECT pq.*, c.course_name 
+    FROM practice_questions pq
+    INNER JOIN courses c ON pq.course_id = c.course_id 
+    WHERE c.course_name = ? AND pq.is_active = 1
     ORDER BY RAND() LIMIT 10");
 $stmt->bind_param("s", $selectedCourse);
 $stmt->execute();
