@@ -9,18 +9,89 @@ if(!isset($_SESSION['Name'])){
 }
 
 // Get questions and course info from database
-$con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
-$sql = "SELECT * FROM question_page ORDER BY question_id LIMIT 20";
-$result = mysqli_query($con,$sql);
-$questions = [];
-$courseName = "General Exam"; // Default
-while($row = mysqli_fetch_array($result)) {
-    $questions[] = $row;
-    if(!empty($row['course_name'])) {
-        $courseName = $row['course_name'];
-    }
+$con = require_once(__DIR__ . "/../Connections/OES.php");
+
+// Get schedule_id from URL or session
+$schedule_id = $_GET['schedule_id'] ?? $_SESSION['current_exam_schedule'] ?? 0;
+
+if (!$schedule_id) {
+    echo "<script>alert('Invalid exam session'); window.close();</script>";
+    exit();
 }
+
+// Get exam details
+$exam_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name
+    FROM exam_schedules es
+    LEFT JOIN courses c ON es.course_id = c.course_id
+    LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
+    WHERE es.schedule_id = ?";
+$stmt = $con->prepare($exam_query);
+$stmt->bind_param("i", $schedule_id);
+$stmt->execute();
+$exam = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if (!$exam) {
+    echo "<script>alert('Exam not found'); window.close();</script>";
+    exit();
+}
+
+$courseName = $exam['course_name'] ?? "General Exam";
+$examDuration = $exam['duration_minutes'] ?? 30;
+
+// Get questions for this exam
+$questions_query = "SELECT q.*, eq.question_order
+    FROM exam_questions eq
+    INNER JOIN questions q ON eq.question_id = q.question_id
+    WHERE eq.schedule_id = ?
+    ORDER BY eq.question_order";
+$stmt = $con->prepare($questions_query);
+$stmt->bind_param("i", $schedule_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$questions = [];
+while($row = $result->fetch_assoc()) {
+    // Map to expected format
+    $questions[] = [
+        'question_id' => $row['question_id'],
+        'question' => $row['question_text'],
+        'Option1' => $row['option_a'],
+        'Option2' => $row['option_b'],
+        'Option3' => $row['option_c'],
+        'Option4' => $row['option_d'],
+        'Answer' => $row['correct_answer'],
+        'point_value' => $row['point_value'] ?? 10
+    ];
+}
+$stmt->close();
+
 $totalQuestions = count($questions);
+
+if ($totalQuestions == 0) {
+    echo "<script>alert('No questions found for this exam'); window.close();</script>";
+    exit();
+}
+
+// Check if student has already taken this exam
+$student_id = intval($_SESSION['ID']);
+$check_query = "SELECT result_id, percentage_score, pass_status FROM exam_results 
+    WHERE student_id = ? AND schedule_id = ?";
+$check_stmt = $con->prepare($check_query);
+$check_stmt->bind_param("ii", $student_id, $schedule_id);
+$check_stmt->execute();
+$existing_result = $check_stmt->get_result()->fetch_assoc();
+$check_stmt->close();
+
+if ($existing_result) {
+    mysqli_close($con);
+    echo "<script>
+        alert('You have already taken this exam!\\n\\nYour Score: " . number_format($existing_result['percentage_score'], 2) . "%\\nStatus: " . $existing_result['pass_status'] . "');
+        window.location.href = 'exam-result.php?id=" . $existing_result['result_id'] . "&already_taken=1';
+    </script>";
+    exit();
+}
+
 mysqli_close($con);
 ?>
 <!DOCTYPE html>
@@ -282,7 +353,7 @@ mysqli_close($con);
                 <div class="timer-icon">⏱️</div>
                 <div>
                     <div class="timer-label">Time Left:</div>
-                    <div class="timer-display" id="timer">20:00</div>
+                    <div class="timer-display" id="timer"><?php echo $examDuration; ?>:00</div>
                 </div>
             </div>
             <div class="auto-submit-notice">
@@ -367,11 +438,12 @@ mysqli_close($con);
         // Questions data from PHP
         const questions = <?php echo json_encode($questions); ?>;
         const totalQuestions = questions.length;
+        const examDuration = <?php echo $examDuration; ?>; // Duration in minutes
         let currentQuestion = 0;
         let answers = {};
         let questionStatus = {}; // 'answered', 'skipped', 'flagged'
         let flaggedQuestions = new Set(); // Track flagged questions
-        let timeLeft = 1200; // 20 minutes in seconds
+        let timeLeft = examDuration * 60; // Convert minutes to seconds
         let tabSwitchCount = 0;
         const maxTabSwitches = 2;
         let examLocked = false;
@@ -710,6 +782,10 @@ mysqli_close($con);
                 }
             }
             
+            // Disable monitoring before submission to prevent false warnings
+            monitoringStarted = false;
+            examLocked = true; // Lock exam to prevent further changes
+            
             // Calculate results
             let correct = 0;
             let wrong = 0;
@@ -734,6 +810,7 @@ mysqli_close($con);
             form.action = 'save-exam-result.php';
             
             const fields = {
+                'schedule_id': <?php echo $schedule_id; ?>,
                 'correct': correct,
                 'wrong': wrong,
                 'total': totalQuestions,

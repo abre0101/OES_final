@@ -14,53 +14,132 @@ $wrong = isset($_POST['wrong']) ? intval($_POST['wrong']) : 0;
 $total = isset($_POST['total']) ? intval($_POST['total']) : 0;
 $score = isset($_POST['score']) ? intval($_POST['score']) : 0;
 $answers = isset($_POST['answers']) ? $_POST['answers'] : '{}';
+$tab_switches = isset($_POST['tab_switches']) ? intval($_POST['tab_switches']) : 0;
+$schedule_id = isset($_POST['schedule_id']) ? intval($_POST['schedule_id']) : (isset($_GET['schedule_id']) ? intval($_GET['schedule_id']) : 0);
 
 $studentID = $_SESSION['ID'];
 
 // Connect to database
-$con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
+$con = require_once(__DIR__ . "/../Connections/OES.php");
 
 if (!$con) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
-// Get exam and course information from the questions taken
-$sql = "SELECT q.exam_id, q.course_name, c.course_id 
-        FROM question_page q
-        LEFT JOIN courses c ON TRIM(q.course_name) = TRIM(c.course_name)
-        LIMIT 1";
-$result = mysqli_query($con, $sql);
+// Get exam schedule information
+$schedule_query = "SELECT es.*, c.course_name, c.course_code, ec.category_name
+    FROM exam_schedules es
+    LEFT JOIN courses c ON es.course_id = c.course_id
+    LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
+    WHERE es.schedule_id = ?";
+$stmt = $con->prepare($schedule_query);
+$stmt->bind_param("i", $schedule_id);
+$stmt->execute();
+$exam = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
-if ($result && mysqli_num_rows($result) > 0) {
-    $row = mysqli_fetch_assoc($result);
-    $examId = $row['exam_id'] ? $row['exam_id'] : 1;
-    
-    // Ensure we use course_id, not course_name
-    if (!empty($row['course_id'])) {
-        $courseId = $row['course_id'];
-    } else {
-        // Fallback: try to find course_id by name
-        $courseName = $row['course_name'];
-        $courseQuery = mysqli_query($con, "SELECT course_id FROM courses WHERE course_name LIKE '%{$courseName}%' LIMIT 1");
-        if ($courseQuery && mysqli_num_rows($courseQuery) > 0) {
-            $courseRow = mysqli_fetch_assoc($courseQuery);
-            $courseId = $courseRow['course_id'];
-        } else {
-            $courseId = 'CS101'; // Ultimate fallback
-        }
-    }
-    $courseName = $row['course_name'];
-} else {
-    // Default values if no questions found
-    $examId = 1;
-    $courseId = 'CS101';
-    $courseName = 'General Exam';
+if (!$exam) {
+    die("Exam not found");
 }
 
-// Insert result into database
-$stmt = $con->prepare("INSERT INTO exam_results (exam_id, course_id, student_id, Total, Correct, Wrong, Result) VALUES (?, ?, ?, ?, ?, ?, ?)");
-$stmt->bind_param("issiiii", $examId, $courseId, $studentID, $total, $correct, $wrong, $score);
+// Calculate unanswered questions
+$unanswered = $total - ($correct + $wrong);
 
+// Calculate percentage and grade
+$total_points_earned = $correct * 10; // Assuming 10 points per correct answer
+$total_points_possible = $total * 10;
+$percentage_score = ($total_points_possible > 0) ? ($total_points_earned / $total_points_possible) * 100 : 0;
+
+// Determine letter grade and GPA based on grading_config
+$grade_query = "SELECT grade_letter, gpa_value FROM grading_config 
+    WHERE ? BETWEEN min_percentage AND max_percentage AND is_active = 1 LIMIT 1";
+$stmt = $con->prepare($grade_query);
+$stmt->bind_param("d", $percentage_score);
+$stmt->execute();
+$grade_result = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+$letter_grade = $grade_result ? $grade_result['grade_letter'] : 'F';
+$gpa = $grade_result ? $grade_result['gpa_value'] : 0.00;
+$pass_status = ($percentage_score >= 50) ? 'Pass' : 'Fail';
+
+// The session ID already contains the student_id from the students table
+// No need to look it up - it's set during login
+$student_db_id = intval($studentID);
+
+// Verify student exists (optional safety check)
+$verify_query = "SELECT student_id FROM students WHERE student_id = ?";
+$stmt = $con->prepare($verify_query);
+$stmt->bind_param("i", $student_db_id);
+$stmt->execute();
+$verify_result = $stmt->get_result();
+$stmt->close();
+
+if ($verify_result->num_rows == 0) {
+    die("Student record not found. Please log in again.");
+}
+
+// Check if student has already taken this exam
+$check_query = "SELECT result_id, percentage_score, pass_status FROM exam_results 
+    WHERE student_id = ? AND schedule_id = ?";
+$check_stmt = $con->prepare($check_query);
+$check_stmt->bind_param("ii", $student_db_id, $schedule_id);
+$check_stmt->execute();
+$existing_result = $check_stmt->get_result()->fetch_assoc();
+$check_stmt->close();
+
+if ($existing_result) {
+    // Student has already taken this exam
+    $_SESSION['exam_error'] = [
+        'title' => 'Exam Already Taken',
+        'message' => 'You have already completed this exam.',
+        'previous_score' => $existing_result['percentage_score'],
+        'previous_status' => $existing_result['pass_status'],
+        'result_id' => $existing_result['result_id']
+    ];
+    
+    mysqli_close($con);
+    header("Location: exam-result.php?id=" . $existing_result['result_id'] . "&already_taken=1");
+    exit();
+}
+
+// Insert result into exam_results table
+$insert_query = "INSERT INTO exam_results (
+    student_id, 
+    schedule_id, 
+    total_questions, 
+    correct_answers, 
+    wrong_answers, 
+    unanswered,
+    total_points_earned,
+    total_points_possible,
+    percentage_score,
+    letter_grade,
+    gpa,
+    pass_status,
+    exam_started_at,
+    exam_submitted_at,
+    time_taken_minutes
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)";
+
+$time_taken = $exam['duration_minutes'] ?? 30; // Default to exam duration
+
+$stmt = $con->prepare($insert_query);
+$stmt->bind_param("iiiiiiddssdsi", 
+    $student_db_id, 
+    $schedule_id, 
+    $total, 
+    $correct, 
+    $wrong, 
+    $unanswered,
+    $total_points_earned,
+    $total_points_possible,
+    $percentage_score,
+    $letter_grade,
+    $gpa,
+    $pass_status,
+    $time_taken
+);
 
 if ($stmt->execute()) {
     $resultId = $stmt->insert_id;
@@ -69,38 +148,45 @@ if ($stmt->execute()) {
     // Save individual answers for review
     $answersArray = json_decode($answers, true);
     if($answersArray && is_array($answersArray)) {
-        // First, create the table if it doesn't exist
-        $createTableSQL = "CREATE TABLE IF NOT EXISTS `student_answers` (
-            `answer_id` INT AUTO_INCREMENT PRIMARY KEY,
-            `result_id` INT NOT NULL,
-            `student_id` VARCHAR(50) NOT NULL,
-            `question_id` INT NOT NULL,
-            `selected_answer` CHAR(1),
-            `is_correct` TINYINT(1) DEFAULT 0,
-            `answered_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX `idx_result` (`result_id`),
-            INDEX `idx_student` (`student_id`),
-            INDEX `idx_question` (`question_id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-        mysqli_query($con, $createTableSQL);
+        // Get questions for this exam
+        $questions_query = "SELECT q.question_id, q.correct_answer, q.point_value, eq.question_order
+            FROM exam_questions eq
+            INNER JOIN questions q ON eq.question_id = q.question_id
+            WHERE eq.schedule_id = ?
+            ORDER BY eq.question_order";
+        $stmt = $con->prepare($questions_query);
+        $stmt->bind_param("i", $schedule_id);
+        $stmt->execute();
+        $questions_result = $stmt->get_result();
         
-        // Prepare statement for inserting answers
-        $answerStmt = $con->prepare("INSERT INTO student_answers (result_id, student_id, question_id, selected_answer, is_correct) VALUES (?, ?, ?, ?, ?)");
+        $questions_map = [];
+        while ($q = $questions_result->fetch_assoc()) {
+            $questions_map[$q['question_order']] = [
+                'question_id' => $q['question_id'],
+                'correct_answer' => $q['correct_answer'],
+                'point_value' => $q['point_value'] ?? 10
+            ];
+        }
+        $stmt->close();
         
-        foreach($answersArray as $questionId => $selectedAnswer) {
-            // Get correct answer for this question
-            $correctQuery = $con->prepare("SELECT Answer FROM question_page WHERE question_id = ?");
-            $correctQuery->bind_param("i", $questionId);
-            $correctQuery->execute();
-            $correctResult = $correctQuery->get_result();
-            $correctData = $correctResult->fetch_assoc();
-            $correctQuery->close();
+        // Insert answers into student_answers table
+        // Table structure: answer_id, result_id, student_id, question_id, selected_answer, is_correct, points_earned, answered_at
+        $answerStmt = $con->prepare("INSERT INTO student_answers (result_id, student_id, question_id, selected_answer, is_correct, points_earned) VALUES (?, ?, ?, ?, ?, ?)");
+        
+        foreach($answersArray as $questionIndex => $selectedAnswer) {
+            // JavaScript sends 0-based index, but question_order is 1-based
+            $questionOrder = $questionIndex + 1;
             
-            $isCorrect = ($correctData && $correctData['Answer'] == $selectedAnswer) ? 1 : 0;
-            
-            // Insert answer
-            $answerStmt->bind_param("isisi", $resultId, $studentID, $questionId, $selectedAnswer, $isCorrect);
-            $answerStmt->execute();
+            if (isset($questions_map[$questionOrder])) {
+                $question_id = $questions_map[$questionOrder]['question_id'];
+                $correct_answer = $questions_map[$questionOrder]['correct_answer'];
+                $point_value = $questions_map[$questionOrder]['point_value'];
+                $isCorrect = ($correct_answer == $selectedAnswer) ? 1 : 0;
+                $points_earned = $isCorrect ? $point_value : 0;
+                
+                $answerStmt->bind_param("iiisid", $resultId, $student_db_id, $question_id, $selectedAnswer, $isCorrect, $points_earned);
+                $answerStmt->execute();
+            }
         }
         
         $answerStmt->close();
@@ -110,26 +196,30 @@ if ($stmt->execute()) {
     
     // Store result data in session for display
     $_SESSION['last_exam_result'] = [
-        'exam_name' => $examId,
-        'course_name' => $courseName,
+        'result_id' => $resultId,
+        'exam_name' => $exam['exam_name'],
+        'course_name' => $exam['course_name'],
+        'course_code' => $exam['course_code'],
         'correct' => $correct,
         'wrong' => $wrong,
+        'unanswered' => $unanswered,
         'total' => $total,
-        'score' => $score
+        'score' => $total_points_earned,
+        'percentage' => $percentage_score,
+        'letter_grade' => $letter_grade,
+        'gpa' => $gpa,
+        'pass_status' => $pass_status,
+        'tab_switches' => $tab_switches
     ];
     
     // Redirect to result page
-    if ($resultId > 0) {
-        header("Location: exam-result.php?id=" . $resultId);
-    } else {
-        header("Location: exam-result.php");
-    }
+    header("Location: exam-result.php?id=" . $resultId);
     exit();
 } else {
     // Store error and data in session
     $_SESSION['last_exam_result'] = [
-        'exam_name' => $examId,
-        'course_name' => $courseName,
+        'exam_name' => $exam['exam_name'],
+        'course_name' => $exam['course_name'],
         'correct' => $correct,
         'wrong' => $wrong,
         'total' => $total,

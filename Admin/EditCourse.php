@@ -13,16 +13,26 @@ if ($con->connect_error) {
 
 // Get course data
 $CourseId = $_GET['CourseId'];
-$sql = "select * FROM courses where course_id='".$CourseId."'";
+$sql = "SELECT c.*, d.department_name, 
+        GROUP_CONCAT(i.full_name SEPARATOR ', ') as instructor_names,
+        GROUP_CONCAT(i.instructor_id SEPARATOR ',') as instructor_ids
+        FROM courses c 
+        LEFT JOIN departments d ON c.department_id = d.department_id 
+        LEFT JOIN instructor_courses ic ON c.course_id = ic.course_id AND ic.is_active = 1
+        LEFT JOIN instructors i ON ic.instructor_id = i.instructor_id
+        WHERE c.course_id='".$CourseId."'
+        GROUP BY c.course_id";
 $result = $con->query($sql);
 
 if($row = $result->fetch_array()) {
     $Id = $row['course_id'];
     $Name = $row['course_name'];
-    $Credit = $row['credit_hr'];
+    $Credit = isset($row['credit_hours']) ? $row['credit_hours'] : '';
     $Sem = $row['semester'];
-    $Dept = $row['department_name'];
-    $Instructor = $row['full_name'];
+    $Dept = isset($row['department_name']) ? $row['department_name'] : '';
+    $DeptId = isset($row['department_id']) ? $row['department_id'] : '';
+    $Instructor = isset($row['instructor_names']) ? $row['instructor_names'] : 'Not Assigned';
+    $InstructorIds = isset($row['instructor_ids']) ? $row['instructor_ids'] : '';
 } else {
     header("Location: Course.php");
     exit();
@@ -221,11 +231,11 @@ $result_inst = $con->query($query_inst);
                         <div class="form-group">
                             <label for="cmbDept">Department:</label>
                             <select name="cmbDept" id="cmbDept">
-                                <option value="<?php echo $Dept; ?>"><?php echo $Dept; ?> (Current)</option>
+                                <option value="<?php echo $DeptId; ?>"><?php echo $Dept; ?> (Current)</option>
                                 <?php
                                 while($row_dept = $result_dept->fetch_array()) {
-                                    if($row_dept['department_name'] != $Dept) {
-                                        echo '<option value="'.$row_dept['deptno'].'">'.$row_dept['department_name'].'</option>';
+                                    if(isset($row_dept['department_name']) && $row_dept['department_id'] != $DeptId) {
+                                        echo '<option value="'.$row_dept['department_id'].'">'.$row_dept['department_name'].'</option>';
                                     }
                                 }
                                 ?>

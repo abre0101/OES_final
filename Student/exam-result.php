@@ -15,14 +15,15 @@ $con = require_once(__DIR__ . "/../Connections/OES.php"); $con;
 
 // Try to get result from database first
 if ($resultId > 0) {
-    $sql = "SELECT result.*, exam_category.exam_name, course.course_name 
-            FROM exam_results 
-            LEFT JOIN exam_categories ON result.exam_id = exam_category.exam_id
-            LEFT JOIN courses ON result.course_id = course.course_id
-            WHERE result.result_id = ? AND result.student_id = ?";
+    $sql = "SELECT er.*, es.exam_name, c.course_name, c.course_code, ec.category_name
+            FROM exam_results er
+            LEFT JOIN exam_schedules es ON er.schedule_id = es.schedule_id
+            LEFT JOIN courses c ON es.course_id = c.course_id
+            LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
+            WHERE er.result_id = ? AND er.student_id = ?";
 
     $stmt = $con->prepare($sql);
-    $stmt->bind_param("is", $resultId, $_SESSION['ID']);
+    $stmt->bind_param("ii", $resultId, $_SESSION['ID']);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -30,11 +31,18 @@ if ($resultId > 0) {
         $examResult = mysqli_fetch_assoc($result);
         $examName = $examResult['exam_name'] ?? 'Exam';
         $courseName = $examResult['course_name'] ?? 'Course';
-        $obtainedMarks = $examResult['Result'];
-        $maxMarks = $examResult['Total'] * 2;
-        $correct = $examResult['Correct'];
-        $wrong = $examResult['Wrong'];
-        $total = $examResult['Total'];
+        $courseCode = $examResult['course_code'] ?? '';
+        $categoryName = $examResult['category_name'] ?? 'Quiz';
+        $obtainedMarks = $examResult['total_points_earned'];
+        $maxMarks = $examResult['total_points_possible'];
+        $correct = $examResult['correct_answers'];
+        $wrong = $examResult['wrong_answers'];
+        $unanswered = $examResult['unanswered'] ?? 0;
+        $total = $examResult['total_questions'];
+        $percentage = $examResult['percentage_score'];
+        $letterGrade = $examResult['letter_grade'];
+        $gpa = $examResult['gpa'];
+        $passStatus = $examResult['pass_status'];
     }
     $stmt->close();
 }
@@ -44,11 +52,17 @@ if (!isset($examName) && isset($_SESSION['last_exam_result'])) {
     $sessionData = $_SESSION['last_exam_result'];
     $examName = $sessionData['exam_name'] ?? 'Exam';
     $courseName = $sessionData['course_name'] ?? 'Course';
+    $courseCode = $sessionData['course_code'] ?? '';
     $correct = $sessionData['correct'];
     $wrong = $sessionData['wrong'];
+    $unanswered = $sessionData['unanswered'] ?? 0;
     $total = $sessionData['total'];
     $obtainedMarks = $sessionData['score'];
-    $maxMarks = $total * 2;
+    $maxMarks = $total * 10; // Assuming 10 points per question
+    $percentage = $sessionData['percentage'] ?? 0;
+    $letterGrade = $sessionData['letter_grade'] ?? 'F';
+    $gpa = $sessionData['gpa'] ?? 0;
+    $passStatus = $sessionData['pass_status'] ?? 'Fail';
 }
 
 // If still no data, redirect to results page
@@ -219,7 +233,7 @@ $currentDate = date('d M Y');
     <div class="result-container">
         <div class="result-card">
             <div class="result-header">
-                <div class="result-icon">??</div>
+                <div class="result-icon">🎓</div>
                 <h1>Exam Completed!</h1>
                 <p>Your exam has been submitted successfully</p>
             </div>
@@ -234,7 +248,7 @@ $currentDate = date('d M Y');
                     </tr>
                     <tr>
                         <td>Course</td>
-                        <td><?php echo htmlspecialchars($courseName); ?></td>
+                        <td><?php echo htmlspecialchars($courseCode ?? ''); ?> - <?php echo htmlspecialchars($courseName); ?></td>
                     </tr>
                     <tr>
                         <td>Date</td>
@@ -253,26 +267,38 @@ $currentDate = date('d M Y');
                 <div class="stats-grid">
                     <div class="stat-box correct">
                         <h3><?php echo $correct; ?></h3>
-                        <p>Correct Answers</p>
+                        <p>✅ Correct Answers</p>
                     </div>
                     <div class="stat-box wrong">
                         <h3><?php echo $wrong; ?></h3>
-                        <p>Wrong Answers</p>
+                        <p>❌ Wrong Answers</p>
                     </div>
                     <div class="stat-box total">
                         <h3><?php echo $total; ?></h3>
-                        <p>Total Questions</p>
+                        <p>📝 Total Questions</p>
                     </div>
                 </div>
                 
-                <div class="score-highlight">
-                    <h2><?php echo $obtainedMarks; ?> / <?php echo $maxMarks; ?></h2>
-                    <p>Your Score</p>
+                <div class="score-highlight" style="background: linear-gradient(135deg, <?php echo ($passStatus == 'Pass') ? '#28a745' : '#dc3545'; ?> 0%, <?php echo ($passStatus == 'Pass') ? '#27ae60' : '#c82333'; ?> 100%);">
+                    <h2 style="color: white;"><?php echo number_format($percentage, 2); ?>%</h2>
+                    <p style="color: white; opacity: 1;">Your Score: <?php echo $obtainedMarks; ?> / <?php echo $maxMarks; ?> Points</p>
+                    <p style="font-size: 1.5rem; margin-top: 1rem; font-weight: 700; color: white; opacity: 1;">
+                        Grade: <?php echo $letterGrade; ?> | GPA: <?php echo number_format($gpa, 2); ?>
+                    </p>
+                    <p style="font-size: 1.3rem; margin-top: 0.5rem; font-weight: 700; color: white; opacity: 1;">
+                        <?php echo $passStatus == 'Pass' ? '✅ PASSED' : '❌ FAILED'; ?>
+                    </p>
                 </div>
                 
+                <?php if (isset($unanswered) && $unanswered > 0): ?>
+                <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 1rem; border-radius: var(--radius-md); margin: 1rem 0; text-align: center; color: #856404;">
+                    <strong>⚠️ Note:</strong> You left <?php echo $unanswered; ?> question(s) unanswered
+                </div>
+                <?php endif; ?>
+                
                 <div class="result-actions">
-                    <a href="index.php" class="btn btn-secondary">? Back to Dashboard</a>
-                    <a href="Result.php" class="btn btn-success">?? View All Results</a>
+                    <a href="index.php" class="btn btn-secondary">🏠 Back to Dashboard</a>
+                    <a href="Result.php" class="btn btn-success">📊 View All Results</a>
                 </div>
             </div>
         </div>

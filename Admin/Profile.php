@@ -158,9 +158,9 @@ $row = $result->fetch_array();
                 <div class="profile-card">
                     <div class="profile-header">
                         <div class="profile-avatar">
-                            <?php echo strtoupper(substr($row['Admin_Name'], 0, 1)); ?>
+                            <?php echo strtoupper(substr($row['full_name'], 0, 1)); ?>
                         </div>
-                        <h2 class="profile-name"><?php echo $row['Admin_Name']; ?></h2>
+                        <h2 class="profile-name"><?php echo htmlspecialchars($row['full_name']); ?></h2>
                         <p class="profile-role">System Administrator</p>
                     </div>
                     
@@ -175,14 +175,18 @@ $row = $result->fetch_array();
                                 
                                 <div class="profile-info-item">
                                     <span class="profile-info-label">Full Name</span>
-                                    <div class="profile-info-value"><?php echo $row['Admin_Name']; ?></div>
+                                    <div class="profile-info-value"><?php echo htmlspecialchars($row['full_name']); ?></div>
                                 </div>
                                 
                                 <div class="profile-info-item">
                                     <span class="profile-info-label">Email Address</span>
-                                    <div class="profile-info-value"><?php echo $row['email']; ?></div>
+                                    <div class="profile-info-value"><?php echo htmlspecialchars($row['email']); ?></div>
                                 </div>
                                 
+                                <div class="profile-info-item">
+                                    <span class="profile-info-label">Username</span>
+                                    <div class="profile-info-value"><?php echo htmlspecialchars($row['username']); ?></div>
+                                </div>
                                 <div class="profile-info-item">
                                     <span class="profile-info-label">Username</span>
                                     <div class="profile-info-value"><?php echo $row['username']; ?></div>

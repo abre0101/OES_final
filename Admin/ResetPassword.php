@@ -103,13 +103,13 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reset_password'])) {
         $updated = false;
         switch($userType) {
             case 'student':
-                $stmt = $con->prepare("UPDATE students SET Password = ? WHERE Id = ?");
-                $stmt->bind_param("ss", $hashedPassword, $userId);
+                $stmt = $con->prepare("UPDATE students SET password = ? WHERE student_id = ?");
+                $stmt->bind_param("si", $hashedPassword, $userId);
                 $updated = $stmt->execute();
                 break;
             case 'instructor':
-                $stmt = $con->prepare("UPDATE instructors SET Password = ? WHERE instructor_id = ?");
-                $stmt->bind_param("ss", $hashedPassword, $userId);
+                $stmt = $con->prepare("UPDATE instructors SET password = ? WHERE instructor_id = ?");
+                $stmt->bind_param("si", $hashedPassword, $userId);
                 $updated = $stmt->execute();
                 break;
             case 'exam_committee':

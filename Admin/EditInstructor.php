@@ -13,16 +13,21 @@ if ($con->connect_error) {
 
 // Get instructor data
 $Id = $_GET['Id'];
-$sql = "select * FROM instructors where instructor_id='".$Id."'";
+$sql = "SELECT i.*, d.department_name 
+        FROM instructors i 
+        LEFT JOIN departments d ON i.department_id = d.department_id 
+        WHERE i.instructor_id='".$Id."'";
 $result = $con->query($sql);
 
 if($row = $result->fetch_array()) {
-    $instructor_id = $row['instructor_id'];
-    $full_name = $row['full_name'];
+    $Inst_ID = $row['instructor_id'];
+    $Inst_Name = $row['full_name'];
     $Email = $row['email'];
     $UserName = $row['username'];
-    $Department = $row['department_name'];
+    $Department = isset($row['department_name']) ? $row['department_name'] : 'N/A';
+    $DepartmentId = isset($row['department_id']) ? $row['department_id'] : '';
     $is_active = $row['is_active'];
+    $Status = ($is_active == 1) ? 'Active' : 'Inactive';
 } else {
     header("Location: Instructor.php");
     exit();
@@ -193,11 +198,11 @@ $result_dept = $con->query($query_dept);
                         <div class="form-group">
                             <label for="cmbDept">Change Department:</label>
                             <select name="cmbDept" id="cmbDept">
-                                <option value="<?php echo $Department; ?>"><?php echo $Department; ?> (Current)</option>
+                                <option value="<?php echo $DepartmentId; ?>"><?php echo $Department; ?> (Current)</option>
                                 <?php
                                 while($row_dept = $result_dept->fetch_array()) {
-                                    if($row_dept['department_name'] != $Department) {
-                                        echo '<option value="'.$row_dept['deptno'].'">'.$row_dept['department_name'].'</option>';
+                                    if(isset($row_dept['department_id']) && $row_dept['department_id'] != $DepartmentId) {
+                                        echo '<option value="'.$row_dept['department_id'].'">'.$row_dept['department_name'].'</option>';
                                     }
                                 }
                                 ?>
@@ -207,10 +212,10 @@ $result_dept = $con->query($query_dept);
                         <div class="form-group">
                             <label for="cmbStatus">Change Status:</label>
                             <select name="cmbStatus" id="cmbStatus">
-                                <option value="<?php echo $Status; ?>"><?php echo $Status; ?> (Current)</option>
+                                <option value="<?php echo $is_active; ?>"><?php echo $Status; ?> (Current)</option>
                                 <?php 
-                                if($is_active != 'Active') echo "<option value='Active'>Active</option>";
-                                if($is_active != 'Inactive') echo "<option value='Inactive'>Inactive</option>";
+                                if($is_active != 1) echo "<option value='1'>Active</option>";
+                                if($is_active != 0) echo "<option value='0'>Inactive</option>";
                                 ?>
                             </select>
                         </div>

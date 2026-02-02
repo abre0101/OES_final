@@ -253,7 +253,7 @@ $con->close();
     <main class="main-content">
         <div class="container">
             <div class="review-header">
-                <h1 style="margin: 0 0 0.5rem 0;">?? Review Your Answers</h1>
+                <h1 style="margin: 0 0 0.5rem 0;">📝 Review Your Answers</h1>
                 <p style="margin: 0; opacity: 0.9;"><?php echo htmlspecialchars($result['exam_name']); ?> - <?php echo htmlspecialchars($result['course_name']); ?></p>
                 
                 <div class="review-stats">
@@ -277,8 +277,8 @@ $con->close();
             </div>
 
             <div style="margin-bottom: 2rem;">
-                <a href="Result.php" class="btn btn-secondary">? Back to Results</a>
-                <button onclick="window.print()" class="btn btn-primary">??? Print Review</button>
+                <a href="Result.php" class="btn btn-secondary">⬅️ Back to Results</a>
+                <button onclick="window.print()" class="btn btn-primary">🖨️ Print Review</button>
             </div>
 
             <?php 
@@ -297,11 +297,11 @@ $con->close();
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                     <h3 style="margin: 0; color: var(--primary-color);">Question <?php echo $qNum++; ?></h3>
                     <?php if(!$studentAnswer): ?>
-                        <span class="answer-indicator indicator-unanswered">?? Not Answered</span>
+                        <span class="answer-indicator indicator-unanswered">⚠️ Not Answered</span>
                     <?php elseif($isCorrect): ?>
-                        <span class="answer-indicator indicator-correct">? Correct</span>
+                        <span class="answer-indicator indicator-correct">✅ Correct</span>
                     <?php else: ?>
-                        <span class="answer-indicator indicator-wrong">? Incorrect</span>
+                        <span class="answer-indicator indicator-wrong">❌ Incorrect</span>
                     <?php endif; ?>
                 </div>
                 
@@ -325,14 +325,14 @@ $con->close();
                         
                         if($letter == $correctAnswer) {
                             $optionClass = 'correct-answer';
-                            $indicator = '<span style="color: var(--success-color); font-weight: 700; margin-left: 1rem;">? Correct Answer</span>';
+                            $indicator = '<span style="color: var(--success-color); font-weight: 700; margin-left: 1rem;">✅ Correct Answer</span>';
                         }
                         
                         if($letter == $studentAnswer && $letter != $correctAnswer) {
                             $optionClass = 'wrong-answer';
-                            $indicator = '<span style="color: #dc3545; font-weight: 700; margin-left: 1rem;">? Your Answer</span>';
+                            $indicator = '<span style="color: #dc3545; font-weight: 700; margin-left: 1rem;">❌ Your Answer (Wrong)</span>';
                         } elseif($letter == $studentAnswer && $letter == $correctAnswer) {
-                            $indicator = '<span style="color: var(--success-color); font-weight: 700; margin-left: 1rem;">? Your Answer (Correct)</span>';
+                            $indicator = '<span style="color: var(--success-color); font-weight: 700; margin-left: 1rem;">✅ Your Answer (Correct!)</span>';
                         }
                     ?>
                     <div class="option-review <?php echo $optionClass; ?>">

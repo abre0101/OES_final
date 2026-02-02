@@ -21,7 +21,6 @@
         </a>
 
         <div class="sidebar-divider"></div>
-        <div class="sidebar-section-label">Academic Management</div>
 
         <a href="Faculty.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Faculty.php' || basename($_SERVER['PHP_SELF']) == 'InsertFaculty.php' || basename($_SERVER['PHP_SELF']) == 'EditFaculty.php') ? 'active' : ''; ?>" data-tooltip="Colleges">
             <span class="sidebar-nav-icon">🏛️</span>
@@ -37,7 +36,6 @@
         </a>
 
         <div class="sidebar-divider"></div>
-        <div class="sidebar-section-label">User Management</div>
 
         <a href="Student.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Student.php' || basename($_SERVER['PHP_SELF']) == 'InsertStudent.php' || basename($_SERVER['PHP_SELF']) == 'EditStudent.php') ? 'active' : ''; ?>" data-tooltip="Students">
             <span class="sidebar-nav-icon">👨‍🎓</span>
@@ -47,9 +45,9 @@
             <span class="sidebar-nav-icon">👨‍🏫</span>
             <span>Instructors</span>
         </a>
-        <a href="ECommittee.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'ECommittee.php' || basename($_SERVER['PHP_SELF']) == 'InsertECommittee.php' || basename($_SERVER['PHP_SELF']) == 'EditECommittee.php') ? 'active' : ''; ?>" data-tooltip="Exam Committee">
-            <span class="sidebar-nav-icon">👥</span>
-            <span>Exam Committee</span>
+        <a href="AcademicOfficer.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'AcademicOfficer.php' || basename($_SERVER['PHP_SELF']) == 'InsertAcademicOfficer.php' || basename($_SERVER['PHP_SELF']) == 'EditAcademicOfficer.php') ? 'active' : ''; ?>" data-tooltip="Department Heads">
+            <span class="sidebar-nav-icon">👔</span>
+            <span>Department Heads</span>
         </a>
         <a href="BulkImport.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'BulkImport.php') ? 'active' : ''; ?>" data-tooltip="Bulk Import">
             <span class="sidebar-nav-icon">📥</span>
@@ -57,31 +55,14 @@
         </a>
 
         <div class="sidebar-divider"></div>
-        <div class="sidebar-section-label">Reports & Monitoring</div>
 
         <a href="Reports.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Reports.php') ? 'active' : ''; ?>" data-tooltip="Reports">
             <span class="sidebar-nav-icon">📈</span>
             <span>Reports</span>
         </a>
-        <a href="SecurityLogs.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'SecurityLogs.php') ? 'active' : ''; ?>" data-tooltip="Security Logs">
-            <span class="sidebar-nav-icon">🔒</span>
-            <span>Security Logs</span>
-        </a>
-
-        <div class="sidebar-divider"></div>
-        <div class="sidebar-section-label">Settings</div>
-
-        <a href="ResetPassword.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'ResetPassword.php') ? 'active' : ''; ?>" data-tooltip="Reset Password">
-            <span class="sidebar-nav-icon">🔑</span>
-            <span>Reset Password</span>
-        </a>
-        <a href="DatabaseBackup.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'DatabaseBackup.php') ? 'active' : ''; ?>" data-tooltip="Database Backup">
-            <span class="sidebar-nav-icon">💾</span>
-            <span>Database Backup</span>
-        </a>
-        <a href="SystemSettings.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'SystemSettings.php') ? 'active' : ''; ?>" data-tooltip="System Settings">
+        <a href="Settings.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Settings.php' || basename($_SERVER['PHP_SELF']) == 'SecurityLogs.php' || basename($_SERVER['PHP_SELF']) == 'ResetPassword.php' || basename($_SERVER['PHP_SELF']) == 'DatabaseBackup.php' || basename($_SERVER['PHP_SELF']) == 'SystemSettings.php') ? 'active' : ''; ?>" data-tooltip="Settings">
             <span class="sidebar-nav-icon">⚙️</span>
-            <span>System Settings</span>
+            <span>Settings</span>
         </a>
     </nav>
 

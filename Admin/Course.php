@@ -568,7 +568,7 @@ if($Recordseti->num_rows > 0) {
                         <?php
                         foreach($departments as $dept) {
                         ?>
-                        <option value="<?php echo $dept['deptno']?>"><?php echo $dept['department_name']?></option>
+                        <option value="<?php echo $dept['department_id']?>"><?php echo $dept['department_name']?></option>
                         <?php
                         }
                         ?>

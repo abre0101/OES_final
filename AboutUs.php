@@ -11,7 +11,7 @@ if ($isLoggedIn) {
     } elseif (isset($_SESSION['instructor_id'])) {
         $userRole = 'instructor';
     } elseif (isset($_SESSION['committee_member_id'])) {
-        $userRole = 'examcommittee';
+        $userRole = 'department_head';
     } elseif (isset($_SESSION['Admin'])) {
         $userRole = 'admin';
     }
@@ -352,7 +352,7 @@ if ($isLoggedIn) {
                         <a href="<?php 
                             if ($userRole == 'student') echo 'Student/index.php';
                             elseif ($userRole == 'instructor') echo 'Instructor/index.php';
-                            elseif ($userRole == 'examcommittee') echo 'ExamCommittee/index.php';
+                            elseif ($userRole == 'department_head') echo 'DepartmentHead/index.php';
                             elseif ($userRole == 'admin') echo 'Admin/index.php';
                             else echo 'index.php';
                         ?>" class="btn btn-primary btn-sm">← Back to Dashboard</a>
@@ -414,7 +414,7 @@ if ($isLoggedIn) {
                         </div>
                         <div>
                             <h4>👥 Multi-user Support</h4>
-                            <p>Separate interfaces for students, instructors, exam committee, and administrators.</p>
+                            <p>Separate interfaces for students, instructors, department heads, and administrators.</p>
                         </div>
                         <div>
                             <h4>📊 Analytics Dashboard</h4>

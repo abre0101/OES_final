@@ -11,7 +11,7 @@ if ($isLoggedIn) {
     } elseif (isset($_SESSION['instructor_id'])) {
         $userRole = 'instructor';
     } elseif (isset($_SESSION['committee_member_id'])) {
-        $userRole = 'examcommittee';
+        $userRole = 'departmenthead';
     } elseif (isset($_SESSION['Admin'])) {
         $userRole = 'admin';
     }
@@ -430,7 +430,7 @@ if ($isLoggedIn) {
                         <a href="<?php 
                             if ($userRole == 'student') echo 'Student/index.php';
                             elseif ($userRole == 'instructor') echo 'Instructor/index.php';
-                            elseif ($userRole == 'examcommittee') echo 'ExamCommittee/index.php';
+                            elseif ($userRole == 'departmenthead') echo 'DepartmentHead/index.php';
                             elseif ($userRole == 'admin') echo 'Admin/index.php';
                             else echo 'index.php';
                         ?>" class="btn btn-primary btn-sm">← Back to Dashboard</a>
@@ -488,7 +488,7 @@ if ($isLoggedIn) {
                                 <span class="faq-icon">▼</span>
                             </div>
                             <div class="faq-answer">
-                                <p>To login, go to the home page and enter your username, password, and select your user type (Student, Instructor, Exam Committee, or Administrator). Click the "Login to System" button to access your dashboard.</p>
+                                <p>To login, go to the home page and enter your username, password, and select your user type (Student, Instructor, Department Head, or Administrator). Click the "Login to System" button to access your dashboard.</p>
                             </div>
                         </div>
 

@@ -11,20 +11,25 @@ if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-// Get exam committee data
+// Get Department Head data
 $Id = $_GET['Id'];
-$sql = "select * FROM exam_committee_members where committee_member_id='".$Id."'";
+$sql = "SELECT ao.*, d.department_name 
+        FROM exam_committee_members ao 
+        LEFT JOIN departments d ON ao.department_id = d.department_id 
+        WHERE ao.committee_member_id='".$Id."'";
 $result = $con->query($sql);
 
 if($row = $result->fetch_array()) {
-    $committee_member_id = $row['committee_member_id'];
-    $full_name = $row['full_name'];
+    $AO_ID = $row['committee_member_id'];
+    $AO_Name = $row['full_name'];
     $Email = $row['email'];
     $UserName = $row['username'];
-    $Department = $row['department_name'];
+    $Department = isset($row['department_name']) ? $row['department_name'] : 'N/A';
+    $DepartmentId = isset($row['department_id']) ? $row['department_id'] : '';
     $is_active = $row['is_active'];
+    $Status = ($is_active == 1) ? 'Active' : 'Inactive';
 } else {
-    header("Location: ECommittee.php");
+    header("Location: AcademicOfficer.php");
     exit();
 }
 
@@ -37,7 +42,7 @@ $result_dept = $con->query($query_dept);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Exam Committee - Admin Dashboard</title>
+    <title>Edit Department Head - Admin Dashboard</title>
     <link href="../assets/css/modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
@@ -152,8 +157,8 @@ $result_dept = $con->query($query_dept);
 
         <div class="admin-content">
             <div class="page-header">
-                <h1>✏️ Edit Exam Committee Member</h1>
-                <p>Update exam committee member details</p>
+                <h1>✏️ Edit Department Head</h1>
+                <p>Update Department Head details and department assignment</p>
             </div>
 
             <div class="edit-container">
@@ -161,12 +166,12 @@ $result_dept = $con->query($query_dept);
                     <h3>📋 Current Information</h3>
                     <div class="info-grid">
                         <div class="info-item">
-                            <span class="info-label">Committee ID</span>
-                            <span class="info-value"><?php echo $EC_ID; ?></span>
+                            <span class="info-label">Officer ID</span>
+                            <span class="info-value"><?php echo $AO_ID; ?></span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Name</span>
-                            <span class="info-value"><?php echo $EC_Name; ?></span>
+                            <span class="info-value"><?php echo $AO_Name; ?></span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Email</span>
@@ -189,15 +194,15 @@ $result_dept = $con->query($query_dept);
 
                 <div class="form-section">
                     <h3>🔄 Update Information</h3>
-                    <form method="post" action="UpdateECommittee.php?ID=<?php echo $EC_ID;?>">
+                    <form method="post" action="UpdateAcademicOfficer.php?ID=<?php echo $AO_ID;?>">
                         <div class="form-group">
                             <label for="cmbDep">Change Department:</label>
                             <select name="cmbDep" id="cmbDep">
-                                <option value="<?php echo $Department; ?>"><?php echo $Department; ?> (Current)</option>
+                                <option value="<?php echo $DepartmentId; ?>"><?php echo $Department; ?> (Current)</option>
                                 <?php
                                 while($row_dept = $result_dept->fetch_array()) {
-                                    if($row_dept['department_name'] != $Department) {
-                                        echo '<option value="'.$row_dept['department_name'].'">'.$row_dept['department_name'].'</option>';
+                                    if(isset($row_dept['department_id']) && $row_dept['department_id'] != $DepartmentId) {
+                                        echo '<option value="'.$row_dept['department_id'].'">'.$row_dept['department_name'].'</option>';
                                     }
                                 }
                                 ?>
@@ -207,20 +212,20 @@ $result_dept = $con->query($query_dept);
                         <div class="form-group">
                             <label for="cmbStatus">Change Status:</label>
                             <select name="cmbStatus" id="cmbStatus">
-                                <option value="<?php echo $Status; ?>"><?php echo $Status; ?> (Current)</option>
+                                <option value="<?php echo $is_active; ?>"><?php echo $Status; ?> (Current)</option>
                                 <?php 
-                                if($is_active != 'Active') echo "<option value='Active'>Active</option>";
-                                if($is_active != 'Inactive') echo "<option value='Inactive'>Inactive</option>";
+                                if($is_active != 1) echo "<option value='1'>Active</option>";
+                                if($is_active != 0) echo "<option value='0'>Inactive</option>";
                                 ?>
                             </select>
                         </div>
                         
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">
-                                ✓ Update Member
+                                ✓ Update Officer
                             </button>
-                            <a href="ECommittee.php" class="btn btn-secondary">
-                                ← Back to Committee
+                            <a href="AcademicOfficer.php" class="btn btn-secondary">
+                                ← Back to Officers
                             </a>
                         </div>
                     </form>

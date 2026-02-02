@@ -240,23 +240,23 @@ if ($totalQuestions == 0) {
             
             const questionHTML = `
                 <div class="question-number">Question No. ${index + 1}</div>
-                <div class="question-text">${q.question || 'Question text here'}</div>
+                <div class="question-text">${q.question_text || 'Question text here'}</div>
                 <div class="options-container">
                     <label class="option-label">
                         <input type="radio" name="answer" value="A">
-                        <span class="option-text">(A) ${q.Option1 || 'Option A'}</span>
+                        <span class="option-text">(A) ${q.option_a || 'Option A'}</span>
                     </label>
                     <label class="option-label">
                         <input type="radio" name="answer" value="B">
-                        <span class="option-text">(B) ${q.Option2 || 'Option B'}</span>
+                        <span class="option-text">(B) ${q.option_b || 'Option B'}</span>
                     </label>
                     <label class="option-label">
                         <input type="radio" name="answer" value="C">
-                        <span class="option-text">(C) ${q.Option3 || 'Option C'}</span>
+                        <span class="option-text">(C) ${q.option_c || 'Option C'}</span>
                     </label>
                     <label class="option-label">
                         <input type="radio" name="answer" value="D">
-                        <span class="option-text">(D) ${q.Option4 || 'Option D'}</span>
+                        <span class="option-text">(D) ${q.option_d || 'Option D'}</span>
                     </label>
                 </div>
             `;
@@ -287,12 +287,26 @@ if ($totalQuestions == 0) {
             }
 
             hasChecked = true;
-            const userAnswer = selectedAnswer.value;
-            const correctAnswer = questions[currentQuestion].Answer;
-            const isCorrect = userAnswer === correctAnswer;
+            const userAnswerLetter = selectedAnswer.value; // A, B, C, or D
+            const q = questions[currentQuestion];
+            
+            // Get the text of the user's selected option
+            const userAnswerText = q['option_' + userAnswerLetter.toLowerCase()];
+            
+            // Get correct answer text from database
+            const correctAnswerText = q.correct_answer;
+            
+            // Find which letter corresponds to the correct answer
+            let correctAnswerLetter = '';
+            if (q.option_a === correctAnswerText) correctAnswerLetter = 'A';
+            else if (q.option_b === correctAnswerText) correctAnswerLetter = 'B';
+            else if (q.option_c === correctAnswerText) correctAnswerLetter = 'C';
+            else if (q.option_d === correctAnswerText) correctAnswerLetter = 'D';
+            
+            const isCorrect = userAnswerText === correctAnswerText;
 
             // Save answer
-            answers[currentQuestion] = userAnswer;
+            answers[currentQuestion] = userAnswerLetter;
             
             // Update status
             if (questionStatus[currentQuestion] === undefined) {
@@ -314,18 +328,34 @@ if ($totalQuestions == 0) {
             // Highlight correct and wrong answers
             document.querySelectorAll('.option-label').forEach(label => {
                 const input = label.querySelector('input');
-                if (input.value === correctAnswer) {
+                if (input.value === correctAnswerLetter) {
                     label.classList.add('correct-answer');
                 }
-                if (input.value === userAnswer && !isCorrect) {
+                if (input.value === userAnswerLetter && !isCorrect) {
                     label.classList.add('wrong-answer');
                 }
             });
 
-            // Show feedback
-            const feedbackHTML = isCorrect 
-                ? `<div class="feedback-correct">✓ Correct! Well done!</div>`
-                : `<div class="feedback-wrong">✗ Wrong! The correct answer is (${correctAnswer})</div>`;
+            // Show feedback with explanation
+            let feedbackHTML = '';
+            if (isCorrect) {
+                feedbackHTML = `<div class="feedback-correct">
+                    <strong>✅ Correct! Well done!</strong>
+                </div>`;
+            } else {
+                feedbackHTML = `<div class="feedback-wrong">
+                    <strong>❌ Wrong!</strong><br>
+                    <p style="margin: 0.5rem 0;">The correct answer is: <strong>(${correctAnswerLetter}) ${correctAnswerText}</strong></p>
+                </div>`;
+            }
+            
+            // Add explanation if available
+            if (q.explanation && q.explanation.trim() !== '') {
+                feedbackHTML += `<div style="background: #f0f9ff; border: 2px solid #3b82f6; border-radius: var(--radius-md); padding: 1rem; margin-top: 1rem;">
+                    <strong style="color: #1e40af;">💡 Explanation:</strong>
+                    <p style="margin: 0.5rem 0 0 0; color: #1e3a8a;">${q.explanation}</p>
+                </div>`;
+            }
             
             document.getElementById('feedbackArea').innerHTML = feedbackHTML;
 

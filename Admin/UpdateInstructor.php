@@ -15,8 +15,12 @@ if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-$stmt = $con->prepare("UPDATE instructors SET department_name=(SELECT department_name FROM departments WHERE deptno=?), is_active=? WHERE instructor_id=?");
-$stmt->bind_param("sss", $Department, $is_active, $Id);
+// Convert to integers
+$Department = intval($Department);
+$is_active = intval($is_active);
+
+$stmt = $con->prepare("UPDATE instructors SET department_id=?, is_active=? WHERE instructor_id=?");
+$stmt->bind_param("iis", $Department, $is_active, $Id);
 $stmt->execute();
 $stmt->close();
 $con->close();

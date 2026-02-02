@@ -82,10 +82,13 @@ $stmt->close();
 $con->close();
 }
 
-else if ($UserType=="ExamCommittee")
+else if ($UserType=="DepartmentHead")
 {
 require_once('../Connections/OES.php');
-$stmt = $con->prepare("select * from exam_committee_members where username=? and is_active=1");
+$stmt = $con->prepare("SELECT ecm.*, d.department_name 
+                       FROM exam_committee_members ecm 
+                       LEFT JOIN departments d ON ecm.department_id = d.department_id 
+                       WHERE ecm.username=? AND ecm.is_active=1");
 $stmt->bind_param("s", $UserName);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -93,17 +96,18 @@ $row = $result->fetch_array();
 $records = $result->num_rows;
 if ($records==0 || !verifyPassword($Password, $row['password']))
 {
-logFailedLogin($UserName, 'exam_committee', 'Invalid credentials or account inactive');
+logFailedLogin($UserName, 'department_head', 'Invalid credentials or account inactive');
 echo '<script type="text/javascript">alert("Wrong UserName or Password");window.location=\'index.php\';</script>';
 }
 else
 {
 $_SESSION['ID']=$row['committee_member_id'];
 $_SESSION['Name']=$row['full_name'];
-$_SESSION['Dept']=$row['department_id'];
+$_SESSION['Dept']=$row['department_name'] ?? 'Not Set';
+$_SESSION['DeptId']=$row['department_id'];
 
-logSuccessfulLogin($UserName, 'exam_committee');
-header("location:../ExamCommittee/index.php");
+logSuccessfulLogin($UserName, 'department_head');
+header("location:../DepartmentHead/index.php");
 } 
 $stmt->close();
 $con->close();

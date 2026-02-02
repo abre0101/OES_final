@@ -43,17 +43,17 @@ class NotificationSystem {
     }
     
     /**
-     * Notify exam committee about new exam submission
+     * Notify department head about new exam submission
      */
-    public function notifyCommitteeNewExam($scheduleId, $examName, $courseName, $instructorName) {
-        // Get all active committee members
-        $committee = $this->con->query("SELECT committee_id FROM exam_committee WHERE is_active = TRUE");
+    public function notifyDepartmentHeadNewExam($scheduleId, $examName, $courseName, $instructorName) {
+        // Get all active department heads
+        $officers = $this->con->query("SELECT officer_id FROM academic_officers WHERE is_active = TRUE");
         
         $title = "New Exam Submitted for Approval";
         $message = "Instructor {$instructorName} has submitted exam '{$examName}' for course '{$courseName}' for your review.";
         
-        while($member = $committee->fetch_assoc()) {
-            $this->send($member['committee_id'], 'committee', $title, $message, 'info', 'approval', $scheduleId);
+        while($officer = $officers->fetch_assoc()) {
+            $this->send($officer['officer_id'], 'department_head', $title, $message, 'info', 'approval', $scheduleId);
         }
     }
     

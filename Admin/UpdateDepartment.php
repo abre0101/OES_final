@@ -16,10 +16,10 @@ if ($con->connect_error) {
 }
 
 if($Faculty) {
-    $stmt = $con->prepare("UPDATE departments SET department_name=?, faculty_name=? WHERE deptno=?");
+    $stmt = $con->prepare("UPDATE departments SET department_name=?, faculty_name=? WHERE department_id=?");
     $stmt->bind_param("sss", $Name, $Faculty, $Id);
 } else {
-    $stmt = $con->prepare("UPDATE departments SET department_name=? WHERE deptno=?");
+    $stmt = $con->prepare("UPDATE departments SET department_name=? WHERE department_id=?");
     $stmt->bind_param("ss", $Name, $Id);
 }
 

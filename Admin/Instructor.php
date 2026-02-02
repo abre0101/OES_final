@@ -592,7 +592,7 @@ if(mysqli_num_rows($Recordsetd) > 0) {
                         <?php
                         foreach($departments as $dept) {
                         ?>
-                        <option value="<?php echo $dept['deptno']?>"><?php echo $dept['department_name']?></option>
+                        <option value="<?php echo $dept['department_id']?>"><?php echo $dept['department_name']?></option>
                         <?php
                         }
                         ?>

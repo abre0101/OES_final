@@ -56,9 +56,11 @@ $recent_approvals = $con->query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - OES Admin</title>
-    <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Dashboard - Admin Panel</title>
+    <link href="../assets/css/modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-sidebar.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -431,12 +433,15 @@ $recent_approvals = $con->query("
     <?php include 'sidebar-component.php'; ?>
 
     <div class="admin-main-content">
-        <?php include 'header-component.php'; ?>
+        <?php 
+        $pageTitle = 'Dashboard';
+        include 'header-component.php'; 
+        ?>
 
-        <div class="dashboard-container">
+        <div class="admin-content">
             <!-- Page Header -->
             <div class="page-header">
-                <h1 class="page-title">Dashboard</h1>
+                <h1 class="page-title"><span style="-webkit-text-fill-color: initial;">📊</span> Dashboard</h1>
                 <p class="page-subtitle">Welcome back, <?php echo htmlspecialchars($_SESSION['username']); ?>! Here's what's happening today.</p>
             </div>
 

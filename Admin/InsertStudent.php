@@ -9,7 +9,30 @@
 <?php
 	require_once(__DIR__ . "/../utils/password_helper.php");
 
-	$ID=$_POST['txtRoll'];
+	// Function to generate next student code
+	function generateNextStudentCode($con) {
+		$query = "SELECT student_code FROM students WHERE student_code LIKE 'STU%' ORDER BY student_code DESC LIMIT 1";
+		$result = $con->query($query);
+		
+		if($result && $result->num_rows > 0) {
+			$row = $result->fetch_assoc();
+			$lastCode = $row['student_code'];
+			// Extract number from STU004 format
+			$number = intval(substr($lastCode, 3));
+			$nextNumber = $number + 1;
+			return 'STU' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+		} else {
+			// First student
+			return 'STU001';
+		}
+	}
+
+	// Establish Connection with MYSQL
+	$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
+	
+	// Auto-generate student code
+	$ID = generateNextStudentCode($con);
+	
 	$Name=$_POST['txtName'];
         $StudDept=$_POST['cmbDept'];
         $StudYear=$_POST['cmbYear'];
@@ -22,8 +45,6 @@
 	// Hash the password before storing
 	$hashedPassword = hashPassword($Password);
 
-	// Establish Connection with MYSQL
-	$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
 	// Specify the query to Insert Record
 	$stmt = $con->prepare("Insert INTO students(Id,Name,department_name,year,semester,Sex,username,password,is_active) values(?,?,?,?,?,?,?,?,?)");
 	$stmt->bind_param("ssssissss", $ID, $Name, $StudDept, $StudYear, $StudSem, $Sex, $UserName, $hashedPassword, $is_active);
@@ -32,7 +53,7 @@
 	$stmt->close();
 	// Close The Connection
 	$con->close();
-	echo '<script type="text/javascript">alert("New Student Inserted Successfully");window.location=\'Student.php\';</script>';
+	echo '<script type="text/javascript">alert("New Student Inserted Successfully with Code: ' . $ID . '");window.location=\'Student.php\';</script>';
 
 ?>
 </body>

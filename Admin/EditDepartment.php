@@ -11,16 +11,24 @@ if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-// Get department data
+// Get department data with faculty name
 $ID = $_GET['ID'];
-$sql = "select * FROM departments where deptno='".$ID."'";
-$result = $con->query($sql);
+$stmt = $con->prepare("SELECT d.*, f.faculty_name 
+    FROM departments d 
+    LEFT JOIN faculties f ON d.faculty_id = f.faculty_id 
+    WHERE d.department_id=?");
+$stmt->bind_param("i", $ID);
+$stmt->execute();
+$result = $stmt->get_result();
 
 if($row = $result->fetch_array()) {
-    $Id = $row['deptno'];
+    $Id = $row['department_id'];
     $Name = $row['department_name'];
-    $Faculty = $row['faculty_name'];
+    $Faculty = $row['faculty_name'] ?? 'Not Assigned';
+    $FacultyId = $row['faculty_id'];
+    $DeptCode = $row['department_code'];
 } else {
+    $stmt->close();
     header("Location: Department.php");
     exit();
 }

@@ -12,7 +12,7 @@ if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-$stmt = $con->prepare("delete FROM departments where deptno=?");
+$stmt = $con->prepare("delete FROM departments where department_id=?");
 $stmt->bind_param("s", $ID);
 $stmt->execute();
 $stmt->close();

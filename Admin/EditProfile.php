@@ -17,7 +17,7 @@ $result = $con->query($sql);
 
 if($row = $result->fetch_array()) {
     $admin_id = $row['admin_id'];
-    $Admin_Name = $row['Admin_Name'];
+    $Admin_Name = $row['full_name'];
     $Email = $row['email'];
     $UserName = $row['username'];
     $Password = $row['password'];
@@ -157,11 +157,11 @@ if($row = $result->fetch_array()) {
                     <div class="info-grid">
                         <div class="info-item">
                             <span class="info-label">Admin ID</span>
-                            <span class="info-value"><?php echo $Admin_ID; ?></span>
+                            <span class="info-value"><?php echo $admin_id; ?></span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Full Name</span>
-                            <span class="info-value"><?php echo $Admin_Name; ?></span>
+                            <span class="info-value"><?php echo htmlspecialchars($Admin_Name); ?></span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Email</span>

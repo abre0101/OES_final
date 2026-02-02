@@ -17,20 +17,24 @@ $Recordsetd = $con->query($query_Recordsetd);
 $row_Recordsetd = $Recordsetd->fetch_assoc();
 $totalRows_Recordsetd = $Recordsetd->num_rows;
 
-// Get student data
+// Get student data with department name
 $student_id = $_GET['student_id'];
-$stmt = $con->prepare("select * FROM students where Id=?");
-$stmt->bind_param("s", $student_id);
+$stmt = $con->prepare("SELECT s.*, d.department_name 
+    FROM students s 
+    LEFT JOIN departments d ON s.department_id = d.department_id 
+    WHERE s.student_id=?");
+$stmt->bind_param("i", $student_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if($row = $result->fetch_array()) {
-    $Id = $row['Id'];
-    $Name = $row['Name'];
-    $StudDept = $row['department_name'];
-    $StudYear = $row['year'];
+    $Id = $row['student_id'];
+    $Name = $row['full_name'];
+    $StudDept = $row['department_name'] ?? 'Not Assigned';
+    $StudDeptId = $row['department_id'];
+    $StudYear = $row['semester']; // Using semester as year
     $Semester = $row['semester'];
-    $StudSex = $row['Sex'];
+    $StudSex = $row['gender'];
     $Email = $row['email'];
     $UserName = $row['username'];
     $Password = $row['password'];
@@ -196,23 +200,23 @@ $stmt->close();
                         </div>
                         <div class="info-item">
                             <span class="info-label">Current Department</span>
-                            <span class="info-value"><?php echo $StudDept; ?></span>
+                            <span class="info-value"><?php echo htmlspecialchars($StudDept); ?></span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Current Year</span>
-                            <span class="info-value"><?php echo $StudYear; ?></span>
+                            <span class="info-value">Year <?php echo $StudYear; ?></span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Current Semester</span>
-                            <span class="info-value"><?php echo $Semester; ?></span>
+                            <span class="info-value">Semester <?php echo $Semester; ?></span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Username</span>
-                            <span class="info-value"><?php echo $UserName; ?></span>
+                            <span class="info-value"><?php echo htmlspecialchars($UserName); ?></span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">Current is_active</span>
-                            <span class="info-value"><?php echo $Status; ?></span>
+                            <span class="info-label">Current Status</span>
+                            <span class="info-value"><?php echo $is_active ? 'Active' : 'Inactive'; ?></span>
                         </div>
                     </div>
                 </div>
@@ -220,19 +224,20 @@ $stmt->close();
                 <!-- Edit Form Section -->
                 <div class="form-section">
                     <h3>🔄 UPDATE students Information</h3>
-                    <form method="post" action="UpdateStudent.php?Id=<?php echo $Id;?>">
+                    <form method="post" action="UpdateStudent.php?student_id=<?php echo $Id;?>">
                         <div class="form-group">
                             <label for="cmbDep">Change Department:</label>
                             <select name="cmbDep" id="cmbDep">
-                                <option value="<?php echo $StudDept; ?>"><?php echo $StudDept; ?> (Current)</option>
+                                <option value="<?php echo $StudDeptId; ?>"><?php echo $StudDept; ?> (Current)</option>
                                 <?php
-                                do {
-                                    if($row_Recordsetd['department_name'] != $StudDept) {
+                                $Recordsetd->data_seek(0); // Reset pointer
+                                while($row_dept = $Recordsetd->fetch_assoc()) {
+                                    if($row_dept['department_id'] != $StudDeptId) {
                                 ?>
-                                <option value="<?php echo $row_Recordsetd['department_name']?>"><?php echo $row_Recordsetd['department_name']?></option>
+                                <option value="<?php echo $row_dept['department_id']?>"><?php echo $row_dept['department_name']?></option>
                                 <?php
                                     }
-                                } while ($row_Recordsetd = $Recordsetd->fetch_assoc());
+                                }
                                 ?>
                             </select>
                         </div>
@@ -240,10 +245,10 @@ $stmt->close();
                         <div class="form-group">
                             <label for="cmbYear">Change Year:</label>
                             <select name="cmbYear" id="cmbYear">
-                                <option value="<?php echo $StudYear; ?>"><?php echo $StudYear; ?> (Current)</option>
+                                <option value="<?php echo $StudYear; ?>">Year <?php echo $StudYear; ?> (Current)</option>
                                 <?php for($i = 1; $i <= 7; $i++) {
                                     if($i != $StudYear) {
-                                        echo "<option value='$i'>$i</option>";
+                                        echo "<option value='$i'>Year $i</option>";
                                     }
                                 } ?>
                             </select>
@@ -252,22 +257,24 @@ $stmt->close();
                         <div class="form-group">
                             <label for="cmbSem">Change Semester:</label>
                             <select name="cmbSem" id="cmbSem">
-                                <option value="<?php echo $Semester; ?>"><?php echo $Semester; ?> (Current)</option>
+                                <option value="<?php echo $Semester; ?>">Semester <?php echo $Semester; ?> (Current)</option>
                                 <?php 
-                                if($Semester != 1) echo "<option value='1'>1</option>";
-                                if($Semester != 2) echo "<option value='2'>2</option>";
-                                ?>
+                                for($i = 1; $i <= 2; $i++) {
+                                    if($i != $Semester) {
+                        echo "<option value='$i'>Semester $i</option>";
+                                    }
+                                } ?>
                             </select>
+                        </div>
+                                                    </select>
                         </div>
                         
                         <div class="form-group">
                             <label for="cmbStatus">Change Status:</label>
                             <select name="cmbStatus" id="cmbStatus">
-                                <option value="<?php echo $Status; ?>"><?php echo $Status; ?> (Current)</option>
-                                <?php 
-                                if($is_active != 'Active') echo "<option value='Active'>Active</option>";
-                                if($is_active != 'InActive') echo "<option value='InActive'>Inactive</option>";
-                                ?>
+                                <option value="<?php echo $is_active ? '1' : '0'; ?>"><?php echo $is_active ? 'Active' : 'Inactive'; ?> (Current)</option>
+                                <option value="1">Active</option>
+                                <option value="0">Inactive</option>
                             </select>
                         </div>
                         

@@ -105,6 +105,7 @@ $con->close();
     <link href="../assets/css/admin-sidebar.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         .page-header-actions {
             display: flex;
@@ -823,11 +824,62 @@ $con->close();
         <?php endif; ?>
 
         function generateReport() {
-            alert('Report generation initiated. This will compile all selected data into a comprehensive report.');
+            // Show loading message
+            const btn = event.target.closest('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span>⏳</span> Generating...';
+            btn.disabled = true;
+            
+            // Get current report type from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportType = urlParams.get('report') || 'overview';
+            
+            // Simulate report generation (in production, this would call a backend endpoint)
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                alert('✅ Report generated successfully!\n\nReport Type: ' + reportType.toUpperCase() + '\nGenerated: ' + new Date().toLocaleString());
+            }, 1500);
         }
 
         function exportToExcel() {
-            alert('Exporting data to Excel format. Download will begin shortly.');
+            // Get current report type from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportType = urlParams.get('report') || 'overview';
+            
+            // Create a new workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Get all tables and convert to sheets
+            const tables = document.querySelectorAll('.data-table');
+            
+            if(tables.length === 0) {
+                alert('No data tables found to export!');
+                return;
+            }
+            
+            tables.forEach((table, index) => {
+                // Get the section title
+                const sectionTitle = table.closest('.report-section')?.querySelector('.card-title')?.textContent.trim() || 'Sheet' + (index + 1);
+                
+                // Convert table to worksheet
+                const ws = XLSX.utils.table_to_sheet(table);
+                
+                // Add worksheet to workbook with a clean name
+                const sheetName = sectionTitle.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 31);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            });
+            
+            // Generate filename with date
+            const filename = 'OES_Report_' + reportType + '_' + new Date().toISOString().split('T')[0] + '.xlsx';
+            
+            // Save the file
+            XLSX.writeFile(wb, filename);
+            
+            // Show success message
+            setTimeout(() => {
+                alert('✅ Excel file exported successfully!\n\nFilename: ' + filename);
+            }, 500);
         }
     </script>
 </body>

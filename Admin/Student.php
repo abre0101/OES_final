@@ -11,6 +11,27 @@ if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
+// Function to generate next student code
+function generateNextStudentCode($con) {
+    $query = "SELECT student_code FROM students WHERE student_code LIKE 'STU%' ORDER BY student_code DESC LIMIT 1";
+    $result = $con->query($query);
+    
+    if($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $lastCode = $row['student_code'];
+        // Extract number from STU004 format
+        $number = intval(substr($lastCode, 3));
+        $nextNumber = $number + 1;
+        return 'STU' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+    } else {
+        // First student
+        return 'STU001';
+    }
+}
+
+// Generate next student code
+$nextStudentCode = generateNextStudentCode($con);
+
 // Get departments for dropdown
 $query_Recordsetd = "SELECT * FROM departments ORDER BY department_name ASC";
 $Recordsetd = $con->query($query_Recordsetd);
@@ -632,8 +653,9 @@ if($Recordsetd->num_rows > 0) {
             </div>
             <form method="post" action="InsertStudent.php">
                 <div class="form-group">
-                    <label for="txtRoll">Student ID:</label>
-                    <input type="text" name="txtRoll" id="txtRoll" required placeholder="Enter Student ID (e.g., STU001)">
+                    <label for="txtRoll">Student Code (Auto-generated):</label>
+                    <input type="text" name="txtRoll" id="txtRoll" value="<?php echo $nextStudentCode; ?>" readonly style="background-color: #f0f0f0; font-weight: 600; color: #007bff; cursor: not-allowed;">
+                    <small style="display: block; margin-top: 0.5rem; color: #6c757d; font-size: 0.9rem;">This code will be automatically assigned</small>
                 </div>
                 
                 <div class="form-group">

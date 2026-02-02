@@ -15,12 +15,16 @@ if ($con->connect_error) {
     die("Connection failed: " . $con->connect_error);
 }
 
-$stmt = $con->prepare("UPDATE exam_committee_members SET department_name=?, is_active=? WHERE committee_member_id=?");
-$stmt->bind_param("sss", $Department, $is_active, $Id);
+// Convert to integers
+$Department = intval($Department);
+$is_active = intval($is_active);
+
+$stmt = $con->prepare("UPDATE exam_committee_members SET department_id=?, is_active=? WHERE committee_member_id=?");
+$stmt->bind_param("iis", $Department, $is_active, $Id);
 $stmt->execute();
 $stmt->close();
 $con->close();
 
-header("Location: ECommittee.php?msg=updated");
+header("Location: AcademicOfficer.php?msg=updated");
 exit();
 ?>

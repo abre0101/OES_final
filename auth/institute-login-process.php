@@ -1,21 +1,25 @@
 <?php
 session_start();
+require_once(__DIR__ . "/../utils/password_helper.php");
 
 $UserName = $_POST['txtUserName'];
 $Password = $_POST['txtPassword'];
 
+$con = require_once(__DIR__ . "/../Connections/OES.php");
+
 // Try Administrator first
-$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
-$stmt = $con->prepare("SELECT * FROM administrators WHERE username=? AND password=?");
-$stmt->bind_param("ss", $UserName, $Password);
+$stmt = $con->prepare("SELECT * FROM administrators WHERE username=?");
+$stmt->bind_param("s", $UserName);
 $stmt->execute();
 $result = $stmt->get_result();
 $row = $result->fetch_array();
-$num_row = $result->num_rows;
 
-if ($num_row > 0) {
+if ($row && verifyPassword($Password, $row['password'])) {
     $_SESSION['ID'] = $row['admin_id'];
     $_SESSION['username'] = $row['username'];
+    $_SESSION['Name'] = $row['full_name'];
+    $_SESSION['user_type'] = 'administrator';
+    $_SESSION['Email'] = $row['email'] ?? '';
     $stmt->close();
     $con->close();
     header("location:../Admin/index.php");
@@ -24,19 +28,22 @@ if ($num_row > 0) {
 $stmt->close();
 
 // Try Instructor
-$stmt = $con->prepare("SELECT * FROM instructors WHERE username=? AND password=? AND is_active=1");
-$stmt->bind_param("ss", $UserName, $Password);
+$stmt = $con->prepare("SELECT i.*, d.department_name 
+                       FROM instructors i 
+                       LEFT JOIN departments d ON i.department_id = d.department_id 
+                       WHERE i.username=? AND i.is_active=1");
+$stmt->bind_param("s", $UserName);
 $stmt->execute();
 $result = $stmt->get_result();
 $row = $result->fetch_array();
-$records = $result->num_rows;
 
-if ($records > 0) {
+if ($row && verifyPassword($Password, $row['password'])) {
     $_SESSION['ID'] = $row['instructor_id'];
     $_SESSION['Name'] = $row['full_name'];
-    $_SESSION['Dept'] = 'Not Set'; // Set default since table doesn't have department_name
-    $_SESSION['Course'] = 'Not Set'; // Set default since table doesn't have course_name
-    $_SESSION['Email'] = $row['email'];
+    $_SESSION['Dept'] = $row['department_name'] ?? 'Not Set';
+    $_SESSION['DeptId'] = $row['department_id'];
+    $_SESSION['Email'] = $row['email'] ?? '';
+    $_SESSION['user_type'] = 'instructor';
     $stmt->close();
     $con->close();
     header("location:../Instructor/index.php");
@@ -44,21 +51,26 @@ if ($records > 0) {
 }
 $stmt->close();
 
-// Try Exam Committee
-$stmt = $con->prepare("SELECT * FROM exam_committee_members WHERE username=? AND password=? AND is_active=1");
-$stmt->bind_param("ss", $UserName, $Password);
+// Try Department Head (Exam Committee Member)
+$stmt = $con->prepare("SELECT ecm.*, d.department_name 
+                       FROM exam_committee_members ecm 
+                       LEFT JOIN departments d ON ecm.department_id = d.department_id 
+                       WHERE ecm.username=? AND ecm.is_active=1");
+$stmt->bind_param("s", $UserName);
 $stmt->execute();
 $result = $stmt->get_result();
 $row = $result->fetch_array();
-$records = $result->num_rows;
 
-if ($records > 0) {
+if ($row && verifyPassword($Password, $row['password'])) {
     $_SESSION['ID'] = $row['committee_member_id'];
     $_SESSION['Name'] = $row['full_name'];
-    $_SESSION['Dept'] = 'Not Set'; // Set default
+    $_SESSION['Dept'] = $row['department_name'] ?? 'Not Set';
+    $_SESSION['DeptId'] = $row['department_id'];
+    $_SESSION['Email'] = $row['email'] ?? '';
+    $_SESSION['user_type'] = 'department_head';
     $stmt->close();
     $con->close();
-    header("location:../ExamCommittee/index.php");
+    header("location:../DepartmentHead/index.php");
     exit();
 }
 $stmt->close();

@@ -11,20 +11,32 @@
 	$Name=$_POST['txtDeptName'];
         $Credit=$_POST['txtDeptCredit'];
 	$Sem=$_POST['cmbSem'];
-        $Dept=$_POST['cmbDep'];
+        $Dept=$_POST['cmbDept'];
         $Inst=$_POST['cmbInst'];
 	
 	// Establish Connection with MYSQL
 	$con = new mysqli("localhost","root");
 	// Select Database
 	$con->select_db("oes");
-	// Specify the query to Insert Record
-	$sql = "insert INTO courses 	(course_id,course_name,credit_hr,semester,department_name,full_name) 	values('".$Id."','".$Name."','".$Credit."','".$Sem."','".$Dept."','".$Inst."')";
-	// execute query
-	$con->query ($sql);
+	
+	// Convert to integers
+	$Sem = intval($Sem);
+	$Dept = intval($Dept);
+	$Inst = intval($Inst);
+	
+	// Insert course
+	$sql = "INSERT INTO courses (course_id, course_name, credit_hours, semester, department_id) 
+	        VALUES('".$Id."','".$Name."','".$Credit."',".$Sem.",".$Dept.")";
+	$con->query($sql);
+	
+	// Insert instructor assignment
+	$sql2 = "INSERT INTO instructor_courses (course_id, instructor_id, is_active) 
+	         VALUES('".$Id."',".$Inst.", 1)";
+	$con->query($sql2);
+	
 	// Close The Connection
-	$con->close ();
-	echo '<script type="text/javascript">alert("New Course Inserted Succesfully");window.location=\'Course.php\';</script>';
+	$con->close();
+	echo '<script type="text/javascript">alert("New Course Inserted Successfully");window.location=\'Course.php\';</script>';
 
 ?>
 </body>

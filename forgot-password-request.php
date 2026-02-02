@@ -5,7 +5,7 @@ $con = require_once(__DIR__ . "/Connections/OES.php");
 $con->query("CREATE TABLE IF NOT EXISTS `password_reset_requests` (
     `request_id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` VARCHAR(100) NOT NULL,
-    `user_type` ENUM('student', 'instructor', 'exam_committee') NOT NULL,
+    `user_type` ENUM('student', 'instructor', 'department_head') NOT NULL,
     `user_name` VARCHAR(200) NOT NULL,
     `user_email` VARCHAR(100),
     `reason` TEXT,
@@ -66,7 +66,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $userExists = true;
             }
             break;
-        case 'exam_committee':
+        case 'department_head':
             $result = $con->query("SELECT full_name as Name, email as Email FROM exam_committee_members WHERE committee_member_id = '$userId'");
             if($result && $result->num_rows > 0) {
                 $user = $result->fetch_assoc();
@@ -170,7 +170,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <option value="">-- Select Your Role --</option>
                     <option value="student">Student</option>
                     <option value="instructor">Instructor</option>
-                    <option value="exam_committee">Exam Committee Member</option>
+                    <option value="department_head">Department Head</option>
                 </select>
             </div>
 
