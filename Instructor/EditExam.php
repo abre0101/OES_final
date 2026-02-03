@@ -55,7 +55,7 @@ if($exam['result_count'] > 0) {
 $coursesQuery = $con->prepare("SELECT DISTINCT c.course_id, c.course_name, c.course_code 
                                 FROM courses c
                                 INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-                                WHERE ic.instructor_id = ? AND ic.is_active = 1
+                                WHERE ic.instructor_id = ?
                                 ORDER BY c.course_code");
 $coursesQuery->bind_param("i", $instructor_id);
 $coursesQuery->execute();
