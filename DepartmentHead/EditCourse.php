@@ -1,9 +1,18 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
+
+// Start Department Head session
+SessionManager::startSession('DepartmentHead');
+
+// Check if user is logged in
+if(!isset($_SESSION['Name'])){
+    header("Location:../auth/institute-login.php");
+    exit();
 }
 
-if(!isset($_SESSION['Name'])){
+// Validate user role
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'DepartmentHead'){
+    SessionManager::destroySession();
     header("Location:../auth/institute-login.php");
     exit();
 }
@@ -191,5 +200,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_course'])) {
             </div>
         </div>
     </div>
+
+    <script src="../assets/js/admin-sidebar.js"></script>
 </body>
 </html>
+

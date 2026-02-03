@@ -215,8 +215,8 @@ $questions = $questionsQuery->get_result();
                     <button class="btn btn-secondary" onclick="window.print()">
                         🖨️ Print Exam
                     </button>
-                    <a href="ManageSchedules.php" class="btn btn-secondary">
-                        ← Back to Schedules
+                    <a href="MyExams.php" class="btn btn-secondary">
+                        ← Back to My Exams
                     </a>
                 </div>
             </div>

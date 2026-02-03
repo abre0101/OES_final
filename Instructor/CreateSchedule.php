@@ -231,7 +231,7 @@ while($exam = $existingExams->fetch_assoc()) {
                         <button type="submit" class="btn-modern btn-primary">
                             ✅ Create Schedule
                         </button>
-                        <a href="ManageSchedules.php" class="btn-modern btn-secondary">
+                        <a href="MyExams.php" class="btn-modern btn-secondary">
                             ← Cancel
                         </a>
                     </div>

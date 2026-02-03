@@ -1,10 +1,17 @@
 <?php
-session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
+SessionManager::startSession('Student');
 require_once('../Connections/config.php');
 
 // Check if student is logged in
-if (!isset($_SESSION['student_id'])) {
+if (!isset($_SESSION['ID'])) {
     header("Location: ../student-login.php");
+    exit();
+}
+
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Student'){
+    SessionManager::destroySession();
+    header("Location: ../auth/student-login.php");
     exit();
 }
 

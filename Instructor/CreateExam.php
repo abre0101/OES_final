@@ -205,7 +205,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <button type="submit" class="btn btn-primary">
                             <span>💾</span> Create Exam (Draft)
                         </button>
-                        <a href="ManageSchedules.php" class="btn btn-secondary">
+                        <a href="MyExams.php" class="btn btn-secondary">
                             <span>❌</span> Cancel
                         </a>
                     </div>

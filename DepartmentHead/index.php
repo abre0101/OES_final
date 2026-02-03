@@ -20,18 +20,18 @@ if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'DepartmentHead'){
 $con = require_once(__DIR__ . "/../Connections/OES.php");
 
 // Get statistics
-$pending_count = $con->query("SELECT COUNT(*) as count FROM exams WHERE approval_status = 'pending' AND submitted_for_approval = TRUE")->fetch_assoc()['count'] ?? 0;
-$approved_today = $con->query("SELECT COUNT(*) as count FROM exams WHERE approval_status = 'approved' AND DATE(approval_date) = CURDATE()")->fetch_assoc()['count'] ?? 0;
-$approved_month = $con->query("SELECT COUNT(*) as count FROM exams WHERE approval_status = 'approved' AND MONTH(approval_date) = MONTH(CURDATE()) AND YEAR(approval_date) = YEAR(CURDATE())")->fetch_assoc()['count'] ?? 0;
+$pending_count = $con->query("SELECT COUNT(*) as count FROM exams WHERE approval_status = 'pending'")->fetch_assoc()['count'] ?? 0;
+$approved_today = $con->query("SELECT COUNT(*) as count FROM exams WHERE approval_status = 'approved' AND DATE(approved_at) = CURDATE()")->fetch_assoc()['count'] ?? 0;
+$approved_month = $con->query("SELECT COUNT(*) as count FROM exams WHERE approval_status = 'approved' AND MONTH(approved_at) = MONTH(CURDATE()) AND YEAR(approved_at) = YEAR(CURDATE())")->fetch_assoc()['count'] ?? 0;
 $revision_count = $con->query("SELECT COUNT(*) as count FROM exams WHERE approval_status = 'revision'")->fetch_assoc()['count'] ?? 0;
-$total_submitted = $con->query("SELECT COUNT(*) as count FROM exams WHERE submitted_for_approval = TRUE")->fetch_assoc()['count'] ?? 0;
+$total_submitted = $con->query("SELECT COUNT(*) as count FROM exams WHERE approval_status IN ('pending', 'approved', 'rejected', 'revision')")->fetch_assoc()['count'] ?? 0;
 
 // Get recent pending exams
 $recent_pending = $con->query("SELECT es.*, c.course_name, c.course_code, ec.category_name
     FROM exams es
     LEFT JOIN courses c ON es.course_id = c.course_id
     LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
-    WHERE es.approval_status = 'pending' AND es.submitted_for_approval = TRUE
+    WHERE es.approval_status = 'pending'
     ORDER BY es.submitted_at DESC
     LIMIT 5");
 

@@ -62,7 +62,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $historyQuery->bind_param("iis", $exam_id, $instructor_id, $comments);
         $historyQuery->execute();
         
-        header("Location: ManageSchedules.php?success=submitted");
+        header("Location: MyExams.php?success=submitted");
         exit();
     } else {
         $error = "Failed to submit exam: " . $con->error;

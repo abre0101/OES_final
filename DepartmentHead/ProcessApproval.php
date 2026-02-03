@@ -1,6 +1,18 @@
 <?php
-session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
+
+// Start Department Head session
+SessionManager::startSession('DepartmentHead');
+
+// Check if user is logged in
 if(!isset($_SESSION['Name'])){
+    header("Location:../auth/institute-login.php");
+    exit();
+}
+
+// Validate user role
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'DepartmentHead'){
+    SessionManager::destroySession();
     header("Location:../auth/institute-login.php");
     exit();
 }
@@ -42,16 +54,16 @@ try {
             $stmt = $con->prepare("UPDATE exams SET 
                 approval_status = 'approved',
                 approved_by = ?,
-                approval_date = ?,
-                reviewer_comments = ?
+                approved_at = ?,
+                approval_comments = ?
                 WHERE exam_id = ?");
-            $stmt->bind_param("sssi", $reviewer_name, $review_date, $comments, $exam_id);
+            $stmt->bind_param("issi", $reviewer_id, $review_date, $comments, $exam_id);
             
             if($stmt->execute()) {
                 // Log approval in history
                 $log_stmt = $con->prepare("INSERT INTO exam_approval_history 
                     (exam_id, action, performed_by, performed_by_type, comments, previous_status, new_status, created_at) 
-                    VALUES (?, 'approved', ?, 'committee', ?, ?, 'approved', ?)");
+                    VALUES (?, 'approved', ?, 'department_head', ?, ?, 'approved', ?)");
                 $prev_status = $exam['approval_status'];
                 $log_stmt->bind_param("iisss", $exam_id, $reviewer_id, $comments, $prev_status, $review_date);
                 $log_stmt->execute();
@@ -73,18 +85,18 @@ try {
             $revision_count = $exam['revision_count'] + 1;
             $stmt = $con->prepare("UPDATE exams SET 
                 approval_status = 'revision',
-                reviewer_comments = ?,
-                reviewed_by = ?,
-                reviewed_at = ?,
+                approval_comments = ?,
+                approved_by = ?,
+                approved_at = ?,
                 revision_count = ?
                 WHERE exam_id = ?");
-            $stmt->bind_param("sssii", $comments, $reviewer_name, $review_date, $revision_count, $exam_id);
+            $stmt->bind_param("sisii", $comments, $reviewer_id, $review_date, $revision_count, $exam_id);
             
             if($stmt->execute()) {
                 // Log revision request in history
                 $log_stmt = $con->prepare("INSERT INTO exam_approval_history 
                     (exam_id, action, performed_by, performed_by_type, comments, previous_status, new_status, created_at) 
-                    VALUES (?, 'revision_requested', ?, 'committee', ?, ?, 'revision', ?)");
+                    VALUES (?, 'revision_requested', ?, 'department_head', ?, ?, 'revision', ?)");
                 $prev_status = $exam['approval_status'];
                 $log_stmt->bind_param("iisss", $exam_id, $reviewer_id, $comments, $prev_status, $review_date);
                 $log_stmt->execute();
@@ -105,17 +117,17 @@ try {
             // Update exam status to rejected
             $stmt = $con->prepare("UPDATE exams SET 
                 approval_status = 'rejected',
-                reviewer_comments = ?,
-                reviewed_by = ?,
-                reviewed_at = ?
+                approval_comments = ?,
+                approved_by = ?,
+                approved_at = ?
                 WHERE exam_id = ?");
-            $stmt->bind_param("sssi", $comments, $reviewer_name, $review_date, $exam_id);
+            $stmt->bind_param("sisi", $comments, $reviewer_id, $review_date, $exam_id);
             
             if($stmt->execute()) {
                 // Log rejection in history
                 $log_stmt = $con->prepare("INSERT INTO exam_approval_history 
                     (exam_id, action, performed_by, performed_by_type, comments, previous_status, new_status, created_at) 
-                    VALUES (?, 'rejected', ?, 'committee', ?, ?, 'rejected', ?)");
+                    VALUES (?, 'rejected', ?, 'department_head', ?, ?, 'rejected', ?)");
                 $prev_status = $exam['approval_status'];
                 $log_stmt->bind_param("iisss", $exam_id, $reviewer_id, $comments, $prev_status, $review_date);
                 $log_stmt->execute();

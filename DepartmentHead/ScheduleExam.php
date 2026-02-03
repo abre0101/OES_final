@@ -1,9 +1,18 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
+
+// Start Department Head session
+SessionManager::startSession('DepartmentHead');
+
+// Check if user is logged in
+if(!isset($_SESSION['Name'])){
+    header("Location:../auth/institute-login.php");
+    exit();
 }
 
-if(!isset($_SESSION['Name'])){
+// Validate user role
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'DepartmentHead'){
+    SessionManager::destroySession();
     header("Location:../auth/institute-login.php");
     exit();
 }
@@ -102,6 +111,70 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['schedule_exam'])) {
         exit();
     } else {
         $message = "Error scheduling exam: " . $con->error;
+        $messageType = "error";
+    }
+}
+
+// Handle edit schedule
+if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_schedule'])) {
+    $exam_id = $_POST['exam_id'];
+    $exam_date = $_POST['exam_date'];
+    $start_time = $_POST['start_time'];
+    $duration = $_POST['duration_minutes'];
+    $room_lab = mysqli_real_escape_string($con, $_POST['room_lab'] ?? '');
+    
+    // Calculate end time
+    $start_datetime = new DateTime($exam_date . ' ' . $start_time);
+    $start_datetime->add(new DateInterval('PT' . $duration . 'M'));
+    $end_time = $start_datetime->format('H:i:s');
+    
+    // Update room/lab in instructions if provided
+    $instructions_update = '';
+    if(!empty($room_lab)) {
+        // Remove old room/lab info and add new one
+        $get_instructions = "SELECT instructions FROM exams WHERE exam_id = ?";
+        $stmt = $con->prepare($get_instructions);
+        $stmt->bind_param("i", $exam_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $current = $result->fetch_assoc();
+        $current_instructions = $current['instructions'] ?? '';
+        
+        // Remove old room/lab line
+        $current_instructions = preg_replace('/\nRoom\/Lab:.*$/m', '', $current_instructions);
+        $instructions_update = trim($current_instructions) . "\nRoom/Lab: " . $room_lab;
+    }
+    
+    if(!empty($instructions_update)) {
+        $update_query = "UPDATE exams 
+                         SET exam_date = ?, 
+                             start_time = ?, 
+                             end_time = ?,
+                             duration_minutes = ?,
+                             instructions = ?,
+                             updated_at = NOW()
+                         WHERE exam_id = ? AND approval_status = 'approved'";
+        $stmt = $con->prepare($update_query);
+        $stmt->bind_param("sssisi", $exam_date, $start_time, $end_time, $duration, $instructions_update, $exam_id);
+    } else {
+        $update_query = "UPDATE exams 
+                         SET exam_date = ?, 
+                             start_time = ?, 
+                             end_time = ?,
+                             duration_minutes = ?,
+                             updated_at = NOW()
+                         WHERE exam_id = ? AND approval_status = 'approved'";
+        $stmt = $con->prepare($update_query);
+        $stmt->bind_param("sssii", $exam_date, $start_time, $end_time, $duration, $exam_id);
+    }
+    
+    if($stmt->execute()) {
+        $message = "Exam schedule updated successfully!";
+        $messageType = "success";
+        header("Location: ScheduleExam.php?tab=scheduled&success=1&msg=" . urlencode($message));
+        exit();
+    } else {
+        $message = "Error updating exam schedule: " . $con->error;
         $messageType = "error";
     }
 }
@@ -209,8 +282,8 @@ if(isset($_GET['success']) && isset($_GET['msg'])) {
             </div>
 
             <?php if($message): ?>
-            <div class="alert alert-<?php echo $messageType == 'success' ? 'success' : 'danger'; ?>" style="margin-bottom: 1.5rem;">
-                <?php echo $message; ?>
+            <div class="alert alert-<?php echo $messageType == 'success' ? 'success' : 'danger'; ?>" style="margin-bottom: 1.5rem; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 1rem; border-radius: 8px; font-weight: 600;">
+                ✓ <?php echo $message; ?>
             </div>
             <?php endif; ?>
 
@@ -322,6 +395,9 @@ if(isset($_GET['success']) && isset($_GET['msg'])) {
                                         </td>
                                         <td>
                                             <a href="ViewExamDetails.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-info">View</a>
+                                            <button class="btn btn-sm btn-primary" onclick="openEditModal(<?php echo $exam['exam_id']; ?>, '<?php echo htmlspecialchars(addslashes($exam['exam_name'])); ?>', '<?php echo $exam['exam_date']; ?>', '<?php echo $exam['start_time']; ?>', <?php echo $exam['duration_minutes']; ?>)">
+                                                ✏️ Edit
+                                            </button>
                                             <?php if($exam['is_active']): ?>
                                             <a href="?action=unpublish&id=<?php echo $exam['exam_id']; ?>&tab=scheduled" class="btn btn-sm btn-warning" onclick="return confirm('Unpublish this exam? Students will not be able to see it.')">
                                                 Unpublish
@@ -449,6 +525,41 @@ if(isset($_GET['success']) && isset($_GET['msg'])) {
         </div>
     </div>
 
+    <!-- Edit Schedule Modal -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+            <h3 style="margin: 0 0 1.5rem 0; color: var(--primary-color);">✏️ Edit Exam Schedule</h3>
+            <form method="POST" action="">
+                <input type="hidden" name="exam_id" id="edit_exam_id">
+                <input type="hidden" name="duration_minutes" id="edit_duration">
+                
+                <div style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                    <strong id="edit_exam_name"></strong>
+                </div>
+
+                <div class="form-group">
+                    <label>Exam Date *</label>
+                    <input type="date" name="exam_date" id="edit_exam_date" class="form-control" required min="<?php echo date('Y-m-d'); ?>">
+                </div>
+
+                <div class="form-group">
+                    <label>Start Time *</label>
+                    <input type="time" name="start_time" id="edit_start_time" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Room/Lab (Optional)</label>
+                    <input type="text" name="room_lab" id="edit_room_lab" class="form-control" placeholder="e.g., Room 101, Lab A">
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" name="edit_schedule" class="btn btn-primary" style="flex: 1;">Update Schedule</button>
+                    <button type="button" onclick="closeEditModal()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         function openScheduleModal(scheduleId, examName, duration) {
             document.getElementById('modal_exam_id').value = scheduleId;
@@ -461,12 +572,34 @@ if(isset($_GET['success']) && isset($_GET['msg'])) {
             document.getElementById('scheduleModal').style.display = 'none';
         }
 
-        // Close modal when clicking outside
+        function openEditModal(examId, examName, examDate, startTime, duration) {
+            document.getElementById('edit_exam_id').value = examId;
+            document.getElementById('edit_duration').value = duration;
+            document.getElementById('edit_exam_name').textContent = examName + ' (' + duration + ' minutes)';
+            document.getElementById('edit_exam_date').value = examDate;
+            document.getElementById('edit_start_time').value = startTime;
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // Close modals when clicking outside
         document.getElementById('scheduleModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeScheduleModal();
             }
         });
+
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEditModal();
+            }
+        });
     </script>
+
+    <script src="../assets/js/admin-sidebar.js"></script>
 </body>
 </html>
+

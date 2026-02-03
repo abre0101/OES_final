@@ -1,24 +1,38 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
+require_once(__DIR__ . "/../utils/session_manager.php");
+SessionManager::startSession('Student');
 
 if(!isset($_SESSION['Name'])){
     header("Location: ../index.php");
     exit();
 }
 
-$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
-$studentId = $_SESSION['ID'];
-$studentSemester = $_SESSION['Sem'];
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Student'){
+    SessionManager::destroySession();
+    header("Location: ../auth/student-login.php");
+    exit();
+}
 
-// Get scheduled exams for student's semester
-$scheduledExams = $con->query("SELECT s.*, ec.exam_name, 
-    TIMESTAMPDIFF(SECOND, NOW(), CONCAT(s.date, ' ', s.time)) as seconds_until_exam
-    FROM exams s
-    LEFT JOIN exam_categories ec ON s.exam_id = ec.exam_id
-    WHERE s.semester = '$studentSemester'
-    ORDER BY s.date ASC, s.time ASC");
+$con = require_once(__DIR__ . "/../Connections/OES.php");
+$studentId = $_SESSION['ID'];
+$studentDeptId = $_SESSION['Dept'];
+
+// Get scheduled exams for courses the student is enrolled in
+$scheduledExams = $con->query("SELECT e.*, 
+    c.course_name, c.course_code,
+    ec.category_name,
+    TIMESTAMPDIFF(SECOND, NOW(), CONCAT(e.exam_date, ' ', e.start_time)) as seconds_until_exam,
+    TIMESTAMPDIFF(SECOND, NOW(), CONCAT(e.exam_date, ' ', e.end_time)) as seconds_until_end,
+    (SELECT COUNT(*) FROM exam_results er WHERE er.exam_id = e.exam_id AND er.student_id = $studentId) as has_taken
+    FROM exams e
+    INNER JOIN courses c ON e.course_id = c.course_id
+    INNER JOIN exam_categories ec ON e.exam_category_id = ec.exam_category_id
+    INNER JOIN student_courses sc ON c.course_id = sc.course_id
+    WHERE sc.student_id = $studentId 
+    AND e.is_active = 1 
+    AND e.approval_status = 'approved'
+    AND c.department_id = $studentDeptId
+    ORDER BY e.exam_date ASC, e.start_time ASC");
 
 $con->close();
 ?>

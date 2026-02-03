@@ -1,9 +1,18 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
+
+// Start Department Head session
+SessionManager::startSession('DepartmentHead');
+
+// Check if user is logged in
+if(!isset($_SESSION['Name'])){
+    header("Location:../auth/institute-login.php");
+    exit();
 }
 
-if(!isset($_SESSION['Name'])){
+// Validate user role
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'DepartmentHead'){
+    SessionManager::destroySession();
     header("Location:../auth/institute-login.php");
     exit();
 }
@@ -338,7 +347,7 @@ $years = $stmt->get_result();
                         <?php if($exam['attempts_count'] > 0): ?>
                             <a href="ExamResults.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-info">📈 View Results</a>
                         <?php endif; ?>
-                        <?php if($exam['approval_status'] == 'approved'): ?>
+                        <?php if($exam['approval_status'] == 'approved' && $exam['attempts_count'] == 0): ?>
                             <a href="?toggle_publish=<?php echo $exam['exam_id']; ?>&status=<?php echo $status_filter; ?>&course=<?php echo $course_filter; ?>" 
                                class="btn btn-sm btn-warning" 
                                onclick="return confirm('Are you sure you want to <?php echo $exam['is_active'] ? 'unpublish' : 'publish'; ?> this exam?')">
@@ -368,5 +377,8 @@ $years = $stmt->get_result();
             window.location.href = 'ExportExams.php?status=' + status + '&course=' + course + '&year=' + year;
         }
     </script>
+
+    <script src="../assets/js/admin-sidebar.js"></script>
 </body>
 </html>
+

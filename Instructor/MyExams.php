@@ -372,6 +372,21 @@ while($exam = $exams->fetch_assoc()) {
                 <span style="font-size: 1.5rem;">✅</span>
                 <span>Exam submitted for approval successfully!</span>
             </div>
+            <?php elseif(isset($_GET['success']) && $_GET['success'] == 'edited'): ?>
+            <div class="alert alert-success">
+                <span style="font-size: 1.5rem;">✅</span>
+                <span>Exam updated successfully!</span>
+            </div>
+            <?php elseif(isset($_GET['success']) && $_GET['success'] == 'edited_reapproval'): ?>
+            <div class="alert alert-success">
+                <span style="font-size: 1.5rem;">✅</span>
+                <span>Exam updated successfully! Status changed to "Pending" - awaiting re-approval from department head.</span>
+            </div>
+            <?php elseif(isset($_GET['error']) && $_GET['error'] == 'locked'): ?>
+            <div class="alert alert-danger" style="background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545;">
+                <span style="font-size: 1.5rem;">🔒</span>
+                <span>This exam cannot be edited because students have already taken it.</span>
+            </div>
             <?php endif; ?>
 
             <!-- Statistics -->
@@ -502,6 +517,15 @@ while($exam = $exams->fetch_assoc()) {
                             <div style="padding: 1rem; background: #e7f3ff; border-radius: 6px; font-size: 0.9rem; color: #004085;">
                                 ⏳ <strong>Status:</strong> Waiting for department head approval. You will be notified once reviewed.
                             </div>
+                            
+                            <div class="exam-actions">
+                                <a href="EditExam.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-warning btn-sm">
+                                    <span>✏️</span> Edit Exam
+                                </a>
+                                <a href="ManageExamQuestions.php?exam_id=<?php echo $exam['exam_id']; ?>" class="btn btn-info btn-sm">
+                                    <span>📝</span> Edit Questions
+                                </a>
+                            </div>
                         </div>
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -555,13 +579,26 @@ while($exam = $exams->fetch_assoc()) {
                             </div>
                             <?php endif; ?>
                             
-                            <?php if($exam['result_count'] > 0): ?>
                             <div class="exam-actions">
+                                <?php if($exam['result_count'] > 0): ?>
                                 <a href="ResultsOverview.php?exam=<?php echo $exam['exam_id']; ?>" class="btn btn-info btn-sm">
                                     <span>📊</span> View Results (<?php echo $exam['result_count']; ?>)
                                 </a>
+                                <div style="padding: 0.75rem; background: #f8d7da; border-radius: 6px; font-size: 0.85rem; color: #721c24; margin-top: 1rem;">
+                                    🔒 <strong>Locked:</strong> Exam cannot be edited as students have already taken it.
+                                </div>
+                                <?php else: ?>
+                                <a href="EditExam.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-warning btn-sm">
+                                    <span>✏️</span> Edit Exam
+                                </a>
+                                <a href="ManageExamQuestions.php?exam_id=<?php echo $exam['exam_id']; ?>" class="btn btn-info btn-sm">
+                                    <span>📝</span> Edit Questions
+                                </a>
+                                <div style="padding: 0.75rem; background: #fff3cd; border-radius: 6px; font-size: 0.85rem; color: #856404; margin-top: 1rem;">
+                                    ⚠️ <strong>Note:</strong> Editing this exam will change its status to "Pending" and require re-approval from the department head.
+                                </div>
+                                <?php endif; ?>
                             </div>
-                            <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
                     <?php else: ?>

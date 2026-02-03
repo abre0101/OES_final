@@ -1,6 +1,18 @@
 <?php
-session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
+
+// Start Department Head session
+SessionManager::startSession('DepartmentHead');
+
+// Check if user is logged in
 if(!isset($_SESSION['Name'])){
+    header("Location:../auth/institute-login.php");
+    exit();
+}
+
+// Validate user role
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'DepartmentHead'){
+    SessionManager::destroySession();
     header("Location:../auth/institute-login.php");
     exit();
 }
@@ -193,7 +205,7 @@ $questions = $con->query("SELECT q.*, qt.topic_name
                         </div>
                         
                         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0; display: flex; gap: 2rem; font-size: 0.9rem; color: #6c757d;">
-                            <span><strong>Difficulty:</strong> <?php echo $q['difficulty_level']; ?></span>
+                            <span><strong>Points:</strong> <?php echo $q['point_value'] ?? 1; ?></span>
                             <span><strong>Type:</strong> Multiple Choice</span>
                         </div>
                     </div>

@@ -1,9 +1,18 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
+
+// Start Department Head session
+SessionManager::startSession('DepartmentHead');
+
+// Check if user is logged in
+if(!isset($_SESSION['Name'])){
+    header("Location:../auth/institute-login.php");
+    exit();
 }
 
-if(!isset($_SESSION['Name'])){
+// Validate user role
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'DepartmentHead'){
+    SessionManager::destroySession();
     header("Location:../auth/institute-login.php");
     exit();
 }
@@ -75,10 +84,14 @@ $stmt->execute();
 $active_students = $stmt->get_result();
 
 // Get recent issues/flags (if technical_issues table exists)
-$issues_query = "SELECT * FROM technical_issues 
-                 WHERE department_id = ? 
-                 AND DATE(reported_at) = CURDATE()
-                 ORDER BY reported_at DESC 
+$issues_query = "SELECT ti.*, s.full_name as student_name, e.exam_name 
+                 FROM technical_issues ti
+                 INNER JOIN students s ON ti.student_id = s.student_id
+                 INNER JOIN exams e ON ti.exam_id = e.exam_id
+                 INNER JOIN courses c ON e.course_id = c.course_id
+                 WHERE c.department_id = ? 
+                 AND DATE(ti.reported_at) = CURDATE()
+                 ORDER BY ti.reported_at DESC 
                  LIMIT 10";
 $issues_result = null;
 if($con->query("SHOW TABLES LIKE 'technical_issues'")->num_rows > 0) {
@@ -471,5 +484,8 @@ $active_students_count = $active_students->num_rows;
             location.reload();
         }, 15000);
     </script>
+
+    <script src="../assets/js/admin-sidebar.js"></script>
 </body>
 </html>
+

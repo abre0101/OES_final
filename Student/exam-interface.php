@@ -1,9 +1,14 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
+require_once(__DIR__ . "/../utils/session_manager.php");
+SessionManager::startSession('Student');
 
 if(!isset($_SESSION['Name'])){
+    echo "<script>window.close();</script>";
+    exit();
+}
+
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Student'){
+    SessionManager::destroySession();
     echo "<script>window.close();</script>";
     exit();
 }

@@ -18,7 +18,7 @@ if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Instructor'){
 }
 
 if($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: ManageSchedules.php");
+    header("Location: MyExams.php");
     exit();
 }
 

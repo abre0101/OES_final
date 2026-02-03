@@ -1,9 +1,18 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
+
+// Start Department Head session
+SessionManager::startSession('DepartmentHead');
+
+// Check if user is logged in
+if(!isset($_SESSION['Name'])){
+    header("Location:../auth/institute-login.php");
+    exit();
 }
 
-if(!isset($_SESSION['Name'])){
+// Validate user role
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'DepartmentHead'){
+    SessionManager::destroySession();
     header("Location:../auth/institute-login.php");
     exit();
 }
@@ -33,7 +42,7 @@ if($searchQuery) {
                 OR c.course_code LIKE '%" . $con->real_escape_string($searchQuery) . "%')";
 }
 
-$query .= " ORDER BY es.approval_date DESC";
+$query .= " ORDER BY es.approved_at DESC";
 $approvedExams = $con->query($query);
 
 // Get departments
@@ -47,7 +56,7 @@ $departments = $con->query("SELECT DISTINCT d.department_id, d.department_name
 // Get statistics
 $stats = $con->query("SELECT 
     COUNT(*) as total_approved,
-    SUM(CASE WHEN DATE(es.approval_date) = CURDATE() THEN 1 ELSE 0 END) as approved_today,
+    SUM(CASE WHEN DATE(es.approved_at) = CURDATE() THEN 1 ELSE 0 END) as approved_today,
     SUM(CASE WHEN es.exam_date >= CURDATE() THEN 1 ELSE 0 END) as upcoming
     FROM exams es
     WHERE es.approval_status = 'approved'")->fetch_assoc();
@@ -197,7 +206,7 @@ $stats = $con->query("SELECT
                         </div>
                         <div>
                             <div style="color: var(--text-secondary); font-size: 0.75rem;">Approved</div>
-                            <div style="font-weight: 600;"><?php echo date('M d', strtotime($exam['approval_date'])); ?></div>
+                            <div style="font-weight: 600;"><?php echo $exam['approved_at'] ? date('M d', strtotime($exam['approved_at'])) : 'N/A'; ?></div>
                         </div>
                     </div>
                     

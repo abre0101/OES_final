@@ -1,10 +1,15 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
+require_once(__DIR__ . "/../utils/session_manager.php");
+SessionManager::startSession('Student');
 
 if(!isset($_SESSION['Name']) || !isset($_SESSION['ID'])){
     header("Location: ../index.php");
+    exit();
+}
+
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Student'){
+    SessionManager::destroySession();
+    header("Location: ../auth/student-login.php");
     exit();
 }
 

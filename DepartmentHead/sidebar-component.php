@@ -70,31 +70,13 @@
 
         <div class="sidebar-divider"></div>
 
-        <!-- My Profile -->
-        <a href="Profile.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Profile.php' || basename($_SERVER['PHP_SELF']) == 'EditProfile.php') ? 'active' : ''; ?>" data-tooltip="My Profile">
-            <span class="sidebar-nav-icon">🔒</span>
-            <span>My Profile</span>
-        </a>
-
-        <!-- Security -->
-        <a href="ChangePassword.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'ChangePassword.php') ? 'active' : ''; ?>" data-tooltip="Security">
-            <span class="sidebar-nav-icon">🔒</span>
-            <span>Security</span>
-        </a>
-
-        <!-- Logout -->
-        <a href="Logout.php" class="sidebar-nav-item" data-tooltip="Logout">
-            <span class="sidebar-nav-icon">🚪</span>
-            <span>Logout</span>
+        <!-- Settings -->
+        <a href="Settings.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Settings.php' || basename($_SERVER['PHP_SELF']) == 'Profile.php' || basename($_SERVER['PHP_SELF']) == 'EditProfile.php' || basename($_SERVER['PHP_SELF']) == 'ChangePassword.php') ? 'active' : ''; ?>" data-tooltip="Settings">
+            <span class="sidebar-nav-icon">⚙️</span>
+            <span>Settings</span>
         </a>
 
         <div class="sidebar-divider"></div>
-
-        <!-- Help -->
-        <a href="Help.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Help.php' || basename($_SERVER['PHP_SELF']) == 'ReportIssue.php') ? 'active' : ''; ?>" data-tooltip="Help">
-            <span class="sidebar-nav-icon">❓</span>
-            <span>Help</span>
-        </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -105,6 +87,12 @@
                 <div class="sidebar-user-role">Department Head</div>
             </div>
         </div>
+        
+        <!-- Logout Button -->
+        <a href="Logout.php" class="sidebar-logout-btn" title="Logout">
+            <span class="sidebar-nav-icon">🚪</span>
+            <span>Logout</span>
+        </a>
     </div>
 </aside>
 
@@ -135,3 +123,38 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<style>
+.sidebar-logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-top: 0.5rem;
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.sidebar-logout-btn:hover {
+    background: #dc3545;
+    color: white;
+    transform: translateX(4px);
+}
+
+.sidebar-logout-btn .sidebar-nav-icon {
+    font-size: 1.2rem;
+}
+
+.admin-sidebar.minimized .sidebar-logout-btn span:not(.sidebar-nav-icon) {
+    display: none;
+}
+
+.admin-sidebar.minimized .sidebar-logout-btn {
+    justify-content: center;
+    padding: 0.75rem;
+}
+</style>

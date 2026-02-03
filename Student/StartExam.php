@@ -1,10 +1,15 @@
  <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
+require_once(__DIR__ . "/../utils/session_manager.php");
+SessionManager::startSession('Student');
 
 if(!isset($_SESSION['Name'])){
     header("Location: ../index.php");
+    exit();
+}
+
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Student'){
+    SessionManager::destroySession();
+    header("Location: ../auth/student-login.php");
     exit();
 }
 
@@ -276,16 +281,17 @@ $studentSemester = $_SESSION['Sem'];
                     $currentDate = date('Y-m-d');
                     $currentTime = date('H:i:s');
                     
-                    // Get exams for student's semester (via courses)
+                    // Get exams for courses the student is enrolled in
                     $sql = "SELECT e.*, ec.category_name as exam_type_name, c.course_name, c.semester
                             FROM exams e 
                             LEFT JOIN exam_categories ec ON e.exam_category_id = ec.exam_category_id
                             INNER JOIN courses c ON e.course_id = c.course_id
-                            WHERE c.semester = ? AND e.is_active = 1
+                            INNER JOIN student_courses sc ON c.course_id = sc.course_id
+                            WHERE sc.student_id = ? AND e.is_active = 1 AND e.approval_status = 'approved'
                             ORDER BY e.exam_date ASC, e.start_time ASC";
                     
                     $stmt = $con->prepare($sql);
-                    $stmt->bind_param("i", $studentSemester);
+                    $stmt->bind_param("i", $studentId);
                     $stmt->execute();
                     $result = $stmt->get_result();
                     

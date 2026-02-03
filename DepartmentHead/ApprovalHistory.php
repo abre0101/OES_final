@@ -1,29 +1,46 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
+require_once(__DIR__ . "/../utils/session_manager.php");
 
+// Start Department Head session
+SessionManager::startSession('DepartmentHead');
+
+// Check if user is logged in
 if(!isset($_SESSION['Name'])){
     header("Location:../auth/institute-login.php");
     exit();
 }
 
+// Validate user role
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'DepartmentHead'){
+    SessionManager::destroySession();
+    header("Location:../auth/institute-login.php");
+    exit();
+}
+
 $con = require_once(__DIR__ . "/../Connections/OES.php");
+$deptId = $_SESSION['DeptId'] ?? null;
+$deptHeadId = $_SESSION['ID'] ?? null; // Get the logged-in department head's ID
 
 // Get filter parameters
 $actionFilter = $_GET['action'] ?? 'all';
 $dateFilter = $_GET['date'] ?? 'all';
 $searchQuery = $_GET['search'] ?? '';
 
-// Build query - exclude draft exams
+// Build query - show only approvals performed by this department head
 $query = "SELECT eah.*, es.exam_name, c.course_name, c.course_code, ec.category_name,
-    ecm.full_name as reviewer_name
+    CASE 
+        WHEN eah.performed_by_type = 'department_head' THEN dh.full_name
+        WHEN eah.performed_by_type = 'instructor' THEN i.full_name
+        ELSE 'System'
+    END as reviewer_name
     FROM exam_approval_history eah
     INNER JOIN exams es ON eah.exam_id = es.exam_id
     LEFT JOIN courses c ON es.course_id = c.course_id
     LEFT JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
-    LEFT JOIN exam_committee_members ecm ON eah.performed_by = ecm.committee_member_id AND eah.performed_by_type = 'committee'
-    WHERE es.approval_status != 'draft'";
+    LEFT JOIN department_heads dh ON eah.performed_by = dh.department_head_id AND eah.performed_by_type = 'department_head'
+    LEFT JOIN instructors i ON eah.performed_by = i.instructor_id AND eah.performed_by_type = 'instructor'
+    WHERE (eah.performed_by = $deptHeadId AND eah.performed_by_type = 'department_head') 
+       OR (eah.action = 'submitted' AND c.department_id = $deptId)";
 
 if($actionFilter != 'all') {
     $query .= " AND eah.action = '" . $con->real_escape_string($actionFilter) . "'";
@@ -51,14 +68,15 @@ if(!$history) {
     error_log("Approval History Query Error: " . $con->error);
 }
 
-// Get statistics
+// Get statistics - filtered by this department head's actions
 $stats = $con->query("SELECT 
     COUNT(*) as total_reviews,
     SUM(CASE WHEN eah.action = 'approved' THEN 1 ELSE 0 END) as approved_count,
     SUM(CASE WHEN eah.action = 'revision_requested' THEN 1 ELSE 0 END) as revision_count,
     SUM(CASE WHEN eah.action = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
     SUM(CASE WHEN DATE(eah.created_at) = CURDATE() THEN 1 ELSE 0 END) as today_count
-    FROM exam_approval_history eah");
+    FROM exam_approval_history eah
+    WHERE eah.performed_by = $deptHeadId AND eah.performed_by_type = 'department_head'");
 
 // Ensure stats has default values if query fails
 if(!$stats) {
@@ -72,20 +90,6 @@ if(!$stats) {
     $stats['rejected_count'] = $stats['rejected_count'] ?? 0;
     $stats['today_count'] = $stats['today_count'] ?? 0;
 }
-
-// Get top reviewers
-$topReviewers = $con->query("SELECT 
-    ecm.full_name,
-    COUNT(*) as review_count,
-    SUM(CASE WHEN eah.action = 'approved' THEN 1 ELSE 0 END) as approved,
-    SUM(CASE WHEN eah.action = 'revision_requested' THEN 1 ELSE 0 END) as revisions,
-    SUM(CASE WHEN eah.action = 'rejected' THEN 1 ELSE 0 END) as rejected
-    FROM exam_approval_history eah
-    LEFT JOIN exam_committee_members ecm ON eah.performed_by = ecm.committee_member_id
-    WHERE eah.performed_by_type = 'committee'
-    GROUP BY eah.performed_by, ecm.full_name
-    ORDER BY review_count DESC
-    LIMIT 5");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -162,13 +166,6 @@ $topReviewers = $con->query("SELECT
             padding: 1rem;
             text-align: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        .reviewer-card {
-            background: white;
-            border-radius: var(--radius-md);
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
         }
         .filter-chip {
             display: inline-block;
@@ -366,50 +363,6 @@ $topReviewers = $con->query("SELECT
                         </div>
                     </div>
                 </div>
-
-                <!-- Top Reviewers Sidebar -->
-                <?php if($topReviewers && $topReviewers->num_rows > 0): ?>
-                <div style="grid-column: span 2;">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title" style="margin: 0;">🏆 Top Reviewers</h3>
-                        </div>
-                        <div style="padding: 1.25rem;">
-                            <?php $rank = 1; while($reviewer = $topReviewers->fetch_assoc()): ?>
-                            <div class="reviewer-card">
-                                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
-                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;">
-                                        #<?php echo $rank++; ?>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--primary-color); font-size: 0.95rem;">
-                                            <?php echo htmlspecialchars($reviewer['full_name'] ?? 'Committee Member'); ?>
-                                        </div>
-                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                                            <?php echo $reviewer['review_count']; ?> total reviews
-                                        </div>
-                                    </div>
-                                </div>
-                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; text-align: center; font-size: 0.8rem;">
-                                    <div>
-                                        <div style="font-weight: 700; color: var(--success-color);"><?php echo $reviewer['approved']; ?></div>
-                                        <div style="color: var(--text-secondary); font-size: 0.7rem;">Approved</div>
-                                    </div>
-                                    <div>
-                                        <div style="font-weight: 700; color: #ff9800;"><?php echo $reviewer['revisions']; ?></div>
-                                        <div style="color: var(--text-secondary); font-size: 0.7rem;">Revisions</div>
-                                    </div>
-                                    <div>
-                                        <div style="font-weight: 700; color: #dc3545;"><?php echo $reviewer['rejected']; ?></div>
-                                        <div style="color: var(--text-secondary); font-size: 0.7rem;">Rejected</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endwhile; ?>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
             </div>
 
             <!-- Export Options -->

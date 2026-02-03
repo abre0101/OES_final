@@ -1,11 +1,19 @@
 <?php
-session_start();
-if(!isset($_SESSION['Id'])){
+require_once(__DIR__ . "/../utils/session_manager.php");
+SessionManager::startSession('Student');
+
+if(!isset($_SESSION['ID'])){
     header("Location:../student-login.php");
     exit();
 }
 
-$con = require_once(__DIR__ . "/../Connections/OES.php"); // Auto-fixed connection;
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Student'){
+    SessionManager::destroySession();
+    header("Location: ../auth/student-login.php");
+    exit();
+}
+
+$con = require_once(__DIR__ . "/../Connections/OES.php");
 require_once('../utils/NotificationSystem.php');
 
 $notificationSystem = new NotificationSystem($con);
