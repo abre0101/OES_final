@@ -1,8 +1,11 @@
 <?php
-session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
 
 // Include security logger
 require_once(__DIR__ . '/../utils/security_logger.php');
+
+// Start Administrator session to access session data
+SessionManager::startSession('Administrator');
 
 // Store session info before destroying
 $user_name = $_SESSION['username'] ?? 'Admin';
@@ -12,16 +15,8 @@ $session_duration = isset($_SESSION['login_time']) ? time() - $_SESSION['login_t
 // Log the logout event
 logLogout($user_name, 'admin');
 
-// Clear all session variables
-$_SESSION = array();
-
-// Destroy the session cookie
-if (isset($_COOKIE[session_name()])) {
-    setcookie(session_name(), '', time()-3600, '/');
-}
-
-// Destroy the session
-session_destroy();
+// Destroy the session using SessionManager
+SessionManager::destroySession();
 ?>
 <!DOCTYPE html>
 <html lang="en">

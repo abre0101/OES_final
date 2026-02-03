@@ -1,21 +1,16 @@
 <?php
-session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
+
+// Start Student session to access session data
+SessionManager::startSession('Student');
 
 // Store session info before destroying
 $user_name = $_SESSION['Name'] ?? 'User';
 $user_role = 'Student';
 $session_duration = isset($_SESSION['login_time']) ? time() - $_SESSION['login_time'] : 0;
 
-// Clear all session variables
-$_SESSION = array();
-
-// Destroy the session cookie
-if (isset($_COOKIE[session_name()])) {
-    setcookie(session_name(), '', time()-3600, '/');
-}
-
-// Destroy the session
-session_destroy();
+// Destroy the session using SessionManager
+SessionManager::destroySession();
 ?>
 <!DOCTYPE html>
 <html lang="en">

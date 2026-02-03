@@ -1,12 +1,12 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
+require_once(__DIR__ . "/../utils/session_manager.php");
 
-// If already logged in, redirect to dashboard
-if(isset($_SESSION['Name'])){
-    header("Location: ../Student/index.php");
-    exit();
+// Start default session for login page
+SessionManager::startSession();
+
+// If already logged in, redirect based on role
+if(isset($_SESSION['Name']) && isset($_SESSION['UserType'])){
+    SessionManager::redirectToDashboard();
 }
 ?>
 <!DOCTYPE html>

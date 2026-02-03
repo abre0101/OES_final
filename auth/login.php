@@ -10,9 +10,8 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-session_start();
-
-// Include security logger and password helper
+// Include session manager, security logger and password helper
+require_once('../utils/session_manager.php');
 require_once('../utils/security_logger.php');
 require_once('../utils/password_helper.php');
 
@@ -45,8 +44,11 @@ echo '<script type="text/javascript">alert("Wrong UserName or Password");window.
 }
 else
 {
+// Start Administrator session
+SessionManager::startSession('Administrator');
 $_SESSION['ID']=$row['admin_id'];
 $_SESSION['username']=$row['username'];
+$_SESSION['UserType']='Administrator';
 
 logSuccessfulLogin($UserName, 'admin');
 header("location:Admin/index.php");
@@ -71,10 +73,13 @@ echo '<script type="text/javascript">alert("Wrong UserName or Password Or You ar
 }
 else
 {
+// Start Instructor session
+SessionManager::startSession('Instructor');
 $_SESSION['ID']=$row['instructor_id'];
 $_SESSION['Name']=$row['full_name'];
 $_SESSION['Dept']=$row['department_id'];
 $_SESSION['Email']=$row['email'];
+$_SESSION['UserType']='Instructor';
 logSuccessfulLogin($UserName, 'instructor');
 header("location:../Instructor/index.php");
 } 
@@ -101,10 +106,13 @@ echo '<script type="text/javascript">alert("Wrong UserName or Password");window.
 }
 else
 {
+// Start Department Head session
+SessionManager::startSession('DepartmentHead');
 $_SESSION['ID']=$row['committee_member_id'];
 $_SESSION['Name']=$row['full_name'];
 $_SESSION['Dept']=$row['department_name'] ?? 'Not Set';
 $_SESSION['DeptId']=$row['department_id'];
+$_SESSION['UserType']='DepartmentHead';
 
 logSuccessfulLogin($UserName, 'department_head');
 header("location:../DepartmentHead/index.php");
@@ -141,10 +149,13 @@ echo '<script type="text/javascript">alert("Wrong UserName or Password or Inacti
 }
 else
 {
+// Start Student session
+SessionManager::startSession('Student');
 $_SESSION['ID']=$row['student_id'];
 $_SESSION['Name']=$row['full_name'];
 $_SESSION['Dept']=$row['department_id'];
 $_SESSION['Sem']=$row['semester'];
+$_SESSION['UserType']='Student';
 logSuccessfulLogin($UserName, 'student');
 header("location:../Student/index.php");
 exit();

@@ -1,3 +1,14 @@
+<?php
+require_once(__DIR__ . "/../utils/session_manager.php");
+
+// Start default session for login page
+SessionManager::startSession();
+
+// If already logged in, redirect based on role
+if(isset($_SESSION['Name']) && isset($_SESSION['UserType'])){
+    SessionManager::redirectToDashboard();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

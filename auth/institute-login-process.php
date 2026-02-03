@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once(__DIR__ . "/../utils/session_manager.php");
 require_once(__DIR__ . "/../utils/password_helper.php");
 
 $UserName = $_POST['txtUserName'];
@@ -15,10 +15,12 @@ $result = $stmt->get_result();
 $row = $result->fetch_array();
 
 if ($row && verifyPassword($Password, $row['password'])) {
+    // Start Administrator session
+    SessionManager::startSession('Administrator');
     $_SESSION['ID'] = $row['admin_id'];
     $_SESSION['username'] = $row['username'];
     $_SESSION['Name'] = $row['full_name'];
-    $_SESSION['user_type'] = 'administrator';
+    $_SESSION['UserType'] = 'Administrator';
     $_SESSION['Email'] = $row['email'] ?? '';
     $stmt->close();
     $con->close();
@@ -38,12 +40,14 @@ $result = $stmt->get_result();
 $row = $result->fetch_array();
 
 if ($row && verifyPassword($Password, $row['password'])) {
+    // Start Instructor session
+    SessionManager::startSession('Instructor');
     $_SESSION['ID'] = $row['instructor_id'];
     $_SESSION['Name'] = $row['full_name'];
     $_SESSION['Dept'] = $row['department_name'] ?? 'Not Set';
     $_SESSION['DeptId'] = $row['department_id'];
     $_SESSION['Email'] = $row['email'] ?? '';
-    $_SESSION['user_type'] = 'instructor';
+    $_SESSION['UserType'] = 'Instructor';
     $stmt->close();
     $con->close();
     header("location:../Instructor/index.php");
@@ -51,23 +55,25 @@ if ($row && verifyPassword($Password, $row['password'])) {
 }
 $stmt->close();
 
-// Try Department Head (Exam Committee Member)
-$stmt = $con->prepare("SELECT ecm.*, d.department_name 
-                       FROM exam_committee_members ecm 
-                       LEFT JOIN departments d ON ecm.department_id = d.department_id 
-                       WHERE ecm.username=? AND ecm.is_active=1");
+// Try Department Head
+$stmt = $con->prepare("SELECT dh.*, d.department_name 
+                       FROM department_heads dh 
+                       LEFT JOIN departments d ON dh.department_id = d.department_id 
+                       WHERE dh.username=? AND dh.is_active=1");
 $stmt->bind_param("s", $UserName);
 $stmt->execute();
 $result = $stmt->get_result();
 $row = $result->fetch_array();
 
 if ($row && verifyPassword($Password, $row['password'])) {
-    $_SESSION['ID'] = $row['committee_member_id'];
+    // Start Department Head session
+    SessionManager::startSession('DepartmentHead');
+    $_SESSION['ID'] = $row['department_head_id'];
     $_SESSION['Name'] = $row['full_name'];
     $_SESSION['Dept'] = $row['department_name'] ?? 'Not Set';
     $_SESSION['DeptId'] = $row['department_id'];
     $_SESSION['Email'] = $row['email'] ?? '';
-    $_SESSION['user_type'] = 'department_head';
+    $_SESSION['UserType'] = 'DepartmentHead';
     $stmt->close();
     $con->close();
     header("location:../DepartmentHead/index.php");

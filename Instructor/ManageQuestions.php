@@ -1,8 +1,5 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
-
+session_start();
 if(!isset($_SESSION['Name'])){
     header("Location:../auth/institute-login.php");
     exit();
@@ -12,7 +9,12 @@ $con = require_once(__DIR__ . "/../Connections/OES.php");
 $pageTitle = "Manage Questions";
 $instructor_id = $_SESSION['ID'];
 
-// Get instructor's courses for filtering
+// Get filter parameters
+$course_filter = $_GET['course'] ?? '';
+$topic_filter = $_GET['topic'] ?? '';
+$search = $_GET['search'] ?? '';
+
+// Get instructor's courses
 $coursesQuery = $con->prepare("SELECT DISTINCT c.course_id, c.course_name, c.course_code
     FROM instructor_courses ic
     INNER JOIN courses c ON ic.course_id = c.course_id
@@ -20,7 +22,56 @@ $coursesQuery = $con->prepare("SELECT DISTINCT c.course_id, c.course_name, c.cou
     ORDER BY c.course_name");
 $coursesQuery->bind_param("i", $instructor_id);
 $coursesQuery->execute();
-$instructorCourses = $coursesQuery->get_result();
+$courses = $coursesQuery->get_result();
+
+// Get topics
+$topicsQuery = $con->query("SELECT * FROM question_topics ORDER BY topic_name");
+
+// Build questions query
+$query = "SELECT q.*, qt.topic_name, c.course_name, c.course_code
+    FROM questions q
+    LEFT JOIN question_topics qt ON q.topic_id = qt.topic_id
+    LEFT JOIN courses c ON q.course_id = c.course_id
+    WHERE q.created_by = ?";
+
+$params = [$instructor_id];
+$types = "i";
+
+if($course_filter) {
+    $query .= " AND q.course_id = ?";
+    $params[] = $course_filter;
+    $types .= "i";
+}
+
+if($topic_filter) {
+    $query .= " AND q.topic_id = ?";
+    $params[] = $topic_filter;
+    $types .= "i";
+}
+
+if($search) {
+    $query .= " AND q.question_text LIKE ?";
+    $params[] = "%$search%";
+    $types .= "s";
+}
+
+$query .= " ORDER BY q.created_at DESC";
+
+$stmt = $con->prepare($query);
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$questions = $stmt->get_result();
+
+// Get statistics
+$statsQuery = $con->prepare("SELECT 
+    COUNT(*) as total_questions,
+    COUNT(DISTINCT course_id) as total_courses,
+    COUNT(DISTINCT topic_id) as total_topics
+    FROM questions
+    WHERE created_by = ?");
+$statsQuery->bind_param("i", $instructor_id);
+$statsQuery->execute();
+$stats = $statsQuery->get_result()->fetch_assoc();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -34,32 +85,273 @@ $instructorCourses = $coursesQuery->get_result();
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body.admin-layout { background: #f5f7fa; font-family: 'Poppins', sans-serif; }
-        .page-header-modern { background: linear-gradient(135deg, #003366 0%, #0055aa 100%); color: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 51, 102, 0.2); margin-bottom: 2rem; }
-        .page-header-modern h1 { margin: 0 0 0.5rem 0; font-size: 2.2rem; font-weight: 800; display: flex; align-items: center; gap: 1rem; color: white; }
+        
+        .page-header-modern {
+            background: linear-gradient(135deg, #003366 0%, #0055aa 100%);
+            color: white;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 51, 102, 0.2);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-header-modern h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
         .page-header-modern p { margin: 0; opacity: 0.95; font-size: 1.05rem; color: white; }
-        .action-buttons { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-        .btn-modern { padding: 0.85rem 1.75rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; border: none; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; }
-        .btn-primary { background: linear-gradient(135deg, #003366 0%, #0055aa 100%); color: white; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 51, 102, 0.3); }
-        .btn-success { background: linear-gradient(135deg, #28a745 0%, #218838 100%); color: white; }
-        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3); }
-        .btn-secondary { background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%); color: white; }
-        .btn-secondary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3); }
-        .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
-        .btn-danger { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; }
-        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3); }
         
-        .exam-card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); border-left: 4px solid #003366; transition: all 0.3s ease; }
-        .exam-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); }
-        .exam-card h3 { margin: 0 0 0.5rem 0; color: #003366; font-size: 1.3rem; font-weight: 700; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
         
-        .tabs-container { background: white; border-radius: 12px; padding: 0; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); overflow: hidden; }
-        .tabs-header { display: flex; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; }
-        .tab-btn { flex: 1; padding: 1rem 1.5rem; border: none; background: transparent; font-weight: 600; font-size: 0.95rem; color: #6c757d; cursor: pointer; transition: all 0.3s ease; border-bottom: 3px solid transparent; }
-        .tab-btn.active { color: #003366; border-bottom-color: #003366; background: white; }
-        .tab-btn:hover { background: rgba(0, 51, 102, 0.05); }
-        .tab-content { display: none; padding: 2rem; }
-        .tab-content.active { display: block; }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            transition: all 0.3s ease;
+            border-top: 4px solid;
+        }
+        
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12); }
+        .stat-card.primary { border-top-color: #003366; }
+        .stat-card.success { border-top-color: #28a745; }
+        .stat-card.info { border-top-color: #17a2b8; }
+        
+        .stat-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .stat-value { font-size: 2.5rem; font-weight: 900; color: #003366; margin-bottom: 0.5rem; }
+        .stat-label { font-size: 0.95rem; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .filter-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+        }
+        
+        .filter-card h3 {
+            margin: 0 0 1.5rem 0;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #003366;
+        }
+        
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 0;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #003366;
+            font-size: 0.95rem;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #003366;
+            box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+        }
+        
+        .btn {
+            padding: 0.85rem 1.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #003366 0%, #0055aa 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 51, 102, 0.3);
+        }
+        
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; transform: translateY(-2px); }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; transform: translateY(-2px); }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; transform: translateY(-2px); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; transform: translateY(-2px); }
+        .btn-sm { padding: 0.6rem 1.2rem; font-size: 0.875rem; }
+        
+        .question-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid #003366;
+            transition: all 0.3s ease;
+        }
+        
+        .question-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+        
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+            gap: 1rem;
+        }
+        
+        .question-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #003366;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .question-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .meta-badge {
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .meta-badge.course { background: #e7f3ff; color: #004085; }
+        .meta-badge.topic { background: #d4edda; color: #155724; }
+        .meta-badge.points { background: #fff3cd; color: #856404; }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .option-item {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            font-size: 0.9rem;
+        }
+        
+        .option-item.correct {
+            background: #d4edda;
+            border-color: #28a745;
+            font-weight: 600;
+        }
+        
+        .question-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #6c757d;
+        }
+        
+        .empty-state-icon {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.3;
+        }
+        
+        .empty-state h3 {
+            color: #495057;
+            margin-bottom: 0.75rem;
+        }
+        
+        .empty-state p {
+            margin-bottom: 1.5rem;
+        }
+        
+        .alert {
+            padding: 1.25rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        
+        @media (max-width: 768px) {
+            .page-header-modern { flex-direction: column; align-items: flex-start; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .filter-grid { grid-template-columns: 1fr; }
+            .options-grid { grid-template-columns: 1fr; }
+            .question-header { flex-direction: column; }
+        }
     </style>
 </head>
 <body class="admin-layout">
@@ -69,447 +361,212 @@ $instructorCourses = $coursesQuery->get_result();
         <?php include 'header-component.php'; ?>
 
         <div class="admin-content">
+            <!-- Page Header -->
             <div class="page-header-modern">
-                <h1><span>📝</span> Question Bank</h1>
-                <p>Create, edit, and organize your questions by course and topic</p>
+                <div>
+                    <h1>📝 Question Bank</h1>
+                    <p>Create and manage questions for your courses</p>
+                </div>
+                <a href="AddQuestion.php" class="btn btn-primary" style="background: white; color: #003366;">
+                    <span>➕</span> Create New Question
+                </a>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="action-buttons">
-                <a href="AddQuestion.php" class="btn-modern btn-primary">
-                    ➕ Create New Question
-                </a>
-                <a href="ManageTopics.php" class="btn-modern btn-success">
-                    🗂️ Manage Topics
-                </a>
-                <a href="ManageExams.php" class="btn-modern btn-secondary">
-                    📋 View Exam Schedules
-                </a>
+            <?php if(isset($_GET['success'])): ?>
+            <div class="alert alert-success">
+                <span style="font-size: 1.5rem;">✅</span>
+                <span>
+                    <?php 
+                    if($_GET['success'] == 'created') echo 'Question created successfully!';
+                    elseif($_GET['success'] == 'updated') echo 'Question updated successfully!';
+                    elseif($_GET['success'] == 'deleted') echo 'Question deleted successfully!';
+                    ?>
+                </span>
+            </div>
+            <?php endif; ?>
+
+            <?php if(isset($_GET['error'])): ?>
+            <div class="alert alert-danger">
+                <span style="font-size: 1.5rem;">❌</span>
+                <span>An error occurred. Please try again.</span>
+            </div>
+            <?php endif; ?>
+
+            <!-- Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-icon">❓</div>
+                    <div class="stat-value"><?php echo number_format($stats['total_questions']); ?></div>
+                    <div class="stat-label">Total Questions</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-value"><?php echo number_format($stats['total_courses']); ?></div>
+                    <div class="stat-label">Courses</div>
+                </div>
+                <div class="stat-card info">
+                    <div class="stat-icon">🗂️</div>
+                    <div class="stat-value"><?php echo number_format($stats['total_topics']); ?></div>
+                    <div class="stat-label">Topics</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-card">
+                <h3>🔍 Filter Questions</h3>
+                <form method="GET" action="">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label>Course</label>
+                            <select name="course">
+                                <option value="">All Courses</option>
+                                <?php 
+                                $courses->data_seek(0);
+                                while($course = $courses->fetch_assoc()): 
+                                ?>
+                                <option value="<?php echo $course['course_id']; ?>" <?php echo $course_filter == $course['course_id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($course['course_code'] . ' - ' . $course['course_name']); ?>
+                                </option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Topic</label>
+                            <select name="topic">
+                                <option value="">All Topics</option>
+                                <?php while($topic = $topicsQuery->fetch_assoc()): ?>
+                                <option value="<?php echo $topic['topic_id']; ?>" <?php echo $topic_filter == $topic['topic_id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($topic['topic_name']); ?>
+                                </option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Search</label>
+                            <input type="text" name="search" placeholder="Search question text..." value="<?php echo htmlspecialchars($search); ?>">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="submit" class="btn btn-primary">
+                            <span>🔍</span> Apply Filters
+                        </button>
+                        <?php if($course_filter || $topic_filter || $search): ?>
+                        <a href="ManageQuestions.php" class="btn btn-secondary">
+                            <span>🔄</span> Clear Filters
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </form>
             </div>
 
             <!-- Questions List -->
-            <div class="tabs-container">
-                <div class="tabs-header">
-                    <button class="tab-btn active" onclick="switchTab(0)">By Exam</button>
-                    <button class="tab-btn" onclick="switchTab(1)">By Course</button>
-                    <button class="tab-btn" onclick="switchTab(2)">By Topic</button>
-                </div>
-
-                <!-- By Exam Tab -->
-                <div class="tab-content active">
-                    <?php
-                    // Get exams for instructor's courses with question counts
-                    $examsQuery = $con->prepare("SELECT 
-                        es.exam_id,
-                        es.exam_name,
-                        c.course_name,
-                        c.course_code,
-                        ec.category_name,
-                        COUNT(DISTINCT eq.question_id) as question_count
-                        FROM exams es
-                        INNER JOIN courses c ON es.course_id = c.course_id
-                        INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
-                        INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-                        LEFT JOIN exam_questions eq ON es.exam_id = eq.exam_id
-                        WHERE ic.instructor_id = ?
-                        GROUP BY es.exam_id
-                        ORDER BY es.exam_date DESC");
-                    $examsQuery->bind_param("i", $instructor_id);
-                    $examsQuery->execute();
-                    $exams = $examsQuery->get_result();
-                    
-                    if($exams->num_rows > 0):
-                        while($exam = $exams->fetch_assoc()):
-                    ?>
-                    <div class="exam-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <div>
-                                <h3><?php echo htmlspecialchars($exam['exam_name']); ?></h3>
-                                <p style="margin: 0.5rem 0 0 0; color: #6c757d;">
-                                    <?php echo htmlspecialchars($exam['course_name']); ?> (<?php echo $exam['course_code']; ?>) - 
-                                    <?php echo htmlspecialchars($exam['category_name']); ?>
-                                </p>
-                                <p style="margin: 0.5rem 0 0 0; color: #6c757d;">
-                                    <strong><?php echo $exam['question_count']; ?></strong> questions
-                                </p>
-                            </div>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <a href="ViewExam.php?id=<?php echo $exam['exam_id']; ?>" class="btn-modern btn-primary btn-sm">
-                                    👁️ View All
-                                </a>
-                                <a href="AddQuestion.php?exam_id=<?php echo $exam['exam_id']; ?>" class="btn-modern btn-success btn-sm">
-                                    ➕ Add Question
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <?php
-                        // Get recent questions for this exam
-                        $questionsQuery = $con->prepare("SELECT q.question_id, q.question_text
-                            FROM exam_questions eq
-                            INNER JOIN questions q ON eq.question_id = q.question_id
-                            WHERE eq.exam_id = ?
-                            ORDER BY eq.question_order
-                            LIMIT 3");
-                        $questionsQuery->bind_param("i", $exam['exam_id']);
-                        $questionsQuery->execute();
-                        $examQuestions = $questionsQuery->get_result();
-                        
-                        if($examQuestions->num_rows > 0):
-                        ?>
-                        <div style="border-top: 2px solid #e0e0e0; padding-top: 1rem; margin-top: 1rem;">
-                            <strong style="color: #6c757d; font-size: 0.9rem;">Recent Questions:</strong>
-                            <?php while($q = $examQuestions->fetch_assoc()): ?>
-                            <div style="background: #f8f9fa; padding: 1rem; margin-top: 0.75rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                                <div style="flex: 1;">
-                                    <p style="margin: 0; color: #212529;">
-                                        <?php echo substr(htmlspecialchars($q['question_text']), 0, 100); ?>...
-                                    </p>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <a href="EditQuestion.php?id=<?php echo $q['question_id']; ?>" class="btn-modern btn-primary btn-sm">✏️</a>
-                                    <button class="btn-modern btn-danger btn-sm" onclick="deleteQuestion(<?php echo $q['question_id']; ?>)">🗑️</button>
-                                </div>
-                            </div>
-                            <?php endwhile; ?>
-                        </div>
-                        <?php else: ?>
-                        <div style="text-align: center; padding: 1rem; color: #6c757d; border-top: 2px solid #e0e0e0; margin-top: 1rem;">
-                            No questions yet. <a href="AddQuestion.php?exam_id=<?php echo $exam['exam_id']; ?>">Add your first question</a>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <?php 
-                        endwhile;
-                    else:
-                    ?>
-                        <div style="text-align: center; padding: 4rem;">
-                            <h3 style="color: #6c757d;">No exams scheduled yet</h3>
-                            <p>Schedule an exam for your courses first, then add questions to it</p>
-                            <a href="ManageExams.php" class="btn-modern btn-primary" style="margin-top: 1rem;">View Exams</a>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- By Course Tab -->
-                <div class="tab-content">
-                    <?php
-                    // Check if viewing all questions for a specific course
-                    $viewAllCourse = isset($_GET['course_id']) ? intval($_GET['course_id']) : null;
-                    
-                    // Get questions grouped by course for this instructor
-                    $instructorCourses->data_seek(0);
-                    $hasCourses = false;
-                    while($course = $instructorCourses->fetch_assoc()):
-                        // Skip if viewing all for a different course
-                        if($viewAllCourse && $viewAllCourse != $course['course_id']) continue;
-                        
-                        $courseQuestionsQuery = $con->prepare("SELECT COUNT(*) as count 
-                            FROM questions 
-                            WHERE course_id = ? AND instructor_id = ?");
-                        $courseQuestionsQuery->bind_param("ii", $course['course_id'], $instructor_id);
-                        $courseQuestionsQuery->execute();
-                        $count = $courseQuestionsQuery->get_result()->fetch_assoc()['count'];
-                        
-                        if($count > 0):
-                            $hasCourses = true;
-                    ?>
-                    <div class="exam-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <div>
-                                <h3>📚 <?php echo htmlspecialchars($course['course_name']); ?></h3>
-                                <p style="margin: 0.5rem 0 0 0; color: #6c757d;">
-                                    <?php echo $course['course_code']; ?>
-                                </p>
-                                <p style="margin: 0.5rem 0 0 0; color: #6c757d;">
-                                    <strong><?php echo $count; ?></strong> questions
-                                </p>
-                            </div>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <?php if(!$viewAllCourse): ?>
-                                <a href="?course_id=<?php echo $course['course_id']; ?>" class="btn-modern btn-primary btn-sm" onclick="switchTab(1)">
-                                    👁️ View All
-                                </a>
-                                <?php endif; ?>
-                                <a href="AddQuestion.php?course_id=<?php echo $course['course_id']; ?>" class="btn-modern btn-success btn-sm">
-                                    ➕ Add Question
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <?php
-                        // Show limited or all questions based on view mode
-                        $limit = $viewAllCourse ? "" : "LIMIT 3";
-                        $questionsQuery = $con->prepare("SELECT q.*, qt.topic_name
-                            FROM questions q
-                            LEFT JOIN question_topics qt ON q.topic_id = qt.topic_id
-                            WHERE q.course_id = ? AND q.instructor_id = ?
-                            ORDER BY q.created_at DESC
-                            $limit");
-                        $questionsQuery->bind_param("ii", $course['course_id'], $instructor_id);
-                        $questionsQuery->execute();
-                        $questions = $questionsQuery->get_result();
-                        
-                        if($questions->num_rows > 0):
-                        ?>
-                        <div style="border-top: 2px solid #e0e0e0; padding-top: 1rem; margin-top: 1rem;">
-                            <strong style="color: #6c757d; font-size: 0.9rem;">
-                                <?php echo $viewAllCourse ? 'All Questions:' : 'Recent Questions:'; ?>
-                            </strong>
-                            <?php 
-                            $qnum = 1;
-                            while($q = $questions->fetch_assoc()): 
-                                if($viewAllCourse):
-                                    // Full question display with options
-                            ?>
-                            <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-top: 1rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); border-left: 4px solid #003366;">
-                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                                    <h4 style="margin: 0; color: #003366;">Question <?php echo $qnum++; ?></h4>
-                                    <div style="display: flex; gap: 0.5rem;">
-                                        <?php if($q['topic_name']): ?>
-                                        <span style="background: #f8f9fa; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600;">
-                                            <?php echo htmlspecialchars($q['topic_name']); ?>
-                                        </span>
-                                        <?php endif; ?>
-                                        <span style="background: #f8f9fa; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600;">
-                                            <?php echo $q['point_value']; ?> pts
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <p style="font-size: 1.1rem; line-height: 1.6; margin: 1rem 0; color: #212529;">
-                                    <?php echo htmlspecialchars($q['question_text']); ?>
-                                </p>
-                                
-                                <div style="margin-top: 1rem;">
-                                    <strong style="display: block; margin-bottom: 0.75rem; color: #003366;">Options:</strong>
-                                    
-                                    <div style="padding: 0.75rem; margin: 0.5rem 0; background: #f8f9fa; border-radius: 8px; border-left: 3px solid <?php echo ($q['correct_answer'] == 'A') ? '#28a745' : '#e0e0e0'; ?>; <?php echo ($q['correct_answer'] == 'A') ? 'background: rgba(40, 167, 69, 0.1);' : ''; ?>">
-                                        <strong>A.</strong> <?php echo htmlspecialchars($q['option_a']); ?>
-                                        <?php if($q['correct_answer'] == 'A'): ?>
-                                            <span style="float: right; color: #28a745; font-weight: 700;">✓ Correct Answer</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    
-                                    <div style="padding: 0.75rem; margin: 0.5rem 0; background: #f8f9fa; border-radius: 8px; border-left: 3px solid <?php echo ($q['correct_answer'] == 'B') ? '#28a745' : '#e0e0e0'; ?>; <?php echo ($q['correct_answer'] == 'B') ? 'background: rgba(40, 167, 69, 0.1);' : ''; ?>">
-                                        <strong>B.</strong> <?php echo htmlspecialchars($q['option_b']); ?>
-                                        <?php if($q['correct_answer'] == 'B'): ?>
-                                            <span style="float: right; color: #28a745; font-weight: 700;">✓ Correct Answer</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    
-                                    <?php if($q['option_c']): ?>
-                                    <div style="padding: 0.75rem; margin: 0.5rem 0; background: #f8f9fa; border-radius: 8px; border-left: 3px solid <?php echo ($q['correct_answer'] == 'C') ? '#28a745' : '#e0e0e0'; ?>; <?php echo ($q['correct_answer'] == 'C') ? 'background: rgba(40, 167, 69, 0.1);' : ''; ?>">
-                                        <strong>C.</strong> <?php echo htmlspecialchars($q['option_c']); ?>
-                                        <?php if($q['correct_answer'] == 'C'): ?>
-                                            <span style="float: right; color: #28a745; font-weight: 700;">✓ Correct Answer</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <?php endif; ?>
-                                    
-                                    <?php if($q['option_d']): ?>
-                                    <div style="padding: 0.75rem; margin: 0.5rem 0; background: #f8f9fa; border-radius: 8px; border-left: 3px solid <?php echo ($q['correct_answer'] == 'D') ? '#28a745' : '#e0e0e0'; ?>; <?php echo ($q['correct_answer'] == 'D') ? 'background: rgba(40, 167, 69, 0.1);' : ''; ?>">
-                                        <strong>D.</strong> <?php echo htmlspecialchars($q['option_d']); ?>
-                                        <?php if($q['correct_answer'] == 'D'): ?>
-                                            <span style="float: right; color: #28a745; font-weight: 700;">✓ Correct Answer</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
-                                
-                                <?php if($q['revision_comments']): ?>
-                                <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,193,7,0.1); border-left: 3px solid #ffc107; border-radius: 4px;">
-                                    <strong style="font-size: 0.85rem; color: #f57c00;">Revision Comments:</strong>
-                                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #6c757d;">
-                                        <?php echo htmlspecialchars($q['revision_comments']); ?>
-                                    </p>
-                                </div>
-                                <?php endif; ?>
-                                
-                                <div style="display: flex; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #e0e0e0;">
-                                    <a href="EditQuestion.php?id=<?php echo $q['question_id']; ?>" class="btn-modern btn-primary btn-sm">
-                                        ✏️ Edit Question
-                                    </a>
-                                    <button class="btn-modern btn-danger btn-sm" onclick="deleteQuestion(<?php echo $q['question_id']; ?>)">
-                                        🗑️ Delete
-                                    </button>
-                                </div>
-                            </div>
-                            <?php else: 
-                                // Compact display for recent questions
-                            ?>
-                            <div style="background: #f8f9fa; padding: 1rem; margin-top: 0.75rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                                <div style="flex: 1;">
-                                    <p style="margin: 0; color: #212529;">
-                                        <?php echo substr(htmlspecialchars($q['question_text']), 0, 100); ?>...
-                                    </p>
-                                    <div style="font-size: 0.85rem; color: #6c757d; margin-top: 0.25rem;">
-                                        <?php if($q['topic_name']): ?>
-                                        📖 <?php echo htmlspecialchars($q['topic_name']); ?>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <a href="EditQuestion.php?id=<?php echo $q['question_id']; ?>" class="btn-modern btn-primary btn-sm">✏️</a>
-                                    <button class="btn-modern btn-danger btn-sm" onclick="deleteQuestion(<?php echo $q['question_id']; ?>)">🗑️</button>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                            <?php endwhile; ?>
-                            
-                            <?php if($viewAllCourse): ?>
-                            <div style="text-align: center; margin-top: 1.5rem;">
-                                <a href="ManageQuestions.php" class="btn-modern btn-secondary btn-sm">
-                                    ← Back to Overview
-                                </a>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <?php 
-                        endif;
-                    endwhile;
-                    
-                    if(!$hasCourses):
-                    ?>
-                        <div style="text-align: center; padding: 4rem;">
-                            <div style="font-size: 4rem; margin-bottom: 1rem;">📝</div>
-                            <h3 style="color: #6c757d;">No Questions Yet</h3>
-                            <p>Start building your question bank by creating your first question</p>
-                            <a href="AddQuestion.php" class="btn-modern btn-primary" style="margin-top: 1rem;">Create First Question</a>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- By Topic Tab -->
-                <div class="tab-content">
-                    <?php
-                    // Get all topics with question counts
-                    $topicsWithQuestionsQuery = $con->prepare("SELECT 
-                        qt.topic_id,
-                        qt.topic_name,
-                        qt.chapter_number,
-                        c.course_name,
-                        c.course_code,
-                        c.course_id,
-                        COUNT(q.question_id) as question_count
-                        FROM question_topics qt
-                        INNER JOIN courses c ON qt.course_id = c.course_id
-                        INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-                        LEFT JOIN questions q ON qt.topic_id = q.topic_id AND q.created_by = ?
-                        WHERE ic.instructor_id = ?
-                        GROUP BY qt.topic_id
-                        HAVING question_count > 0
-                        ORDER BY c.course_name, qt.chapter_number, qt.topic_name");
-                    $topicsWithQuestionsQuery->bind_param("ii", $instructor_id, $instructor_id);
-                    $topicsWithQuestionsQuery->execute();
-                    $topicsWithQuestions = $topicsWithQuestionsQuery->get_result();
-                    
-                    if($topicsWithQuestions->num_rows > 0):
-                        while($topic = $topicsWithQuestions->fetch_assoc()):
-                    ?>
-                    <div class="exam-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <div>
-                                <h3>📖 <?php echo htmlspecialchars($topic['topic_name']); ?></h3>
-                                <p style="margin: 0.5rem 0 0 0; color: #6c757d;">
-                                    <?php echo htmlspecialchars($topic['course_name']); ?> (<?php echo $topic['course_code']; ?>)
-                                    <?php if($topic['chapter_number']): ?>
-                                    - Chapter <?php echo $topic['chapter_number']; ?>
-                                    <?php endif; ?>
-                                </p>
-                                <p style="margin: 0.5rem 0 0 0; color: #6c757d;">
-                                    <strong><?php echo $topic['question_count']; ?></strong> questions
-                                </p>
-                            </div>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <a href="ViewTopicQuestions.php?topic_id=<?php echo $topic['topic_id']; ?>" class="btn-modern btn-primary btn-sm">
-                                    👁️ View All
-                                </a>
-                                <a href="AddQuestion.php?topic_id=<?php echo $topic['topic_id']; ?>" class="btn-modern btn-success btn-sm">
-                                    ➕ Add Question
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <?php
-                        $topicQuestionsQuery = $con->prepare("SELECT * FROM questions 
-                            WHERE topic_id = ? AND instructor_id = ?
-                            ORDER BY created_at DESC
-                            LIMIT 3");
-                        $topicQuestionsQuery->bind_param("ii", $topic['topic_id'], $instructor_id);
-                        $topicQuestionsQuery->execute();
-                        $topicQuestions = $topicQuestionsQuery->get_result();
-                        
-                        if($topicQuestions->num_rows > 0):
-                        ?>
-                        <div style="border-top: 2px solid #e0e0e0; padding-top: 1rem; margin-top: 1rem;">
-                            <strong style="color: #6c757d; font-size: 0.9rem;">Recent Questions:</strong>
-                            <?php while($q = $topicQuestions->fetch_assoc()): ?>
-                            <div style="background: #f8f9fa; padding: 1rem; margin-top: 0.75rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                                <div style="flex: 1;">
-                                    <p style="margin: 0; color: #212529;">
-                                        <?php echo substr(htmlspecialchars($q['question_text']), 0, 100); ?>...
-                                    </p>
-                                    <div style="font-size: 0.85rem; color: #6c757d; margin-top: 0.25rem;">
-                                        ⚡ <?php echo $q['difficulty_level']; ?> | 
-                                        💯 <?php echo $q['point_value']; ?> pts
-                                    </div>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <a href="EditQuestion.php?id=<?php echo $q['question_id']; ?>" class="btn-modern btn-primary btn-sm">✏️</a>
-                                    <button class="btn-modern btn-danger btn-sm" onclick="deleteQuestion(<?php echo $q['question_id']; ?>)">🗑️</button>
-                                </div>
-                            </div>
-                            <?php endwhile; ?>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <?php 
-                        endwhile;
-                    else:
-                    ?>
-                        <div style="text-align: center; padding: 4rem;">
-                            <h3 style="color: #6c757d;">No Topics with Questions</h3>
-                            <p>Organize your questions by creating topics first</p>
-                            <a href="ManageTopics.php" class="btn-modern btn-primary" style="margin-top: 1rem;">Manage Topics</a>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                </div>
+            <div style="margin-bottom: 1rem;">
+                <h3 style="color: #003366; font-size: 1.3rem; font-weight: 700;">
+                    📋 Questions (<?php echo $questions->num_rows; ?>)
+                </h3>
             </div>
+
+            <?php if($questions->num_rows > 0): ?>
+                <?php while($q = $questions->fetch_assoc()): ?>
+                <div class="question-card">
+                    <div class="question-header">
+                        <div style="flex: 1;">
+                            <div class="question-text">
+                                <?php echo htmlspecialchars($q['question_text']); ?>
+                            </div>
+                            <div class="question-meta">
+                                <?php if($q['course_name']): ?>
+                                <span class="meta-badge course">
+                                    <strong>📚</strong> <?php echo htmlspecialchars($q['course_code']); ?>
+                                </span>
+                                <?php endif; ?>
+                                <?php if($q['topic_name']): ?>
+                                <span class="meta-badge topic">
+                                    <strong>🗂️</strong> <?php echo htmlspecialchars($q['topic_name']); ?>
+                                </span>
+                                <?php endif; ?>
+                                <span class="meta-badge points">
+                                    <strong>⭐</strong> <?php echo $q['point_value']; ?> point<?php echo $q['point_value'] != 1 ? 's' : ''; ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="options-grid">
+                        <div class="option-item <?php echo $q['correct_answer'] == 'A' ? 'correct' : ''; ?>">
+                            <strong>A)</strong> <?php echo htmlspecialchars($q['option_a']); ?>
+                            <?php if($q['correct_answer'] == 'A'): ?>
+                            <span style="float: right; color: #28a745;">✓</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="option-item <?php echo $q['correct_answer'] == 'B' ? 'correct' : ''; ?>">
+                            <strong>B)</strong> <?php echo htmlspecialchars($q['option_b']); ?>
+                            <?php if($q['correct_answer'] == 'B'): ?>
+                            <span style="float: right; color: #28a745;">✓</span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if($q['option_c']): ?>
+                        <div class="option-item <?php echo $q['correct_answer'] == 'C' ? 'correct' : ''; ?>">
+                            <strong>C)</strong> <?php echo htmlspecialchars($q['option_c']); ?>
+                            <?php if($q['correct_answer'] == 'C'): ?>
+                            <span style="float: right; color: #28a745;">✓</span>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if($q['option_d']): ?>
+                        <div class="option-item <?php echo $q['correct_answer'] == 'D' ? 'correct' : ''; ?>">
+                            <strong>D)</strong> <?php echo htmlspecialchars($q['option_d']); ?>
+                            <?php if($q['correct_answer'] == 'D'): ?>
+                            <span style="float: right; color: #28a745;">✓</span>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if($q['explanation']): ?>
+                    <div style="padding: 1rem; background: #e7f3ff; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                        <strong style="color: #004085;">💡 Explanation:</strong>
+                        <div style="margin-top: 0.5rem; color: #004085;">
+                            <?php echo nl2br(htmlspecialchars($q['explanation'])); ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <div class="question-actions">
+                        <a href="EditQuestion.php?id=<?php echo $q['question_id']; ?>" class="btn btn-warning btn-sm">
+                            <span>✏️</span> Edit
+                        </a>
+                        <a href="DeleteQuestion.php?id=<?php echo $q['question_id']; ?>" 
+                           class="btn btn-danger btn-sm"
+                           onclick="return confirm('Are you sure you want to delete this question?')">
+                            <span>🗑️</span> Delete
+                        </a>
+                    </div>
+                </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <h3>No Questions Found</h3>
+                    <p>
+                        <?php if($course_filter || $topic_filter || $search): ?>
+                            No questions match your filter criteria. Try adjusting the filters.
+                        <?php else: ?>
+                            You haven't created any questions yet. Start building your question bank!
+                        <?php endif; ?>
+                    </p>
+                    <a href="AddQuestion.php" class="btn btn-primary">
+                        <span>➕</span> Create Your First Question
+                    </a>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
     <script src="../assets/js/admin-sidebar.js"></script>
-    <script>
-        function switchTab(index) {
-            const tabs = document.querySelectorAll('.tab-content');
-            const buttons = document.querySelectorAll('.tab-btn');
-            
-            tabs.forEach(tab => tab.classList.remove('active'));
-            buttons.forEach(btn => btn.classList.remove('active'));
-            
-            tabs[index].classList.add('active');
-            buttons[index].classList.add('active');
-        }
-        
-        function deleteQuestion(id) {
-            if(confirm('Are you sure you want to delete this question?')) {
-                window.location.href = 'DeleteQuestion.php?id=' + id;
-            }
-        }
-        
-        // Auto-switch to course tab if course_id is in URL
-        window.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.has('course_id')) {
-                switchTab(1);
-            }
-        });
-    </script>
 </body>
 </html>
 <?php $con->close(); ?>

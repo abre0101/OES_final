@@ -1,10 +1,19 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
+require_once(__DIR__ . "/../utils/session_manager.php");
 
+// Start Student session
+SessionManager::startSession('Student');
+
+// Check if user is logged in
 if(!isset($_SESSION['Name'])){
     header("Location: ../index.php");
+    exit();
+}
+
+// Validate user role - only students can access this page
+if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Student'){
+    SessionManager::destroySession();
+    header("Location: ../auth/student-login.php");
     exit();
 }
 
@@ -47,15 +56,19 @@ if ($enrollmentYear) {
 }
 
 // Count available exams for student's courses
-$studentSemester = $_SESSION['Sem'];
-$examCountQuery = $con->prepare("SELECT COUNT(DISTINCT e.exam_id) as count 
-    FROM exams e 
-    INNER JOIN courses c ON e.course_id = c.course_id 
-    WHERE c.semester = ? AND e.is_active = 1");
-$examCountQuery->bind_param("i", $studentSemester);
-$examCountQuery->execute();
-$examCount = $examCountQuery->get_result()->fetch_assoc()['count'];
-$examCountQuery->close();
+$studentSemester = $studentData['semester'] ?? null;
+if ($studentSemester) {
+    $examCountQuery = $con->prepare("SELECT COUNT(DISTINCT e.exam_id) as count 
+        FROM exams e 
+        INNER JOIN courses c ON e.course_id = c.course_id 
+        WHERE c.semester = ? AND e.is_active = 1");
+    $examCountQuery->bind_param("i", $studentSemester);
+    $examCountQuery->execute();
+    $examCount = $examCountQuery->get_result()->fetch_assoc()['count'];
+    $examCountQuery->close();
+} else {
+    $examCount = 0;
+}
 
 // Count completed exams
 $completedCount = $con->query("SELECT COUNT(*) as count FROM exam_results WHERE student_id='$studentId'")->fetch_assoc()['count'];

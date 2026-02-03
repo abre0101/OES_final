@@ -1,7 +1,9 @@
 <?php
-if (!isset($_SESSION)) {
-    session_start();
-}
+require_once(__DIR__ . "/utils/session_manager.php");
+
+// Start default session for public pages
+SessionManager::startSession();
+
 $isLoggedIn = isset($_SESSION['Name']);
 $userRole = '';
 if ($isLoggedIn) {
