@@ -10,9 +10,9 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Include session manager, security logger and password helper
+// Include session manager, audit logger and password helper
 require_once('../utils/session_manager.php');
-require_once('../utils/security_logger.php');
+require_once('../utils/audit_logger.php');
 require_once('../utils/password_helper.php');
 
 $UserName=$_POST['txtUserName'] ?? '';
@@ -38,7 +38,8 @@ $num_row = $result->num_rows;
 //echo $records;
 if ($num_row==0 || !verifyPassword($Password, $row['password']))
 {
-logFailedLogin($UserName, 'admin', 'Invalid username or password');
+$logger = new AuditLogger($con);
+$logger->logLogin(null, 'admin', false, $UserName);
 echo '<script type="text/javascript">alert("Wrong UserName or Password");window.location=\'index.php\';</script>';
 //die(header("location:index.php"));
 }
@@ -50,7 +51,8 @@ $_SESSION['ID']=$row['admin_id'];
 $_SESSION['username']=$row['username'];
 $_SESSION['UserType']='Administrator';
 
-logSuccessfulLogin($UserName, 'admin');
+$logger = new AuditLogger($con);
+$logger->logLogin($row['admin_id'], 'admin', true, $UserName);
 header("location:Admin/index.php");
 } 
 $stmt->close();
@@ -68,7 +70,8 @@ $row = $result->fetch_array();
 $records = $result->num_rows;
 if ($records==0 || !verifyPassword($Password, $row['password']))
 {
-logFailedLogin($UserName, 'instructor', 'Invalid credentials or account inactive');
+$logger = new AuditLogger($con);
+$logger->logLogin(null, 'instructor', false, $UserName);
 echo '<script type="text/javascript">alert("Wrong UserName or Password Or You are Inactivated");window.location=\'index.php\';</script>';
 }
 else
@@ -80,7 +83,8 @@ $_SESSION['Name']=$row['full_name'];
 $_SESSION['Dept']=$row['department_id'];
 $_SESSION['Email']=$row['email'];
 $_SESSION['UserType']='Instructor';
-logSuccessfulLogin($UserName, 'instructor');
+$logger = new AuditLogger($con);
+$logger->logLogin($row['instructor_id'], 'instructor', true, $UserName);
 header("location:../Instructor/index.php");
 } 
 $stmt->close();
@@ -101,7 +105,8 @@ $row = $result->fetch_array();
 $records = $result->num_rows;
 if ($records==0 || !verifyPassword($Password, $row['password']))
 {
-logFailedLogin($UserName, 'department_head', 'Invalid credentials or account inactive');
+$logger = new AuditLogger($con);
+$logger->logLogin(null, 'department_head', false, $UserName);
 echo '<script type="text/javascript">alert("Wrong UserName or Password");window.location=\'index.php\';</script>';
 }
 else
@@ -114,7 +119,8 @@ $_SESSION['Dept']=$row['department_name'] ?? 'Not Set';
 $_SESSION['DeptId']=$row['department_id'];
 $_SESSION['UserType']='DepartmentHead';
 
-logSuccessfulLogin($UserName, 'department_head');
+$logger = new AuditLogger($con);
+$logger->logLogin($row['committee_member_id'], 'department_head', true, $UserName);
 header("location:../DepartmentHead/index.php");
 } 
 $stmt->close();
@@ -144,7 +150,8 @@ $records = $result->num_rows;
 
 if ($records==0 || !verifyPassword($Password, $row['password']))
 {
-logFailedLogin($UserName, 'student', 'Invalid credentials or account inactive');
+$logger = new AuditLogger($con);
+$logger->logLogin(null, 'student', false, $UserName);
 echo '<script type="text/javascript">alert("Wrong UserName or Password or Inactivated");window.location=\'student-login.php\';</script>';
 }
 else
@@ -156,7 +163,8 @@ $_SESSION['Name']=$row['full_name'];
 $_SESSION['Dept']=$row['department_id'];
 $_SESSION['Sem']=$row['semester'];
 $_SESSION['UserType']='Student';
-logSuccessfulLogin($UserName, 'student');
+$logger = new AuditLogger($con);
+$logger->logLogin($row['student_id'], 'student', true, $UserName);
 header("location:../Student/index.php");
 exit();
 } 
