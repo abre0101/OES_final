@@ -79,7 +79,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     if($userExists) {
         // Check if user already has a pending request
-        $existingRequest = $con->query("SELECT * FROM password_reset_requests WHERE user_id = '$userId' AND user_type = '$userType' AND status = 'pending'");
+        $existingRequest = $con->query("SELECT * FROM password_reset_requests WHERE user_id = '$userId' AND user_type = '$userType' AND is_active = 'pending'");
         
         if($existingRequest && $existingRequest->num_rows > 0) {
             $message = 'You already have a pending password reset request. Please wait for admin approval.';
