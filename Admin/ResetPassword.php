@@ -65,7 +65,7 @@ if(isset($_POST['process_request'])) {
         }
         
         // Update request status
-        $stmt = $con->prepare("UPDATE password_reset_requests SET status = 'approved', processed_by = ?, processed_date = ?, notes = ? WHERE request_id = ?");
+        $stmt = $con->prepare("UPDATE password_reset_requests SET is_active = 'approved', processed_by = ?, processed_date = ?, notes = ? WHERE request_id = ?");
         $notes = 'Temporary password: ' . $tempPassword;
         $stmt->bind_param("sssi", $adminName, $processDate, $notes, $requestId);
         $stmt->execute();
@@ -73,14 +73,14 @@ if(isset($_POST['process_request'])) {
         $message = "Request approved! Temporary password: <strong>$tempPassword</strong> - Please inform the user.";
         $messageType = 'success';
     } elseif($action == 'reject') {
-        $con->query("UPDATE password_reset_requests SET status = 'rejected', processed_by = '$adminName', processed_date = '$processDate' WHERE request_id = $requestId");
+        $con->query("UPDATE password_reset_requests SET is_active = 'rejected', processed_by = '$adminName', processed_date = '$processDate' WHERE request_id = $requestId");
         $message = 'Request rejected.';
         $messageType = 'warning';
     }
 }
 
 // Get pending requests
-$pendingRequests = $con->query("SELECT * FROM password_reset_requests WHERE status = 'pending' ORDER BY created_at DESC");
+$pendingRequests = $con->query("SELECT * FROM password_reset_requests WHERE is_active = 'pending' ORDER BY request_date DESC");
 
 $message = '';
 $messageType = '';
@@ -140,54 +140,54 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reset_password'])) {
 
 // Get only users who have pending password reset requests
 $students = $con->query("
-    SELECT DISTINCT s.student_id as Id, s.full_name as Name, s.email as Email, prr.created_at as request_date
+    SELECT DISTINCT s.student_id as Id, s.full_name as Name, s.email as Email, prr.request_date
     FROM students s 
     INNER JOIN password_reset_requests prr ON s.student_id = prr.user_id 
-    WHERE prr.user_type = 'student' AND prr.status = 'pending'
-    ORDER BY prr.created_at DESC
+    WHERE prr.user_type = 'student' AND prr.is_active = 'pending'
+    ORDER BY prr.request_date DESC
 ");
 
 $instructors = $con->query("
-    SELECT DISTINCT i.instructor_id, i.full_name as Name, i.email as Email, prr.created_at as request_date
+    SELECT DISTINCT i.instructor_id, i.full_name as Name, i.email as Email, prr.request_date
     FROM instructors i 
     INNER JOIN password_reset_requests prr ON i.instructor_id = prr.user_id 
-    WHERE prr.user_type = 'instructor' AND prr.status = 'pending'
-    ORDER BY prr.created_at DESC
+    WHERE prr.user_type = 'instructor' AND prr.is_active = 'pending'
+    ORDER BY prr.request_date DESC
 ");
 
 $committees = $con->query("
-    SELECT DISTINCT ecm.committee_member_id as committee_id, ecm.full_name as Name, ecm.email as Email, prr.created_at as request_date
+    SELECT DISTINCT ecm.committee_member_id as committee_id, ecm.full_name as Name, ecm.email as Email, prr.request_date
     FROM exam_committee_members ecm 
     INNER JOIN password_reset_requests prr ON ecm.committee_member_id = prr.user_id 
-    WHERE prr.user_type = 'exam_committee' AND prr.status = 'pending'
-    ORDER BY prr.created_at DESC
+    WHERE prr.user_type = 'exam_committee' AND prr.is_active = 'pending'
+    ORDER BY prr.request_date DESC
 ");
 
 $admins = $con->query("SELECT username, username as Name FROM administrators ORDER BY username");
 
 // Get users again for the cards (since we'll iterate through them twice)
 $students_cards = $con->query("
-    SELECT DISTINCT s.student_id as Id, s.full_name as Name, s.email as Email, prr.created_at as request_date, prr.reason
+    SELECT DISTINCT s.student_id as Id, s.full_name as Name, s.email as Email, prr.request_date, prr.reason
     FROM students s 
     INNER JOIN password_reset_requests prr ON s.student_id = prr.user_id 
-    WHERE prr.user_type = 'student' AND prr.status = 'pending'
-    ORDER BY prr.created_at DESC
+    WHERE prr.user_type = 'student' AND prr.is_active = 'pending'
+    ORDER BY prr.request_date DESC
 ");
 
 $instructors_cards = $con->query("
-    SELECT DISTINCT i.instructor_id, i.full_name as Name, i.email as Email, prr.created_at as request_date, prr.reason
+    SELECT DISTINCT i.instructor_id, i.full_name as Name, i.email as Email, prr.request_date, prr.reason
     FROM instructors i 
     INNER JOIN password_reset_requests prr ON i.instructor_id = prr.user_id 
-    WHERE prr.user_type = 'instructor' AND prr.status = 'pending'
-    ORDER BY prr.created_at DESC
+    WHERE prr.user_type = 'instructor' AND prr.is_active = 'pending'
+    ORDER BY prr.request_date DESC
 ");
 
 $committees_cards = $con->query("
-    SELECT DISTINCT ecm.committee_member_id, ecm.full_name as Name, ecm.email as Email, prr.created_at as request_date, prr.reason
+    SELECT DISTINCT ecm.committee_member_id, ecm.full_name as Name, ecm.email as Email, prr.request_date, prr.reason
     FROM exam_committee_members ecm 
     INNER JOIN password_reset_requests prr ON ecm.committee_member_id = prr.user_id 
-    WHERE prr.user_type = 'exam_committee' AND prr.status = 'pending'
-    ORDER BY prr.created_at DESC
+    WHERE prr.user_type = 'exam_committee' AND prr.is_active = 'pending'
+    ORDER BY prr.request_date DESC
 ");
 ?>
 <!DOCTYPE html>
@@ -312,7 +312,7 @@ $committees_cards = $con->query("
                                     <strong>Email:</strong> <?php echo $request['user_email']; ?>
                                 </div>
                                 <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                                    <strong>Requested:</strong> <?php echo date('M d, Y H:i', strtotime($request['created_at'])); ?>
+                                    <strong>Requested:</strong> <?php echo date('M d, Y H:i', strtotime($request['request_date'])); ?>
                                 </div>
                             </div>
                         </div>
@@ -579,7 +579,7 @@ $committees_cards = $con->query("
                     SELECT DISTINCT s.student_id as Id, s.full_name as Name 
                     FROM students s 
                     INNER JOIN password_reset_requests prr ON s.student_id = prr.user_id 
-                    WHERE prr.user_type = 'student' AND prr.status = 'pending'
+                    WHERE prr.user_type = 'student' AND prr.is_active = 'pending'
                     ORDER BY s.full_name
                 ");
                 $arr = [];
@@ -591,7 +591,7 @@ $committees_cards = $con->query("
                     SELECT DISTINCT i.instructor_id as Id, i.full_name as Name 
                     FROM instructors i 
                     INNER JOIN password_reset_requests prr ON i.instructor_id = prr.user_id 
-                    WHERE prr.user_type = 'instructor' AND prr.status = 'pending'
+                    WHERE prr.user_type = 'instructor' AND prr.is_active = 'pending'
                     ORDER BY i.full_name
                 ");
                 $arr = [];
@@ -603,7 +603,7 @@ $committees_cards = $con->query("
                     SELECT DISTINCT ecm.committee_member_id as Id, ecm.full_name as Name 
                     FROM exam_committee_members ecm 
                     INNER JOIN password_reset_requests prr ON ecm.committee_member_id = prr.user_id 
-                    WHERE prr.user_type = 'exam_committee' AND prr.status = 'pending'
+                    WHERE prr.user_type = 'exam_committee' AND prr.is_active = 'pending'
                     ORDER BY ecm.full_name
                 ");
                 $arr = [];
