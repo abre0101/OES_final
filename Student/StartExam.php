@@ -1,4 +1,4 @@
- <?php
+<?php
 require_once(__DIR__ . "/../utils/session_manager.php");
 SessionManager::startSession('Student');
 
