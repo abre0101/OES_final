@@ -57,8 +57,8 @@ if(isset($_POST['process_request'])) {
                 $stmt->bind_param("ss", $hashedTempPassword, $request['user_id']);
                 $stmt->execute();
                 break;
-            case 'exam_committee':
-                $stmt = $con->prepare("UPDATE exam_committee_members SET Password = ? WHERE committee_member_id = ?");
+            case 'department_head':
+                $stmt = $con->prepare("UPDATE department_heads SET Password = ? WHERE department_head_id = ?");
                 $stmt->bind_param("ss", $hashedTempPassword, $request['user_id']);
                 $stmt->execute();
                 break;
@@ -116,8 +116,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reset_password'])) {
                 $stmt->bind_param("si", $hashedPassword, $userId);
                 $updated = $stmt->execute();
                 break;
-            case 'exam_committee':
-                $stmt = $con->prepare("UPDATE exam_committee_members SET Password = ? WHERE committee_member_id = ?");
+            case 'department_head':
+                $stmt = $con->prepare("UPDATE department_heads SET Password = ? WHERE department_head_id = ?");
                 $stmt->bind_param("ss", $hashedPassword, $userId);
                 $updated = $stmt->execute();
                 break;
@@ -155,11 +155,11 @@ $instructors = $con->query("
     ORDER BY prr.request_date DESC
 ");
 
-$committees = $con->query("
-    SELECT DISTINCT ecm.committee_member_id as committee_id, ecm.full_name as Name, ecm.email as Email, prr.request_date
-    FROM exam_committee_members ecm 
-    INNER JOIN password_reset_requests prr ON ecm.committee_member_id = prr.user_id 
-    WHERE prr.user_type = 'exam_committee' AND prr.is_active = 'pending'
+$departmentHeads = $con->query("
+    SELECT DISTINCT dh.department_head_id, dh.full_name as Name, dh.email as Email, prr.request_date
+    FROM department_heads dh 
+    INNER JOIN password_reset_requests prr ON dh.department_head_id = prr.user_id 
+    WHERE prr.user_type = 'department_head' AND prr.is_active = 'pending'
     ORDER BY prr.request_date DESC
 ");
 
@@ -182,11 +182,11 @@ $instructors_cards = $con->query("
     ORDER BY prr.request_date DESC
 ");
 
-$committees_cards = $con->query("
-    SELECT DISTINCT ecm.committee_member_id, ecm.full_name as Name, ecm.email as Email, prr.request_date, prr.reason
-    FROM exam_committee_members ecm 
-    INNER JOIN password_reset_requests prr ON ecm.committee_member_id = prr.user_id 
-    WHERE prr.user_type = 'exam_committee' AND prr.is_active = 'pending'
+$departmentHeads_cards = $con->query("
+    SELECT DISTINCT dh.department_head_id, dh.full_name as Name, dh.email as Email, prr.request_date, prr.reason
+    FROM department_heads dh 
+    INNER JOIN password_reset_requests prr ON dh.department_head_id = prr.user_id 
+    WHERE prr.user_type = 'department_head' AND prr.is_active = 'pending'
     ORDER BY prr.request_date DESC
 ");
 ?>
@@ -369,7 +369,7 @@ $committees_cards = $con->query("
                                         <option value="">-- Select User Type --</option>
                                         <option value="student">👨‍🎓 Student</option>
                                         <option value="instructor">👨‍🏫 Instructor</option>
-                                        <option value="exam_committee">👥 Exam Committee</option>
+                                        <option value="department_head">👥 Department Head</option>
                                         <option value="admin">🔐 Administrator</option>
                                     </select>
                                 </div>
@@ -433,8 +433,8 @@ $committees_cards = $con->query("
                                 <button class="tab-btn" onclick="showTab('instructors')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 600; color: var(--text-secondary);">
                                     👨‍🏫 Instructors
                                 </button>
-                                <button class="tab-btn" onclick="showTab('committees')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 600; color: var(--text-secondary);">
-                                    👥 Committees
+                                <button class="tab-btn" onclick="showTab('departmentHeads')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 600; color: var(--text-secondary);">
+                                    👥 Department Heads
                                 </button>
                             </div>
 
@@ -498,23 +498,23 @@ $committees_cards = $con->query("
                             <?php endif; ?>
                         </div>
 
-                        <!-- Committees Tab -->
-                        <div id="committees-tab" class="tab-content" style="display: none; max-height: 500px; overflow-y: auto;">
-                            <?php if($committees_cards->num_rows > 0): ?>
-                                <?php while($committee = $committees_cards->fetch_assoc()): ?>
-                                <div class="user-card" onclick="selectUser('exam_committee', '<?php echo $committee['committee_member_id']; ?>', '<?php echo htmlspecialchars($committee['Name']); ?>')" style="border-left: 4px solid #6f42c1;">
+                        <!-- Department Heads Tab -->
+                        <div id="departmentHeads-tab" class="tab-content" style="display: none; max-height: 500px; overflow-y: auto;">
+                            <?php if($departmentHeads_cards->num_rows > 0): ?>
+                                <?php while($departmentHead = $departmentHeads_cards->fetch_assoc()): ?>
+                                <div class="user-card" onclick="selectUser('department_head', '<?php echo $departmentHead['department_head_id']; ?>', '<?php echo htmlspecialchars($departmentHead['Name']); ?>')" style="border-left: 4px solid #6f42c1;">
                                     <div style="display: flex; align-items: start; gap: 1rem;">
                                         <div style="width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, #6f42c1, #9b59b6); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; flex-shrink: 0;">
-                                            <?php echo strtoupper(substr($committee['Name'], 0, 1)); ?>
+                                            <?php echo strtoupper(substr($departmentHead['Name'], 0, 1)); ?>
                                         </div>
                                         <div style="flex: 1;">
-                                            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;"><?php echo $committee['Name']; ?></div>
+                                            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;"><?php echo $departmentHead['Name']; ?></div>
                                             <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                                                <strong>ID:</strong> <?php echo $committee['committee_member_id']; ?> | 
-                                                <strong>Email:</strong> <?php echo $committee['Email']; ?>
+                                                <strong>ID:</strong> <?php echo $departmentHead['department_head_id']; ?> | 
+                                                <strong>Email:</strong> <?php echo $departmentHead['Email']; ?>
                                             </div>
                                             <div style="font-size: 0.8rem; color: var(--warning-color); background: rgba(255, 193, 7, 0.1); padding: 0.35rem 0.75rem; border-radius: 6px; display: inline-block;">
-                                                🕒 Requested: <?php echo date('M d, Y H:i', strtotime($committee['request_date'])); ?>
+                                                🕒 Requested: <?php echo date('M d, Y H:i', strtotime($departmentHead['request_date'])); ?>
                                             </div>
                                         </div>
                                     </div>
@@ -523,7 +523,7 @@ $committees_cards = $con->query("
                             <?php else: ?>
                                 <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
                                     <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
-                                    <p style="margin: 0; font-weight: 600;">No pending requests from committee members</p>
+                                    <p style="margin: 0; font-weight: 600;">No pending requests from department heads</p>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -598,16 +598,16 @@ $committees_cards = $con->query("
                 while($i = $instructors_js->fetch_assoc()) $arr[] = $i;
                 echo json_encode($arr);
             ?>,
-            exam_committee: <?php 
-                $committees_js = $con->query("
-                    SELECT DISTINCT ecm.committee_member_id as Id, ecm.full_name as Name 
-                    FROM exam_committee_members ecm 
-                    INNER JOIN password_reset_requests prr ON ecm.committee_member_id = prr.user_id 
-                    WHERE prr.user_type = 'exam_committee' AND prr.is_active = 'pending'
-                    ORDER BY ecm.full_name
+            department_head: <?php 
+                $departmentHeads_js = $con->query("
+                    SELECT DISTINCT dh.department_head_id as Id, dh.full_name as Name 
+                    FROM department_heads dh 
+                    INNER JOIN password_reset_requests prr ON dh.department_head_id = prr.user_id 
+                    WHERE prr.user_type = 'department_head' AND prr.is_active = 'pending'
+                    ORDER BY dh.full_name
                 ");
                 $arr = [];
-                while($c = $committees_js->fetch_assoc()) $arr[] = $c;
+                while($dh = $departmentHeads_js->fetch_assoc()) $arr[] = $dh;
                 echo json_encode($arr);
             ?>,
             admin: <?php 
@@ -654,7 +654,7 @@ $committees_cards = $con->query("
                 
                 const userTypeText = userType === 'student' ? 'students' : 
                                    userType === 'instructor' ? 'instructors' : 
-                                   userType === 'exam_committee' ? 'exam committee members' : 'administrators';
+                                   userType === 'department_head' ? 'department heads' : 'administrators';
                 
                 hintText.style.color = 'var(--warning-color)';
                 hintText.innerHTML = `⚠️ No ${userTypeText} have requested a password reset. Users must submit a request from the login page first.`;
