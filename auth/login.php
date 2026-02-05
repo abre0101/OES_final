@@ -6,16 +6,7 @@ ini_set('display_errors', 1);
 require_once('../utils/session_manager.php');
 require_once('../utils/audit_logger.php');
 require_once('../utils/password_helper.php');
-?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>SU OES</title>
-</head>
 
-<body>
-<?php
 $UserName=$_POST['txtUserName'] ?? '';
 $Password=$_POST['txtPassword'] ?? '';
 $UserType=$_POST['cmbType'] ?? '';
@@ -175,5 +166,13 @@ $con->close();
 }
 
 ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>SU OES</title>
+</head>
+
+<body>
 </body>
 </html>
