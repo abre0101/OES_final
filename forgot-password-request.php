@@ -17,6 +17,9 @@ $con->query("CREATE TABLE IF NOT EXISTS `password_reset_requests` (
     INDEX `idx_status` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// Get departments for dropdown
+$departments = $con->query("SELECT department_id, department_name FROM departments ORDER BY department_name");
+
 $message = '';
 $messageType = '';
 
@@ -194,7 +197,15 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <div class="form-group">
                 <label>Department/Faculty:</label>
-                <input type="text" name="department" class="form-control" placeholder="e.g., Computer Science, Nursing">
+                <select name="department" class="form-control">
+                    <option value="">-- Select Department --</option>
+                    <?php while($dept = $departments->fetch_assoc()): ?>
+                        <option value="<?php echo htmlspecialchars($dept['department_name']); ?>">
+                            <?php echo htmlspecialchars($dept['department_name']); ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+                <small style="color: #6c757d;">Select your department/faculty</small>
             </div>
 
             <div class="form-group">
