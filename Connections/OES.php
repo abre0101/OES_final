@@ -2,8 +2,8 @@
 // Database connection configuration
 // Support both Railway (production) and local development
 
-// Try to parse MYSQL_URL first (Railway internal network)
-$mysql_url = getenv('MYSQL_URL');
+// Try MYSQL_PUBLIC_URL first (accessible), then MYSQL_URL (internal network)
+$mysql_url = getenv('MYSQL_PUBLIC_URL') ?: getenv('MYSQL_URL');
 
 if ($mysql_url) {
     // Parse the MySQL URL (format: mysql://user:pass@host:port/database)

@@ -10,11 +10,11 @@ echo "<h2>Database Import Script</h2>";
 echo "<pre>";
 
 // Get database credentials from environment
-// Try to parse MYSQL_URL first (Railway format: mysql://user:pass@host:port/database)
-$mysql_url = $_ENV['MYSQL_URL'] ?? getenv('MYSQL_URL');
+// Try MYSQL_PUBLIC_URL first (accessible from anywhere), then MYSQL_URL (internal network)
+$mysql_url = $_ENV['MYSQL_PUBLIC_URL'] ?? getenv('MYSQL_PUBLIC_URL') ?: $_ENV['MYSQL_URL'] ?? getenv('MYSQL_URL');
 
 if ($mysql_url) {
-    echo "Using MYSQL_URL connection string\n";
+    echo "Using MySQL connection string\n";
     $url_parts = parse_url($mysql_url);
     $host = $url_parts['host'];
     $port = $url_parts['port'] ?? 3306;
