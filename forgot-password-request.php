@@ -49,7 +49,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     switch($userType) {
         case 'student':
-            $result = $con->query("SELECT full_name as Name, email as Email FROM students WHERE student_id = '$userId'");
+            $result = $con->query("SELECT full_name as Name, email as Email FROM students WHERE student_code = '$userId'");
             if($result && $result->num_rows > 0) {
                 $user = $result->fetch_assoc();
                 $userName = $user['Name'];
@@ -58,7 +58,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
             break;
         case 'instructor':
-            $result = $con->query("SELECT full_name as Name, email as Email FROM instructors WHERE instructor_id = '$userId'");
+            $result = $con->query("SELECT full_name as Name, email as Email FROM instructors WHERE instructor_code = '$userId'");
             if($result && $result->num_rows > 0) {
                 $user = $result->fetch_assoc();
                 $userName = $user['Name'];
@@ -67,7 +67,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
             break;
         case 'department_head':
-            $result = $con->query("SELECT full_name as Name, email as Email FROM exam_committee_members WHERE committee_member_id = '$userId'");
+            $result = $con->query("SELECT full_name as Name, email as Email FROM department_heads WHERE head_code = '$userId'");
             if($result && $result->num_rows > 0) {
                 $user = $result->fetch_assoc();
                 $userName = $user['Name'];
