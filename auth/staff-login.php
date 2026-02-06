@@ -386,7 +386,7 @@ if(isset($_SESSION['Name']) && isset($_SESSION['UserType'])){
                         <p>Login to access your account</p>
                     </div>
                     <div class="login-body">
-                        <form name="form1" method="post" action="institute-login-process.php">
+                        <form name="form1" method="post" action="staff-login-process.php">
                             <div class="form-group">
                                 <label for="txtUserName">Username</label>
                                 <input type="text" 
