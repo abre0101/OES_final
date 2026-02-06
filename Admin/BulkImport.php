@@ -46,12 +46,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
             try {
                 switch($userType) {
                     case 'student':
-                        // Expected: student_code, username, password, full_name, email, phone, department_id, semester, gender
-                        if(count($data) >= 9) {
+                        // Expected: student_code, username, password, full_name, email, phone, gender, department_id, academic_year, semester
+                        if(count($data) >= 10) {
                             // Hash the password before storing
                             $hashedPassword = hashPassword($data[2]);
-                            $stmt = $con->prepare("INSERT INTO students (student_code, username, password, full_name, email, phone, department_id, semester, gender, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
-                            $stmt->bind_param("ssssssiis", $data[0], $data[1], $hashedPassword, $data[3], $data[4], $data[5], $data[6], $data[7], $data[8]);
+                            $stmt = $con->prepare("INSERT INTO students (student_code, username, password, full_name, email, phone, gender, department_id, academic_year, semester, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
+                            $stmt->bind_param("sssssssssi", $data[0], $data[1], $hashedPassword, $data[3], $data[4], $data[5], $data[6], $data[7], $data[8], $data[9]);
                             if($stmt->execute()) {
                                 $successCount++;
                             } else {
@@ -60,17 +60,17 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
                             }
                         } else {
                             $errorCount++;
-                            $errors[] = "Row {$rowNumber}: Insufficient columns";
+                            $errors[] = "Row {$rowNumber}: Insufficient columns (expected 10, got " . count($data) . ")";
                         }
                         break;
                         
                     case 'instructor':
-                        // Expected: instructor_code, username, password, full_name, email, phone, department_id
-                        if(count($data) >= 7) {
+                        // Expected: instructor_code, username, password, full_name, email, phone, gender, department_id
+                        if(count($data) >= 8) {
                             // Hash the password before storing
                             $hashedPassword = hashPassword($data[2]);
-                            $stmt = $con->prepare("INSERT INTO instructors (instructor_code, username, password, full_name, email, phone, department_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
-                            $stmt->bind_param("ssssssi", $data[0], $data[1], $hashedPassword, $data[3], $data[4], $data[5], $data[6]);
+                            $stmt = $con->prepare("INSERT INTO instructors (instructor_code, username, password, full_name, email, phone, gender, department_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)");
+                            $stmt->bind_param("sssssssi", $data[0], $data[1], $hashedPassword, $data[3], $data[4], $data[5], $data[6], $data[7]);
                             if($stmt->execute()) {
                                 $successCount++;
                             } else {
@@ -79,7 +79,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
                             }
                         } else {
                             $errorCount++;
-                            $errors[] = "Row {$rowNumber}: Insufficient columns";
+                            $errors[] = "Row {$rowNumber}: Insufficient columns (expected 8, got " . count($data) . ")";
                         }
                         break;
                         
@@ -98,7 +98,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csv_file'])) {
                             }
                         } else {
                             $errorCount++;
-                            $errors[] = "Row {$rowNumber}: Insufficient columns";
+                            $errors[] = "Row {$rowNumber}: Insufficient columns (expected 7, got " . count($data) . ")";
                         }
                         break;
                 }
@@ -384,7 +384,7 @@ while($dept = $departments->fetch_assoc()) {
                                 <div class="template-icon">👨‍🎓</div>
                                 <h4 style="margin: 0 0 0.5rem 0; font-weight: 700;">Student Template</h4>
                                 <p style="margin: 0 0 1rem 0; color: var(--text-secondary); font-size: 0.9rem;">
-                                    student_code, username, password, full_name, email, phone, department_id, semester, gender
+                                    student_code, username, password, full_name, email, phone, gender, department_id, academic_year, semester
                                 </p>
                                 <button class="btn btn-primary btn-sm">⬇️ Download Template</button>
                             </div>
@@ -393,7 +393,7 @@ while($dept = $departments->fetch_assoc()) {
                                 <div class="template-icon">👨‍🏫</div>
                                 <h4 style="margin: 0 0 0.5rem 0; font-weight: 700;">Instructor Template</h4>
                                 <p style="margin: 0 0 1rem 0; color: var(--text-secondary); font-size: 0.9rem;">
-                                    instructor_code, username, password, full_name, email, phone, department_id
+                                    instructor_code, username, password, full_name, email, phone, gender, department_id
                                 </p>
                                 <button class="btn btn-primary btn-sm">⬇️ Download Template</button>
                             </div>
@@ -576,21 +576,21 @@ while($dept = $departments->fetch_assoc()) {
             
             switch(type) {
                 case 'student':
-                    csv = 'student_code,username,password,full_name,email,phone,department_id,semester,gender\n';
-                    csv += 'STU001,john.doe,pass123,John Doe,john@example.com,+251911234567,1,1,Male\n';
-                    csv += 'STU002,jane.smith,pass123,Jane Smith,jane@example.com,+251911234568,1,1,Female';
+                    csv = 'student_code,username,password,full_name,email,phone,gender,department_id,academic_year,semester\n';
+                    csv += 'STU001,abebe.kebede,pass123,Abebe Kebede,abebe.k@student.dmu.edu.et,+251911234567,Male,1,Year 1,1\n';
+                    csv += 'STU002,tigist.hailu,pass123,Tigist Hailu,tigist.h@student.dmu.edu.et,+251911234568,Female,1,Year 1,1';
                     filename = 'student_import_template.csv';
                     break;
                 case 'instructor':
-                    csv = 'instructor_code,username,password,full_name,email,phone,department_id\n';
-                    csv += 'INS001,dr.john,pass123,Dr. John Smith,dr.john@example.com,+251911234567,1\n';
-                    csv += 'INS002,dr.jane,pass123,Dr. Jane Doe,dr.jane@example.com,+251911234568,2';
+                    csv = 'instructor_code,username,password,full_name,email,phone,gender,department_id\n';
+                    csv += 'INS001,dr.solomon,pass123,Dr. Solomon Tesfaye,solomon.t@dmu.edu.et,+251911234567,Male,1\n';
+                    csv += 'INS002,dr.marta,pass123,Dr. Marta Gebre,marta.g@dmu.edu.et,+251911234568,Female,2';
                     filename = 'instructor_import_template.csv';
                     break;
                 case 'department_head':
                     csv = 'head_code,username,password,full_name,email,phone,department_id\n';
-                    csv += 'DH001,head.john,pass123,Dr. John Smith,head.john@example.com,+251911234567,1\n';
-                    csv += 'DH002,head.jane,pass123,Dr. Jane Doe,head.jane@example.com,+251911234568,2';
+                    csv += 'DH001,yohannes.m,pass123,Dr. Yohannes Mengistu,yohannes.m@dmu.edu.et,+251911234567,1\n';
+                    csv += 'DH002,rahel.w,pass123,Dr. Rahel Worku,rahel.w@dmu.edu.et,+251911234568,2';
                     filename = 'department_head_import_template.csv';
                     break;
             }

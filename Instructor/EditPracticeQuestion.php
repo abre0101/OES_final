@@ -18,29 +18,26 @@ if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Instructor'){
 }
 
 $con = require_once(__DIR__ . "/../Connections/OES.php");
-$pageTitle = "Edit Question";
+$pageTitle = "Edit Practice Question";
 
-$question_id = $_GET['id'] ?? 0;
-$return_to_exam = $_GET['return'] ?? '';
-$exam_id = $_GET['exam_id'] ?? 0;
+$practice_id = $_GET['id'] ?? 0;
 
-// Get question details from questions table
-$question = $con->query("SELECT q.*, c.course_code, c.course_name 
-                         FROM questions q
-                         LEFT JOIN courses c ON q.course_id = c.course_id
-                         WHERE q.question_id = '$question_id'")->fetch_assoc();
+// Get practice question details
+$question = $con->query("SELECT pq.*, c.course_code, c.course_name 
+                         FROM practice_questions pq
+                         LEFT JOIN courses c ON pq.course_id = c.course_id
+                         WHERE pq.practice_id = '$practice_id'")->fetch_assoc();
 
 if(!$question) {
-    header("Location: ManageQuestions.php");
+    header("Location: ManagePracticeQuestions.php");
     exit();
 }
 
-// Determine question type - check both question_type field and answer options
+// Determine question type
 $question_type = $question['question_type'] ?? 'multiple_choice';
 
 // If question_type is not set, try to detect from options
 if(empty($question_type) || $question_type == 'multiple_choice') {
-    // Check if it's actually a true/false question by looking at the options
     if(($question['option_a'] == 'True' && $question['option_b'] == 'False') || 
        ($question['correct_answer'] == 'True' || $question['correct_answer'] == 'False')) {
         $question_type = 'true_false';
@@ -54,23 +51,22 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $course_id = $_POST['course_id'];
     $question_text = mysqli_real_escape_string($con, $_POST['question']);
     $question_type = $_POST['question_type'];
+    $difficulty = $_POST['difficulty'];
     $correct_answer = $_POST['answer'];
     
     if($question_type == 'true_false') {
-        // For True/False questions
         $option_a = 'True';
         $option_b = 'False';
         $option_c = null;
         $option_d = null;
     } else {
-        // For Multiple Choice questions
         $option_a = mysqli_real_escape_string($con, $_POST['option1']);
         $option_b = mysqli_real_escape_string($con, $_POST['option2']);
         $option_c = mysqli_real_escape_string($con, $_POST['option3']);
         $option_d = mysqli_real_escape_string($con, $_POST['option4']);
     }
     
-    $update = $con->prepare("UPDATE questions 
+    $update = $con->prepare("UPDATE practice_questions 
                              SET course_id = ?, 
                                  question_text = ?,
                                  question_type = ?,
@@ -79,32 +75,20 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                                  option_c = ?, 
                                  option_d = ?, 
                                  correct_answer = ?,
+                                 difficulty_level = ?,
                                  updated_at = NOW()
-                             WHERE question_id = ?");
-    $update->bind_param("isssssssi", $course_id, $question_text, $question_type, $option_a, $option_b, $option_c, $option_d, $correct_answer, $question_id);
+                             WHERE practice_id = ?");
+    $update->bind_param("issssssssi", $course_id, $question_text, $question_type, $option_a, $option_b, $option_c, $option_d, $correct_answer, $difficulty, $practice_id);
     
     if($update->execute()) {
-        // Redirect back to exam management if coming from there
-        if($return_to_exam == 'exam' && $exam_id > 0) {
-            header("Location: ManageExamQuestions.php?exam_id=" . $exam_id . "&success=updated");
-            exit();
-        }
-        header("Location: ManageQuestions.php?success=1");
+        header("Location: ManagePracticeQuestions.php?success=1");
         exit();
     }
     $update->close();
 }
 
-// Get exams for this instructor
-$instructor_id = $_SESSION['ID'];
-$exams = $con->query("SELECT DISTINCT e.exam_id, e.exam_name, c.course_code
-                      FROM exams e
-                      INNER JOIN courses c ON e.course_id = c.course_id
-                      INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-                      WHERE ic.instructor_id = $instructor_id AND e.created_by = $instructor_id
-                      ORDER BY e.exam_name");
-
 // Get courses assigned to this instructor
+$instructor_id = $_SESSION['ID'];
 $courses = $con->query("SELECT DISTINCT c.course_id, c.course_code, c.course_name
                         FROM courses c
                         INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
@@ -116,7 +100,7 @@ $courses = $con->query("SELECT DISTINCT c.course_id, c.course_code, c.course_nam
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Question - Instructor</title>
+    <title>Edit Practice Question - Instructor</title>
     <link href="../assets/css/modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
     <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
@@ -130,8 +114,8 @@ $courses = $con->query("SELECT DISTINCT c.course_id, c.course_code, c.course_nam
 
         <div class="admin-content">
             <div class="page-header">
-                <h1>✏️ Edit Question</h1>
-                <p>UPDATE questions details</p>
+                <h1>✏️ Edit Practice Question</h1>
+                <p>UPDATE practice question details</p>
             </div>
 
             <div class="form-wrapper">
@@ -140,8 +124,8 @@ $courses = $con->query("SELECT DISTINCT c.course_id, c.course_code, c.course_nam
                         <h3 class="form-section-title">Question Details</h3>
                         
                         <div class="form-group">
-                            <label>Question ID</label>
-                            <input type="text" class="form-control" value="<?php echo $question['question_id']; ?>" disabled>
+                            <label>Practice Question ID</label>
+                            <input type="text" class="form-control" value="<?php echo $question['practice_id']; ?>" disabled>
                         </div>
                         
                         <div class="form-row">
@@ -169,6 +153,15 @@ $courses = $con->query("SELECT DISTINCT c.course_id, c.course_code, c.course_nam
                                     <option value="true_false" <?php echo $is_true_false ? 'selected' : ''; ?>>True/False</option>
                                 </select>
                             </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Difficulty Level *</label>
+                            <select name="difficulty" class="form-control" required>
+                                <option value="Easy" <?php echo ($question['difficulty_level'] ?? '') == 'Easy' ? 'selected' : ''; ?>>Easy</option>
+                                <option value="Medium" <?php echo ($question['difficulty_level'] ?? '') == 'Medium' ? 'selected' : ''; ?>>Medium</option>
+                                <option value="Hard" <?php echo ($question['difficulty_level'] ?? '') == 'Hard' ? 'selected' : ''; ?>>Hard</option>
+                            </select>
                         </div>
                         
                         <div class="form-group">
@@ -239,15 +232,9 @@ $courses = $con->query("SELECT DISTINCT c.course_id, c.course_code, c.course_nam
                         <button type="submit" class="btn btn-primary">
                             💾 Save Changes
                         </button>
-                        <?php if($return_to_exam == 'exam' && $exam_id > 0): ?>
-                        <a href="ManageExamQuestions.php?exam_id=<?php echo $exam_id; ?>" class="btn btn-secondary">
+                        <a href="ManagePracticeQuestions.php" class="btn btn-secondary">
                             Cancel
                         </a>
-                        <?php else: ?>
-                        <a href="ManageQuestions.php" class="btn btn-secondary">
-                            Cancel
-                        </a>
-                        <?php endif; ?>
                         <button type="button" class="btn btn-danger" onclick="deleteQuestion()" style="margin-left: auto;">
                             🗑️ Delete Question
                         </button>
@@ -266,9 +253,17 @@ $courses = $con->query("SELECT DISTINCT c.course_id, c.course_code, c.course_nam
                             <p style="font-size: 1.1rem; font-weight: 600; margin: 0; color: var(--primary-color); flex: 1;">
                                 <?php echo htmlspecialchars($question['question_text'] ?? ''); ?>
                             </p>
-                            <span style="background: var(--primary-color); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700; white-space: nowrap; margin-left: 1rem;">
-                                <?php echo $is_true_false ? 'TRUE/FALSE' : 'MULTIPLE CHOICE'; ?>
-                            </span>
+                            <div style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                                <span style="background: var(--primary-color); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700; white-space: nowrap;">
+                                    <?php echo $is_true_false ? 'TRUE/FALSE' : 'MULTIPLE CHOICE'; ?>
+                                </span>
+                                <span style="background: <?php 
+                                    echo ($question['difficulty_level'] ?? 'Medium') == 'Easy' ? '#28a745' : 
+                                        (($question['difficulty_level'] ?? 'Medium') == 'Hard' ? '#dc3545' : '#ffc107'); 
+                                ?>; color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700; white-space: nowrap;">
+                                    <?php echo strtoupper($question['difficulty_level'] ?? 'MEDIUM'); ?>
+                                </span>
+                            </div>
                         </div>
                         <div style="margin-left: 1rem;">
                             <?php if($is_true_false): ?>
@@ -322,8 +317,8 @@ $courses = $con->query("SELECT DISTINCT c.course_id, c.course_code, c.course_nam
         }
         
         function deleteQuestion() {
-            if(confirm('Are you sure you want to delete this question?')) {
-                window.location.href = 'DeleteQuestion.php?id=<?php echo $question_id; ?>';
+            if(confirm('Are you sure you want to delete this practice question?')) {
+                window.location.href = 'DeletePracticeQuestion.php?id=<?php echo $practice_id; ?>';
             }
         }
     </script>

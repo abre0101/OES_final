@@ -1,6 +1,7 @@
 <?php
 require_once(__DIR__ . "/../utils/session_manager.php");
 require_once(__DIR__ . "/../utils/audit_logger.php");
+require_once(__DIR__ . "/../utils/get_user_type.php");
 
 // Start Administrator session
 SessionManager::startSession('Administrator');
@@ -39,7 +40,7 @@ $stmt->bind_param("sssiii", $Name, $Email, $Phone, $Department, $is_active, $Id)
 if($stmt->execute()) {
     // Log the update
     $auditLogger = new AuditLogger($con);
-    $auditLogger->logUpdate($_SESSION['ID'] ?? null, 'admin', 'department_heads', $Id, null, "Updated department head: $Name");
+    $auditLogger->logUpdate($_SESSION['ID'] ?? null, getUserTypeForAudit(), 'department_heads', $Id, null, "Updated department head: $Name");
     
     $stmt->close();
     $con->close();

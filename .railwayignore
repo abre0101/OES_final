@@ -1,9 +1,0 @@
-# Files to ignore during Railway deployment
-.git
-.gitignore
-*.md
-!RAILWAY_SETUP.md
-node_modules
-.env.local
-.DS_Store
-Thumbs.db

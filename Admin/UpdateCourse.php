@@ -51,11 +51,22 @@ $stmt2->bind_param("s", $Id);
 $stmt2->execute();
 $stmt2->close();
 
-// Then add the new instructor assignment
-$stmt3 = $con->prepare("INSERT INTO instructor_courses (course_id, instructor_id) VALUES (?, ?)");
-$stmt3->bind_param("ss", $Id, $Inst);
-$stmt3->execute();
-$stmt3->close();
+// Then add the new instructor assignment (only if instructor ID is valid and not empty)
+if (!empty($Inst) && is_numeric($Inst)) {
+    // Verify instructor exists
+    $check_inst = $con->prepare("SELECT instructor_id FROM instructors WHERE instructor_id=?");
+    $check_inst->bind_param("i", $Inst);
+    $check_inst->execute();
+    $inst_result = $check_inst->get_result();
+    
+    if ($inst_result->num_rows > 0) {
+        $stmt3 = $con->prepare("INSERT INTO instructor_courses (course_id, instructor_id) VALUES (?, ?)");
+        $stmt3->bind_param("ii", $Id, $Inst);
+        $stmt3->execute();
+        $stmt3->close();
+    }
+    $check_inst->close();
+}
 
 $con->close();
 

@@ -1,5 +1,6 @@
 <?php
 require_once(__DIR__ . "/../utils/session_manager.php");
+require_once(__DIR__ . "/../utils/get_user_type.php");
 
 // Start Administrator session
 SessionManager::startSession('Administrator');
@@ -48,7 +49,7 @@ if($stmt->execute()) {
     
     // Log the creation
     $auditLogger = new AuditLogger($con);
-    $auditLogger->logCreate($_SESSION['ID'] ?? null, 'admin', 'department_heads', $insertedId, "Created department head: $Name ($HeadCode)");
+    $auditLogger->logCreate($_SESSION['ID'] ?? null, getUserTypeForAudit(), 'department_heads', $insertedId, "Created department head: $Name ($HeadCode)");
     
     $stmt->close();
     $con->close();

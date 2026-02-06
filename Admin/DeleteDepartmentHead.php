@@ -1,6 +1,7 @@
 <?php
 require_once(__DIR__ . "/../utils/session_manager.php");
 require_once(__DIR__ . "/../utils/audit_logger.php");
+require_once(__DIR__ . "/../utils/get_user_type.php");
 
 // Start Administrator session
 SessionManager::startSession('Administrator');
@@ -34,7 +35,7 @@ $stmt->close();
 // Log the deletion
 if($head) {
     $auditLogger = new AuditLogger($con);
-    $auditLogger->logDelete($_SESSION['ID'] ?? null, 'admin', 'department_heads', $Id, "Deleted department head: {$head['full_name']} ({$head['head_code']})");
+    $auditLogger->logDelete($_SESSION['ID'] ?? null, getUserTypeForAudit(), 'department_heads', $Id, "Deleted department head: {$head['full_name']} ({$head['head_code']})");
 }
 
 $con->close();

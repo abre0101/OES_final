@@ -249,10 +249,14 @@ $result_inst = $con->query($query_inst);
                         <div class="form-group">
                             <label for="cmbInst">Instructor:</label>
                             <select name="cmbInst" id="cmbInst">
-                                <option value="<?php echo $Instructor; ?>"><?php echo $Instructor; ?> (Current)</option>
+                                <?php
+                                // Get first instructor ID from the comma-separated list
+                                $currentInstructorId = !empty($InstructorIds) ? explode(',', $InstructorIds)[0] : '';
+                                ?>
+                                <option value="<?php echo $currentInstructorId; ?>"><?php echo $Instructor; ?> (Current)</option>
                                 <?php
                                 while($row_inst = $result_inst->fetch_array()) {
-                                    if($row_inst['full_name'] != $Instructor) {
+                                    if($row_inst['instructor_id'] != $currentInstructorId) {
                                         echo '<option value="'.$row_inst['instructor_id'].'">'.$row_inst['full_name'].'</option>';
                                     }
                                 }

@@ -3,6 +3,7 @@ require_once(__DIR__ . "/../utils/session_manager.php");
 
 // Include audit logger
 require_once(__DIR__ . '/../utils/audit_logger.php');
+require_once(__DIR__ . '/../utils/get_user_type.php');
 
 // Get database connection
 $con = require_once(__DIR__ . "/../Connections/OES.php");
@@ -17,7 +18,7 @@ $session_duration = isset($_SESSION['login_time']) ? time() - $_SESSION['login_t
 
 // Log the logout event
 $auditLogger = new AuditLogger($con);
-$auditLogger->logLogout($user_name, 'admin');
+$auditLogger->logLogout($user_name, getUserTypeForAudit());
 
 // Destroy the session using SessionManager
 SessionManager::destroySession();

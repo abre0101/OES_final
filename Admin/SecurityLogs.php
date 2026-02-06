@@ -344,27 +344,85 @@ $con->close();
                                 }
                             ?>
                             <div class="log-entry <?php echo $logClass; ?>">
-                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
                                     <div style="flex: 1;">
-                                        <strong style="color: var(--primary-color);"><?php echo htmlspecialchars($log['action']); ?></strong>
+                                        <strong style="color: var(--primary-color); font-size: 1.15rem;">
+                                            <?php echo htmlspecialchars($log['action']); ?>
+                                        </strong>
                                         <div class="log-meta">
-                                            <span>👤 <?php echo htmlspecialchars($log['user_id'] ?? 'System'); ?></span>
-                                            <span>🏷️ <?php echo htmlspecialchars($log['user_type'] ?? 'N/A'); ?></span>
-                                            <span>🕐 <?php echo date('M j, Y - g:i A', strtotime($log['created_at'])); ?></span>
+                                            <span><strong>👤 User:</strong> <?php echo htmlspecialchars($log['user_id'] ?? 'System'); ?></span>
+                                            <span><strong>🏷️ Type:</strong> <?php echo ucfirst(htmlspecialchars($log['user_type'] ?? 'N/A')); ?></span>
+                                            <span><strong>🕐 Time:</strong> <?php echo date('M j, Y - g:i A', strtotime($log['created_at'])); ?></span>
                                         </div>
-                                        <?php if(!empty($log['old_value']) || !empty($log['new_value'])): ?>
-                                        <div class="details-text">
-                                            <?php if($log['table_name']): ?>
-                                                <strong>Table:</strong> <?php echo htmlspecialchars($log['table_name']); ?>
+                                        
+                                        <?php if(!empty($log['table_name'])): ?>
+                                        <div class="details-text" style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.02); border-radius: 8px;">
+                                            <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1.5rem;">
+                                                <strong style="color: var(--primary-color);">📊 Table:</strong>
+                                                <span><?php echo htmlspecialchars($log['table_name']); ?></span>
+                                                
                                                 <?php if($log['record_id']): ?>
-                                                    (ID: <?php echo htmlspecialchars($log['record_id']); ?>)
+                                                <strong style="color: var(--primary-color);">🔑 Record ID:</strong>
+                                                <span><?php echo htmlspecialchars($log['record_id']); ?></span>
                                                 <?php endif; ?>
-                                            <?php endif; ?>
+                                                
+                                                <?php if(!empty($log['ip_address'])): ?>
+                                                <strong style="color: var(--primary-color);">🌐 IP Address:</strong>
+                                                <span><?php echo htmlspecialchars($log['ip_address']); ?></span>
+                                                <?php endif; ?>
+                                                
+                                                <?php if(!empty($log['metadata'])): ?>
+                                                <?php 
+                                                $metadata = json_decode($log['metadata'], true);
+                                                if($metadata && isset($metadata['changed_fields'])): 
+                                                ?>
+                                                <strong style="color: var(--primary-color);">📝 Changed Fields:</strong>
+                                                <span>
+                                                    <?php 
+                                                    $fields = array_keys($metadata['changed_fields']);
+                                                    echo implode(', ', array_map('htmlspecialchars', $fields)); 
+                                                    ?>
+                                                </span>
+                                                <?php endif; ?>
+                                                <?php endif; ?>
+                                                
+                                                <?php if(!empty($log['old_value']) && !empty($log['new_value'])): ?>
+                                                <strong style="color: var(--primary-color);">🔄 Changes:</strong>
+                                                <div>
+                                                    <div style="margin-bottom: 0.5rem;">
+                                                        <span style="color: #dc3545; font-weight: 600;">Old:</span> 
+                                                        <code style="background: rgba(220,53,69,0.1); padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                                            <?php echo htmlspecialchars(substr($log['old_value'], 0, 100)); ?>
+                                                            <?php if(strlen($log['old_value']) > 100) echo '...'; ?>
+                                                        </code>
+                                                    </div>
+                                                    <div>
+                                                        <span style="color: var(--success-color); font-weight: 600;">New:</span> 
+                                                        <code style="background: rgba(40,167,69,0.1); padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                                            <?php echo htmlspecialchars(substr($log['new_value'], 0, 100)); ?>
+                                                            <?php if(strlen($log['new_value']) > 100) echo '...'; ?>
+                                                        </code>
+                                                    </div>
+                                                </div>
+                                                <?php elseif(!empty($log['new_value'])): ?>
+                                                <strong style="color: var(--primary-color);">ℹ️ Details:</strong>
+                                                <span><?php echo htmlspecialchars($log['new_value']); ?></span>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                         <?php endif; ?>
                                     </div>
                                     <span class="status-badge status-<?php echo $statusBadge; ?>">
-                                        <?php echo ucfirst($log['action']); ?>
+                                        <?php 
+                                        // Show operation type
+                                        if(stripos($log['action'], 'login') !== false) echo '🔐 Login';
+                                        elseif(stripos($log['action'], 'logout') !== false) echo '🚪 Logout';
+                                        elseif(stripos($log['action'], 'created') !== false) echo '➕ Create';
+                                        elseif(stripos($log['action'], 'updated') !== false) echo '✏️ Update';
+                                        elseif(stripos($log['action'], 'deleted') !== false) echo '🗑️ Delete';
+                                        elseif(stripos($log['action'], 'failed') !== false) echo '❌ Failed';
+                                        else echo '📋 Action';
+                                        ?>
                                     </span>
                                 </div>
                             </div>
@@ -405,16 +463,36 @@ $con->close();
                         <?php if(count($suspiciousData) > 0): ?>
                             <?php foreach($suspiciousData as $sus): ?>
                             <div style="padding: 1.25rem; background: rgba(220, 53, 69, 0.05); border-left: 3px solid #dc3545; border-radius: var(--radius-md); margin-bottom: 0.75rem;">
-                                <strong style="color: #dc3545; font-size: 1.05rem;"><?php echo htmlspecialchars($sus['action']); ?></strong>
-                                <div style="font-size: 1rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                                    <?php echo htmlspecialchars($sus['user_id']); ?> - <?php echo date('M j, g:i A', strtotime($sus['created_at'])); ?>
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                    <strong style="color: #dc3545; font-size: 1.05rem;">⚠️ <?php echo htmlspecialchars($sus['action']); ?></strong>
+                                    <span style="font-size: 0.85rem; color: var(--text-secondary);">
+                                        <?php echo date('M j, g:i A', strtotime($sus['created_at'])); ?>
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.95rem; color: var(--text-secondary); display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem;">
+                                    <span><strong>User:</strong></span>
+                                    <span><?php echo htmlspecialchars($sus['user_id'] ?? 'Unknown'); ?></span>
+                                    
+                                    <span><strong>Type:</strong></span>
+                                    <span><?php echo ucfirst(htmlspecialchars($sus['user_type'] ?? 'N/A')); ?></span>
+                                    
+                                    <?php if(!empty($sus['ip_address'])): ?>
+                                    <span><strong>IP:</strong></span>
+                                    <span><?php echo htmlspecialchars($sus['ip_address']); ?></span>
+                                    <?php endif; ?>
+                                    
+                                    <?php if(!empty($sus['table_name'])): ?>
+                                    <span><strong>Target:</strong></span>
+                                    <span><?php echo htmlspecialchars($sus['table_name']); ?></span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <div style="text-align: center; padding: 2rem;">
                                 <div style="font-size: 3rem; margin-bottom: 0.5rem;">✅</div>
-                                <p style="color: var(--text-secondary);">No suspicious activities detected</p>
+                                <p style="color: var(--text-secondary); margin: 0;">No suspicious activities detected</p>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">System is secure</p>
                             </div>
                         <?php endif; ?>
                     </div>

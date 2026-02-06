@@ -186,11 +186,11 @@ $result_faculty = $con->query($query_faculty);
                         <div class="form-group">
                             <label for="cmbFaculty">Change College:</label>
                             <select name="cmbFaculty" id="cmbFaculty">
-                                <option value="<?php echo $Faculty; ?>"><?php echo $Faculty; ?> (Current)</option>
+                                <option value="<?php echo $FacultyId; ?>"><?php echo $Faculty; ?> (Current)</option>
                                 <?php
                                 while($row_faculty = $result_faculty->fetch_array()) {
-                                    if($row_faculty['faculty_name'] != $Faculty) {
-                                        echo '<option value="'.$row_faculty['faculty_name'].'">'.$row_faculty['faculty_name'].'</option>';
+                                    if($row_faculty['faculty_id'] != $FacultyId) {
+                                        echo '<option value="'.$row_faculty['faculty_id'].'">'.$row_faculty['faculty_name'].'</option>';
                                     }
                                 }
                                 ?>
