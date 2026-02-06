@@ -556,6 +556,58 @@ if ($isLoggedIn) {
                     This system represents our dedication to digital transformation in education, reducing administrative overhead while improving accessibility and fairness in academic assessments.
                 </p>
             </section>
+
+            <!-- Development Team -->
+            <section class="content-section">
+                <h2 class="section-title">Development Team</h2>
+                <p class="intro-text">
+                    This system was developed by a dedicated team of students from Debre Markos University Health Campus as part of their commitment to advancing educational technology.
+                </p>
+                <div class="cards-grid">
+                    <div class="info-card" style="text-align: center;">
+                        <div style="width: 120px; height: 120px; margin: 0 auto 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: white; font-weight: 700;">
+                            FT
+                        </div>
+                        <h3 style="display: block; margin-bottom: 0.5rem;">Fetsum Taye</h3>
+                        <p style="color: var(--accent-color); font-weight: 600; margin: 0;">Developer</p>
+                    </div>
+                    <div class="info-card" style="text-align: center;">
+                        <div style="width: 120px; height: 120px; margin: 0 auto 1rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: white; font-weight: 700;">
+                            AA
+                        </div>
+                        <h3 style="display: block; margin-bottom: 0.5rem;">Amanuel Asefa</h3>
+                        <p style="color: var(--accent-color); font-weight: 600; margin: 0;">Developer</p>
+                    </div>
+                    <div class="info-card" style="text-align: center;">
+                        <div style="width: 120px; height: 120px; margin: 0 auto 1rem; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: white; font-weight: 700;">
+                            RA
+                        </div>
+                        <h3 style="display: block; margin-bottom: 0.5rem;">Rediet Ayenekulu</h3>
+                        <p style="color: var(--accent-color); font-weight: 600; margin: 0;">Developer</p>
+                    </div>
+                    <div class="info-card" style="text-align: center;">
+                        <div style="width: 120px; height: 120px; margin: 0 auto 1rem; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: white; font-weight: 700;">
+                            GK
+                        </div>
+                        <h3 style="display: block; margin-bottom: 0.5rem;">Gizachew Kumie</h3>
+                        <p style="color: var(--accent-color); font-weight: 600; margin: 0;">Developer</p>
+                    </div>
+                    <div class="info-card" style="text-align: center;">
+                        <div style="width: 120px; height: 120px; margin: 0 auto 1rem; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: white; font-weight: 700;">
+                            HA
+                        </div>
+                        <h3 style="display: block; margin-bottom: 0.5rem;">Hana Abate</h3>
+                        <p style="color: var(--accent-color); font-weight: 600; margin: 0;">Developer</p>
+                    </div>
+                    <div class="info-card" style="text-align: center;">
+                        <div style="width: 120px; height: 120px; margin: 0 auto 1rem; background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: white; font-weight: 700;">
+                            AT
+                        </div>
+                        <h3 style="display: block; margin-bottom: 0.5rem;">Askal Tariko</h3>
+                        <p style="color: var(--accent-color); font-weight: 600; margin: 0;">Developer</p>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
 
