@@ -720,7 +720,7 @@ $con->close();
                                 <i class="fas fa-user"></i>
                                 <span>My Profile</span>
                             </a>
-                            <a href="EditProfile.php?Id=<?php echo $_SESSION['ID']; ?>" class="dropdown-item">
+                            <a href="EditProfile.php" class="dropdown-item">
                                 <i class="fas fa-cog"></i>
                                 <span>Account Settings</span>
                             </a>

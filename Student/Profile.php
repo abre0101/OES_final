@@ -353,7 +353,7 @@ $row = mysqli_fetch_array($result);
                                 <i class="fas fa-user"></i>
                                 <span>My Profile</span>
                             </a>
-                            <a href="EditProfile.php?Id=<?php echo $_SESSION['ID']; ?>" class="dropdown-item">
+                            <a href="EditProfile.php" class="dropdown-item">
                                 <i class="fas fa-cog"></i>
                                 <span>Account Settings</span>
                             </a>
@@ -476,7 +476,7 @@ $row = mysqli_fetch_array($result);
                     <a href="index.php" class="btn btn-secondary">
                         ← Back to Dashboard
                     </a>
-                    <a href="EditProfile.php?Id=<?php echo $Id; ?>" class="btn btn-primary">
+                    <a href="EditProfile.php" class="btn btn-primary">
                         ✏️ Edit Profile
                     </a>
                 </div>

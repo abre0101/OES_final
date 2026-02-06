@@ -13,7 +13,8 @@ if(!isset($_SESSION['UserType']) || $_SESSION['UserType'] !== 'Student'){
     exit();
 }
 
-$Id = $_GET['Id'];
+// Get student ID from session instead of URL parameter
+$Id = $_SESSION['ID'];
 
 // Establish Connection with Database
 require_once(__DIR__ . "/../Connections/OES.php");
@@ -297,7 +298,7 @@ mysqli_close($con);
                                 <i class="fas fa-user"></i>
                                 <span>My Profile</span>
                             </a>
-                            <a href="EditProfile.php?Id=<?php echo $_SESSION['ID']; ?>" class="dropdown-item">
+                            <a href="EditProfile.php" class="dropdown-item">
                                 <i class="fas fa-cog"></i>
                                 <span>Account Settings</span>
                             </a>
@@ -445,7 +446,7 @@ mysqli_close($con);
                                         Cancel
                                     </a>
                                     <button type="submit" class="btn btn-primary">
-                                        Update Profile
+                                        ?? Update Profile
                                     </button>
                                 </div>
                             </form>

@@ -186,7 +186,7 @@ $con->close();
                                 <span class="dropdown-icon">??</span>
                                 <span>My Profile</span>
                             </a>
-                            <a href="EditProfile.php?Id=<?php echo $_SESSION['ID']; ?>" class="dropdown-item">
+                            <a href="EditProfile.php" class="dropdown-item">
                                 <span class="dropdown-icon">??</span>
                                 <span>Account Settings</span>
                             </a>
