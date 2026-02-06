@@ -10,9 +10,8 @@
 
 	$Id=$_GET['exam_id'];
 	// Establish Connection with MYSQL
-	$con = new mysqli("localhost","root");
-	// Select Database
-	$con->select_db("oes");
+	$con = require_once(__DIR__ . "/../Connections/OES.php");
+	
 	// Specify the query to Insert Record
 	$sql = "delete FROM exams where exam_id='".$Id."'";
 	// execute query

@@ -15,9 +15,8 @@
 	$txtTime=$_POST['txtTime'];
 	
 	// Establish Connection with Database
-$con = new mysqli("localhost","root");
-// Select Database
-$con->select_db("oes");
+$con = require_once(__DIR__ . "/../Connections/OES.php");
+
 // Specify the query to execute
 
 	$sql = "insert INTO exams (exam_id,exam_name,semester,course_name,exam_date,exam_time) 
