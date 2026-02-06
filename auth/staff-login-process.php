@@ -22,6 +22,7 @@ if ($row && verifyPassword($Password, $row['password'])) {
     $_SESSION['Name'] = $row['full_name'];
     $_SESSION['UserType'] = 'Administrator';
     $_SESSION['Email'] = $row['email'] ?? '';
+    $_SESSION['login_time'] = time();
     $stmt->close();
     $con->close();
     header("location:../Admin/index.php");
@@ -48,6 +49,7 @@ if ($row && verifyPassword($Password, $row['password'])) {
     $_SESSION['DeptId'] = $row['department_id'];
     $_SESSION['Email'] = $row['email'] ?? '';
     $_SESSION['UserType'] = 'Instructor';
+    $_SESSION['login_time'] = time();
     $stmt->close();
     $con->close();
     header("location:../Instructor/index.php");
@@ -74,6 +76,7 @@ if ($row && verifyPassword($Password, $row['password'])) {
     $_SESSION['DeptId'] = $row['department_id'];
     $_SESSION['Email'] = $row['email'] ?? '';
     $_SESSION['UserType'] = 'DepartmentHead';
+    $_SESSION['login_time'] = time();
     $stmt->close();
     $con->close();
     header("location:../DepartmentHead/index.php");
