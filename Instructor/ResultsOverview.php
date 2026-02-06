@@ -96,7 +96,7 @@ $coursesQuery->execute();
 $courses = $coursesQuery->get_result();
 
 // Get exams for filter
-$examsQuery = $con->prepare("SELECT DISTINCT es.exam_id, es.exam_name, c.course_name
+$examsQuery = $con->prepare("SELECT DISTINCT es.exam_id, es.exam_name, c.course_name, es.exam_date
     FROM exams es
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
