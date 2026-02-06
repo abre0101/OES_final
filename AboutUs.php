@@ -456,7 +456,7 @@ if ($isLoggedIn) {
                 <ul class="nav-menu">
                     <li><a href="index.php">🏠 Home</a></li>
                     <li><a href="AboutUs.php" class="active">ℹ️ About Us</a></li>
-                    <li><a href="Help.php">❓ Help</a></li>
+                    <li><a href="Help.php">Help</a></li>
                 </ul>
             </div>
         </nav>
