@@ -9,18 +9,18 @@
             </div>
         </div>
         <button class="sidebar-toggle-btn" onclick="toggleSidebarMinimize()" title="Toggle Sidebar" id="sidebarToggleBtn">
-            <span id="toggleIcon">?</span>
+            <span id="toggleIcon">☰</span>
         </button>
     </div>
 
     <nav class="sidebar-nav">
         <!-- Main -->
         <a href="index.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>" data-tooltip="Dashboard">
-            <span class="sidebar-nav-icon">??</span>
+            <span class="sidebar-nav-icon">📊</span>
             <span>Dashboard</span>
         </a>
         <a href="MyCourses.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'MyCourses.php') ? 'active' : ''; ?>" data-tooltip="My Courses">
-            <span class="sidebar-nav-icon">??</span>
+            <span class="sidebar-nav-icon">📚</span>
             <span>My Courses</span>
         </a>
         
@@ -28,15 +28,15 @@
         
         <!-- Questions & Exams -->
         <a href="ManageQuestions.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'ManageQuestions.php' || basename($_SERVER['PHP_SELF']) == 'AddQuestion.php' || basename($_SERVER['PHP_SELF']) == 'EditQuestion.php') ? 'active' : ''; ?>" data-tooltip="Questions">
-            <span class="sidebar-nav-icon">??</span>
+            <span class="sidebar-nav-icon">❓</span>
             <span>Questions</span>
         </a>
         <a href="MyExams.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'MyExams.php' || basename($_SERVER['PHP_SELF']) == 'CreateExam.php' || basename($_SERVER['PHP_SELF']) == 'ManageExamQuestions.php' || basename($_SERVER['PHP_SELF']) == 'SubmitExamForApproval.php') ? 'active' : ''; ?>" data-tooltip="My Exams">
-            <span class="sidebar-nav-icon">??</span>
+            <span class="sidebar-nav-icon">📝</span>
             <span>My Exams</span>
         </a>
         <a href="ViewStudents.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'ViewStudents.php') ? 'active' : ''; ?>" data-tooltip="Students">
-            <span class="sidebar-nav-icon">??</span>
+            <span class="sidebar-nav-icon">👨‍🎓</span>
             <span>Students</span>
         </a>
         
@@ -44,11 +44,11 @@
         
         <!-- Results & Analytics -->
         <a href="ResultsOverview.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'ResultsOverview.php' || basename($_SERVER['PHP_SELF']) == 'ViewStudentResult.php') ? 'active' : ''; ?>" data-tooltip="Results">
-            <span class="sidebar-nav-icon">??</span>
+            <span class="sidebar-nav-icon">📈</span>
             <span>Results</span>
         </a>
         <a href="Reports.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Reports.php') ? 'active' : ''; ?>" data-tooltip="Reports & Analytics">
-            <span class="sidebar-nav-icon">??</span>
+            <span class="sidebar-nav-icon">📊</span>
             <span>Reports & Analytics</span>
         </a>
         
@@ -56,7 +56,7 @@
         
         <!-- Settings -->
         <a href="Settings.php" class="sidebar-nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'Settings.php') ? 'active' : ''; ?>" data-tooltip="Settings">
-            <span class="sidebar-nav-icon">??</span>
+            <span class="sidebar-nav-icon">⚙️</span>
             <span>Settings</span>
         </a>
     </nav>
@@ -70,7 +70,7 @@
             </div>
         </div>
         <a href="Logout.php" class="btn btn-danger btn-block">
-            <span class="sidebar-nav-icon">??</span>
+            <span class="sidebar-nav-icon">🚪</span>
             <span>Logout</span>
         </a>
     </div>
@@ -84,10 +84,10 @@ function toggleSidebarMinimize() {
     sidebar.classList.toggle('minimized');
     
     if (sidebar.classList.contains('minimized')) {
-        toggleIcon.textContent = '?';
+        toggleIcon.textContent = '»';
         localStorage.setItem('sidebarMinimized', 'true');
     } else {
-        toggleIcon.textContent = '?';
+        toggleIcon.textContent = '«';
         localStorage.setItem('sidebarMinimized', 'false');
     }
 }
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (isMinimized) {
         sidebar.classList.add('minimized');
-        toggleIcon.textContent = '?';
+        toggleIcon.textContent = '»';
     }
 });
 </script>
