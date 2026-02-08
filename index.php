@@ -703,7 +703,7 @@
                         <div class="carousel-caption">
                             <h2>Excellence in Digital Education</h2>
                             <p>Empowering students and educators with cutting-edge technology</p>
-                            <a href="#login" class="btn btn-primary btn-lg">Learn More</a>
+                            <a href="AboutUs.php" class="btn btn-primary btn-lg">Learn More</a>
                         </div>
                     </div>
                 </div>

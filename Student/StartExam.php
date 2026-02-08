@@ -547,6 +547,9 @@ $studentSemester = $_SESSION['Sem'];
             <?php
                 require_once('../Connections/OES.php');
                 
+                // Set timezone to East Africa Time
+                date_default_timezone_set('Africa/Addis_Ababa');
+                
                 if (!$con) {
                     echo '<div class="alert alert-danger">Database connection error</div>';
                 } else {
@@ -665,7 +668,7 @@ $studentSemester = $_SESSION['Sem'];
                                 </a>
                                 <div class="countdown">
                                     <div class="countdown-label">Time Remaining</div>
-                                    <div class="countdown-time" id="countdown-<?php echo $scheduleId; ?>">
+                                    <div class="countdown-time" id="countdown-<?php echo $scheduleId; ?>" data-end="<?php echo strtotime($examDate . ' ' . $endTime); ?>">
                                         <?php 
                                         $endDateTime = strtotime($examDate . ' ' . $endTime);
                                         $currentDateTime = time();
@@ -673,6 +676,29 @@ $studentSemester = $_SESSION['Sem'];
                                         $hours = floor($diff / 3600);
                                         $minutes = floor(($diff % 3600) / 60);
                                         echo sprintf('%02d:%02d', $hours, $minutes);
+                                        ?>
+                                    </div>
+                                </div>
+                            <?php elseif ($is_active == 'Upcoming Today' || $is_active == 'Upcoming'): ?>
+                                <button class="btn btn-secondary" disabled style="font-size: 1.1rem;">
+                                    ⏳ Not Started Yet
+                                </button>
+                                <div class="countdown" style="border-color: #ffc107; background: rgba(255, 193, 7, 0.1);">
+                                    <div class="countdown-label">Starts In</div>
+                                    <div class="countdown-time" id="countdown-start-<?php echo $scheduleId; ?>" data-start="<?php echo strtotime($examDate . ' ' . $startTime); ?>">
+                                        <?php 
+                                        $startDateTime = strtotime($examDate . ' ' . $startTime);
+                                        $currentDateTime = time();
+                                        $diff = $startDateTime - $currentDateTime;
+                                        if ($diff > 86400) {
+                                            $days = floor($diff / 86400);
+                                            $hours = floor(($diff % 86400) / 3600);
+                                            echo $days . 'd ' . sprintf('%02dh', $hours);
+                                        } else {
+                                            $hours = floor($diff / 3600);
+                                            $minutes = floor(($diff % 3600) / 60);
+                                            echo sprintf('%02d:%02d', $hours, $minutes);
+                                        }
                                         ?>
                                     </div>
                                 </div>
@@ -747,10 +773,61 @@ $studentSemester = $_SESSION['Sem'];
             e.stopPropagation();
         });
 
-        // Auto-refresh page every minute to update exam availability
+        // Countdown timer functionality
+        function updateCountdowns() {
+            // Update "Time Remaining" countdowns (for active exams)
+            document.querySelectorAll('[id^="countdown-"][data-end]').forEach(function(element) {
+                const endTime = parseInt(element.getAttribute('data-end'));
+                const now = Math.floor(Date.now() / 1000);
+                const diff = endTime - now;
+                
+                if (diff > 0) {
+                    const hours = Math.floor(diff / 3600);
+                    const minutes = Math.floor((diff % 3600) / 60);
+                    const seconds = diff % 60;
+                    element.textContent = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+                } else {
+                    element.textContent = '00:00:00';
+                    // Reload page when time expires
+                    setTimeout(() => location.reload(), 1000);
+                }
+            });
+            
+            // Update "Starts In" countdowns (for upcoming exams)
+            document.querySelectorAll('[id^="countdown-start-"][data-start]').forEach(function(element) {
+                const startTime = parseInt(element.getAttribute('data-start'));
+                const now = Math.floor(Date.now() / 1000);
+                const diff = startTime - now;
+                
+                if (diff > 0) {
+                    if (diff > 86400) {
+                        // More than 1 day
+                        const days = Math.floor(diff / 86400);
+                        const hours = Math.floor((diff % 86400) / 3600);
+                        element.textContent = days + 'd ' + String(hours).padStart(2, '0') + 'h';
+                    } else {
+                        // Less than 1 day - show hours:minutes:seconds
+                        const hours = Math.floor(diff / 3600);
+                        const minutes = Math.floor((diff % 3600) / 60);
+                        const seconds = diff % 60;
+                        element.textContent = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+                    }
+                } else {
+                    element.textContent = '00:00:00';
+                    // Reload page when exam starts
+                    setTimeout(() => location.reload(), 1000);
+                }
+            });
+        }
+        
+        // Update countdowns every second
+        updateCountdowns();
+        setInterval(updateCountdowns, 1000);
+
+        // Auto-refresh page every 5 minutes to update exam availability
         setTimeout(function() {
             location.reload();
-        }, 60000);
+        }, 300000);
     </script>
 </body>
 </html>
