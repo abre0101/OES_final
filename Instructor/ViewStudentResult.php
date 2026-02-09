@@ -37,7 +37,7 @@ $resultQuery = $con->prepare("SELECT
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN exam_categories ec ON es.exam_category_id = ec.exam_category_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    WHERE er.result_id = ? AND ic.instructor_id = ? AND ic.is_active = TRUE");
+    WHERE er.result_id = ? AND ic.instructor_id = ?");
 $resultQuery->bind_param("ii", $result_id, $instructor_id);
 $resultQuery->execute();
 $result = $resultQuery->get_result()->fetch_assoc();
@@ -166,19 +166,19 @@ $questions = $questionsQuery->get_result();
             </div>
 
             <div style="margin-bottom: 2rem;">
-                <a href="SeeResults.php" class="btn btn-secondary">← Back to Results</a>
+                <a href="ResultsOverview.php" class="btn btn-secondary">← Back to Results</a>
                 <button onclick="window.print()" class="btn btn-primary">🖨️ Print</button>
             </div>
 
             <!-- Result Header -->
             <div class="result-header">
-                <h2 style="margin: 0 0 0.5rem 0; color: white;">
+                <h2 style="margin: 0 0 0.5rem 0; color: white; font-weight: 700;">
                     <?php echo htmlspecialchars($result['student_name']); ?>
                 </h2>
-                <p style="margin: 0; opacity: 0.9;">
+                <p style="margin: 0; color: #ffffff; font-size: 1.05rem; font-weight: 500;">
                     <?php echo htmlspecialchars($result['student_code']); ?> | <?php echo htmlspecialchars($result['student_email']); ?>
                 </p>
-                <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">
+                <p style="margin: 0.5rem 0 0 0; color: #ffffff; font-size: 1.05rem; font-weight: 500;">
                     <?php echo htmlspecialchars($result['exam_name']); ?> - <?php echo htmlspecialchars($result['course_name']); ?>
                 </p>
                 
@@ -186,10 +186,6 @@ $questions = $questionsQuery->get_result();
                     <div class="result-stat">
                         <div class="result-stat-value"><?php echo round($result['percentage_score'], 1); ?>%</div>
                         <div class="result-stat-label">Score</div>
-                    </div>
-                    <div class="result-stat">
-                        <div class="result-stat-value"><?php echo $result['letter_grade']; ?></div>
-                        <div class="result-stat-label">Grade</div>
                     </div>
                     <div class="result-stat">
                         <div class="result-stat-value"><?php echo $result['correct_answers']; ?></div>

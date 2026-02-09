@@ -288,7 +288,10 @@ $currentDate = date('d M Y');
                     <h2 style="color: white;"><?php echo number_format($percentage, 2); ?>%</h2>
                     <p style="color: white; opacity: 1;">Your Score: <?php echo $obtainedMarks; ?> / <?php echo $maxMarks; ?> Points</p>
                     <p style="font-size: 1.5rem; margin-top: 1rem; font-weight: 700; color: white; opacity: 1;">
-                        Grade: <?php echo $letterGrade; ?> | GPA: <?php echo number_format($gpa, 2); ?>
+                        Percentage: <?php echo number_format($percentage, 2); ?>%
+                    </p>
+                    <p style="font-size: 0.9rem; margin-top: 0.5rem; color: rgba(255,255,255,0.9); opacity: 1;">
+                        Note: Final grades and GPA will be calculated based on all exams at the end of the semester
                     </p>
                     <p style="font-size: 1.3rem; margin-top: 0.5rem; font-weight: 700; color: white; opacity: 1;">
                         <?php echo $passStatus == 'Pass' ? '✅ PASSED' : '❌ FAILED'; ?>

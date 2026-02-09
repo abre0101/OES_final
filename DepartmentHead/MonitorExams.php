@@ -75,8 +75,8 @@ $active_students_query = "SELECT s.full_name, s.student_code, c.course_code, es.
                           INNER JOIN courses c ON es.course_id = c.course_id
                           WHERE c.department_id = ?
                           AND er.exam_submitted_at IS NULL
-                          AND es.exam_date = CURDATE()
-                          AND TIME(NOW()) BETWEEN es.start_time AND es.end_time
+                          AND er.exam_started_at IS NOT NULL
+                          AND TIMESTAMPDIFF(MINUTE, er.exam_started_at, NOW()) < (es.duration_minutes + 10)
                           ORDER BY er.exam_started_at DESC";
 $stmt = $con->prepare($active_students_query);
 $stmt->bind_param("i", $deptId);
@@ -302,11 +302,6 @@ $active_students_count = $active_students->num_rows;
                                     Started: <?php echo date('h:i A', $exam_start); ?>
                                 </div>
                             </div>
-                            <div>
-                                <a href="ViewExamDetails.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-primary">
-                                    📊 View Details
-                                </a>
-                            </div>
                         </div>
                     </div>
                     <?php endwhile; ?>
@@ -417,7 +412,6 @@ $active_students_count = $active_students->num_rows;
                                     <th>Duration</th>
                                     <th>Submission Status</th>
                                     <th>Status</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -458,11 +452,6 @@ $active_students_count = $active_students->num_rows;
                                         <small style="color: #495057; font-weight: 600;"><?php echo $exam['completed_count']; ?> / <?php echo $exam['enrolled_count']; ?> submitted</small>
                                     </td>
                                     <td><?php echo $status_badge; ?></td>
-                                    <td>
-                                        <a href="ViewExamDetails.php?id=<?php echo $exam['exam_id']; ?>" class="btn btn-sm btn-info">
-                                            View
-                                        </a>
-                                    </td>
                                 </tr>
                                 <?php endwhile; ?>
                             </tbody>

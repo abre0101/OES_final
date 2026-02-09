@@ -47,7 +47,7 @@ $query = "SELECT
     INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE";
+    WHERE ic.instructor_id = ?";
 
 $params = [$instructor_id];
 $types = "i";
@@ -87,7 +87,7 @@ $results = $stmt->get_result();
 $coursesQuery = $con->prepare("SELECT DISTINCT c.course_id, c.course_name, c.course_code
     FROM instructor_courses ic
     INNER JOIN courses c ON ic.course_id = c.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE
+    WHERE ic.instructor_id = ?
     ORDER BY c.course_name");
 $coursesQuery->bind_param("i", $instructor_id);
 $coursesQuery->execute();
@@ -103,7 +103,7 @@ $statsQuery = $con->prepare("SELECT
     INNER JOIN exams es ON er.exam_id = es.exam_id
     INNER JOIN courses c ON es.course_id = c.course_id
     INNER JOIN instructor_courses ic ON c.course_id = ic.course_id
-    WHERE ic.instructor_id = ? AND ic.is_active = TRUE");
+    WHERE ic.instructor_id = ?");
 $statsQuery->bind_param("i", $instructor_id);
 $statsQuery->execute();
 $stats = $statsQuery->get_result()->fetch_assoc();

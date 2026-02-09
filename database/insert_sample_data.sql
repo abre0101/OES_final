@@ -329,70 +329,90 @@ INSERT IGNORE INTO `questions` (`course_id`, `topic_id`, `question_type`, `quest
 -- ============================================
 -- 14. INSERT SAMPLE EXAMS
 -- ============================================
--- Approved Exams (Ready for students)
+-- Rule: Each course can have 1 Midterm + 1 Final + Multiple Quizzes/Makeups per semester
+
+-- COURSE 1: Fundamentals of Nursing (Semester 1)
 INSERT IGNORE INTO `exams` (`course_id`, `exam_category_id`, `exam_name`, `exam_date`, `start_time`, `end_time`, `duration_minutes`, `total_marks`, `pass_marks`, `instructions`, `is_active`, `approval_status`, `submitted_at`, `approved_by`, `approved_at`, `created_by`) VALUES
-(1, 1, 'Fundamentals of Nursing - Midterm', '2026-03-15', '09:00:00', '10:30:00', 90, 20, 10, 'Read all questions carefully. Choose the best answer. No cheating allowed.', 1, 'approved', '2026-02-01 10:00:00', 1, '2026-02-02 14:00:00', 1),
-(2, 1, 'Anatomy and Physiology - Midterm', '2026-03-16', '09:00:00', '10:30:00', 90, 20, 10, 'Answer all questions. Use of notes is not permitted.', 1, 'approved', '2026-02-01 11:00:00', 1, '2026-02-02 15:00:00', 1),
-(4, 1, 'Introduction to Midwifery - Midterm', '2026-03-17', '10:00:00', '11:30:00', 90, 15, 8, 'Answer all questions to the best of your ability.', 1, 'approved', '2026-02-03 09:00:00', 2, '2026-02-04 10:00:00', 3),
-(6, 1, 'Introduction to Public Health - Midterm', '2026-03-18', '14:00:00', '15:30:00', 90, 15, 8, 'Read instructions carefully before starting.', 1, 'approved', '2026-02-03 10:00:00', 3, '2026-02-04 11:00:00', 4),
-
--- Final Exams (Approved)
+(1, 1, 'Fundamentals of Nursing - Midterm', '2026-03-15', '09:00:00', '10:30:00', 90, 20, 10, 'Read all questions carefully. Choose the best answer.', 1, 'approved', '2026-02-01 10:00:00', 1, '2026-02-02 14:00:00', 1),
 (1, 2, 'Fundamentals of Nursing - Final Exam', '2026-05-20', '09:00:00', '11:00:00', 120, 30, 15, 'Comprehensive final exam covering all course material.', 1, 'approved', '2026-04-01 10:00:00', 1, '2026-04-02 14:00:00', 1),
+(1, 3, 'Fundamentals of Nursing - Quiz 1', '2026-02-25', '10:00:00', '10:30:00', 30, 10, 5, 'Quick quiz on chapters 1-3.', 1, 'approved', '2026-02-10 09:00:00', 1, '2026-02-11 10:00:00', 1),
+(1, 3, 'Fundamentals of Nursing - Quiz 2', '2026-04-10', '10:00:00', '10:30:00', 30, 10, 5, 'Quiz on chapters 4-6.', 1, 'approved', '2026-03-25 09:00:00', 1, '2026-03-26 10:00:00', 1),
+
+-- COURSE 2: Anatomy and Physiology (Semester 1)
+(2, 1, 'Anatomy and Physiology - Midterm', '2026-03-16', '09:00:00', '10:30:00', 90, 20, 10, 'Answer all questions. Use of notes is not permitted.', 1, 'approved', '2026-02-01 11:00:00', 1, '2026-02-02 15:00:00', 1),
 (2, 2, 'Anatomy and Physiology - Final Exam', '2026-05-21', '09:00:00', '11:00:00', 120, 30, 15, 'Final examination. No materials allowed.', 1, 'approved', '2026-04-01 11:00:00', 1, '2026-04-02 15:00:00', 1),
+(2, 3, 'Anatomy and Physiology - Quiz 1', '2026-02-28', '11:00:00', '11:30:00', 30, 10, 5, 'Quiz on skeletal system.', 1, 'approved', '2026-02-12 09:00:00', 1, '2026-02-13 10:00:00', 1),
 
--- Quiz Exams (Approved)
-(1, 3, 'Nursing Fundamentals - Quiz 1', '2026-02-25', '10:00:00', '10:30:00', 30, 10, 5, 'Quick quiz on chapters 1-3.', 1, 'approved', '2026-02-10 09:00:00', 1, '2026-02-11 10:00:00', 1),
-(8, 3, 'Anesthesia Basics - Quiz 1', '2026-02-26', '11:00:00', '11:30:00', 30, 10, 5, 'Quiz covering basic anesthesia principles.', 1, 'approved', '2026-02-10 10:00:00', 4, '2026-02-11 11:00:00', 5),
-
--- Pending Approval Exams
+-- COURSE 3: Medical-Surgical Nursing I (Semester 2) - Pending
 (3, 1, 'Medical-Surgical Nursing I - Midterm', '2026-03-20', '09:00:00', '10:30:00', 90, 20, 10, 'Midterm examination covering medical-surgical nursing concepts.', 1, 'pending', '2026-02-08 14:00:00', NULL, NULL, 1),
+
+-- COURSE 4: Introduction to Midwifery (Semester 1)
+(4, 1, 'Introduction to Midwifery - Midterm', '2026-03-17', '10:00:00', '11:30:00', 90, 15, 8, 'Answer all questions to the best of your ability.', 1, 'approved', '2026-02-03 09:00:00', 2, '2026-02-04 10:00:00', 3),
+(4, 2, 'Introduction to Midwifery - Final Exam', '2026-05-22', '10:00:00', '12:00:00', 120, 25, 13, 'Comprehensive final exam.', 1, 'approved', '2026-04-02 09:00:00', 2, '2026-04-03 10:00:00', 3),
+
+-- COURSE 5: Reproductive Health (Semester 1) - Draft
+(5, 1, 'Reproductive Health - Midterm', NULL, NULL, NULL, 90, 0, 0, 'Draft exam - questions being added.', 0, 'draft', NULL, NULL, NULL, 3),
+
+-- COURSE 6: Introduction to Public Health (Semester 1)
+(6, 1, 'Introduction to Public Health - Midterm', '2026-03-18', '14:00:00', '15:30:00', 90, 15, 8, 'Read instructions carefully before starting.', 1, 'approved', '2026-02-03 10:00:00', 3, '2026-02-04 11:00:00', 4),
+(6, 2, 'Introduction to Public Health - Final Exam', '2026-05-23', '14:00:00', '16:00:00', 120, 25, 13, 'Final exam covering all public health topics.', 1, 'approved', '2026-04-03 10:00:00', 3, '2026-04-04 11:00:00', 4),
+(6, 3, 'Introduction to Public Health - Quiz 1', '2026-03-01', '14:00:00', '14:30:00', 30, 10, 5, 'Quiz on epidemiology basics.', 1, 'approved', '2026-02-14 09:00:00', 3, '2026-02-15 10:00:00', 4),
+
+-- COURSE 8: Fundamentals of Anesthesia (Semester 1)
+(8, 1, 'Fundamentals of Anesthesia - Midterm', '2026-03-19', '11:00:00', '12:30:00', 90, 15, 8, 'Midterm exam on anesthesia fundamentals.', 1, 'approved', '2026-02-04 10:00:00', 4, '2026-02-05 11:00:00', 5),
+(8, 3, 'Fundamentals of Anesthesia - Quiz 1', '2026-02-26', '11:00:00', '11:30:00', 30, 10, 5, 'Quiz covering basic anesthesia principles.', 1, 'approved', '2026-02-10 10:00:00', 4, '2026-02-11 11:00:00', 5),
+
+-- COURSE 9: Pharmacology for Anesthesia (Semester 1) - Rejected
+(9, 1, 'Pharmacology for Anesthesia - Midterm', NULL, NULL, NULL, 90, 15, 8, 'Midterm exam on anesthetic pharmacology.', 0, 'rejected', '2026-02-05 10:00:00', 4, '2026-02-06 09:00:00', 5),
+
+-- COURSE 10: Clinical Chemistry (Semester 1) - Pending
 (10, 1, 'Clinical Chemistry - Midterm', '2026-03-21', '13:00:00', '14:30:00', 90, 20, 10, 'Laboratory chemistry midterm exam.', 1, 'pending', '2026-02-08 15:00:00', NULL, NULL, 6),
 
--- Draft Exams (Not yet submitted)
-(5, 1, 'Reproductive Health - Midterm', NULL, NULL, NULL, 90, 0, 0, 'Draft exam - questions being added.', 0, 'draft', NULL, NULL, NULL, 3),
+-- COURSE 11: Hematology (Semester 1) - Draft
 (11, 1, 'Hematology - Midterm', NULL, NULL, NULL, 90, 0, 0, 'Draft exam - under construction.', 0, 'draft', NULL, NULL, NULL, 6),
 
--- Rejected Exam (Needs revision)
-(9, 1, 'Pharmacology for Anesthesia - Midterm', NULL, NULL, NULL, 90, 15, 8, 'Midterm exam on anesthetic pharmacology.', 0, 'rejected', '2026-02-05 10:00:00', 4, '2026-02-06 09:00:00', 5);
+-- Makeup Exams (Can have multiple)
+(1, 4, 'Fundamentals of Nursing - Makeup Exam', '2026-06-10', '09:00:00', '11:00:00', 120, 30, 15, 'Makeup exam for students who missed the final.', 1, 'approved', '2026-05-25 10:00:00', 1, '2026-05-26 14:00:00', 1),
+(2, 4, 'Anatomy and Physiology - Makeup Exam', '2026-06-11', '09:00:00', '11:00:00', 120, 30, 15, 'Makeup exam for absent students.', 1, 'approved', '2026-05-25 11:00:00', 1, '2026-05-26 15:00:00', 1);
 
 -- ============================================
 -- 15. INSERT EXAM QUESTIONS (LINK EXAMS TO QUESTIONS)
 -- ============================================
--- Exam 1: Fundamentals of Nursing Midterm (20 questions = 20 marks)
+-- Note: Exam IDs are auto-incremented, so these mappings assume sequential insertion
+
+-- Exam 1: Fundamentals of Nursing - Midterm (20 questions = 20 marks)
 INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
 (1, 1, 1), (1, 2, 2), (1, 3, 3), (1, 4, 4), (1, 5, 5), (1, 6, 6),
 (1, 31, 7), (1, 32, 8), (1, 33, 9), (1, 34, 10), (1, 35, 11), (1, 36, 12),
 (1, 37, 13), (1, 38, 14), (1, 39, 15), (1, 40, 16), (1, 41, 17), (1, 42, 18),
 (1, 43, 19), (1, 44, 20);
 
--- Exam 2: Anatomy and Physiology Midterm (20 questions = 20 marks)
+-- Exam 2: Fundamentals of Nursing - Final Exam (30 questions = 30 marks)
 INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
-(2, 7, 1), (2, 8, 2), (2, 9, 3), (2, 10, 4), (2, 11, 5), (2, 12, 6),
-(2, 45, 7), (2, 46, 8), (2, 47, 9), (2, 48, 10), (2, 49, 11), (2, 50, 12),
-(2, 51, 13), (2, 52, 14), (2, 53, 15), (2, 54, 16), (2, 55, 17), (2, 56, 18),
-(2, 57, 19), (2, 58, 20);
+(2, 1, 1), (2, 2, 2), (2, 3, 3), (2, 4, 4), (2, 5, 5), (2, 6, 6),
+(2, 31, 7), (2, 32, 8), (2, 33, 9), (2, 34, 10), (2, 35, 11), (2, 36, 12),
+(2, 37, 13), (2, 38, 14), (2, 39, 15), (2, 40, 16), (2, 41, 17), (2, 42, 18),
+(2, 43, 19), (2, 44, 20), (2, 1, 21), (2, 2, 22), (2, 3, 23), (2, 4, 24),
+(2, 5, 25), (2, 6, 26), (2, 31, 27), (2, 32, 28), (2, 33, 29), (2, 34, 30);
 
--- Exam 3: Introduction to Midwifery Midterm (15 questions = 15 marks)
+-- Exam 3: Fundamentals of Nursing - Quiz 1 (10 questions = 10 marks)
 INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
-(3, 13, 1), (3, 14, 2), (3, 15, 3), (3, 16, 4), (3, 17, 5),
-(3, 71, 6), (3, 72, 7), (3, 73, 8), (3, 74, 9), (3, 75, 10),
-(3, 76, 11), (3, 77, 12), (3, 78, 13), (3, 79, 14), (3, 80, 15);
+(3, 1, 1), (3, 2, 2), (3, 3, 3), (3, 4, 4), (3, 5, 5),
+(3, 6, 6), (3, 31, 7), (3, 32, 8), (3, 33, 9), (3, 34, 10);
 
--- Exam 4: Introduction to Public Health Midterm (15 questions = 15 marks)
+-- Exam 4: Fundamentals of Nursing - Quiz 2 (10 questions = 10 marks)
 INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
-(4, 18, 1), (4, 19, 2), (4, 20, 3), (4, 21, 4), (4, 22, 5),
-(4, 81, 6), (4, 82, 7), (4, 83, 8), (4, 84, 9), (4, 85, 10),
-(4, 86, 11), (4, 87, 12), (4, 88, 13), (4, 89, 14), (4, 90, 15);
+(4, 35, 1), (4, 36, 2), (4, 37, 3), (4, 38, 4), (4, 39, 5),
+(4, 40, 6), (4, 41, 7), (4, 42, 8), (4, 43, 9), (4, 44, 10);
 
--- Exam 5: Fundamentals of Nursing Final (30 questions = 30 marks)
+-- Exam 5: Anatomy and Physiology - Midterm (20 questions = 20 marks)
 INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
-(5, 1, 1), (5, 2, 2), (5, 3, 3), (5, 4, 4), (5, 5, 5), (5, 6, 6),
-(5, 31, 7), (5, 32, 8), (5, 33, 9), (5, 34, 10), (5, 35, 11), (5, 36, 12),
-(5, 37, 13), (5, 38, 14), (5, 39, 15), (5, 40, 16), (5, 41, 17), (5, 42, 18),
-(5, 43, 19), (5, 44, 20), (5, 1, 21), (5, 2, 22), (5, 3, 23), (5, 4, 24),
-(5, 5, 25), (5, 6, 26), (5, 31, 27), (5, 32, 28), (5, 33, 29), (5, 34, 30);
+(5, 7, 1), (5, 8, 2), (5, 9, 3), (5, 10, 4), (5, 11, 5), (5, 12, 6),
+(5, 45, 7), (5, 46, 8), (5, 47, 9), (5, 48, 10), (5, 49, 11), (5, 50, 12),
+(5, 51, 13), (5, 52, 14), (5, 53, 15), (5, 54, 16), (5, 55, 17), (5, 56, 18),
+(5, 57, 19), (5, 58, 20);
 
--- Exam 6: Anatomy and Physiology Final (30 questions = 30 marks)
+-- Exam 6: Anatomy and Physiology - Final Exam (30 questions = 30 marks)
 INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
 (6, 7, 1), (6, 8, 2), (6, 9, 3), (6, 10, 4), (6, 11, 5), (6, 12, 6),
 (6, 45, 7), (6, 46, 8), (6, 47, 9), (6, 48, 10), (6, 49, 11), (6, 50, 12),
@@ -400,15 +420,96 @@ INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`)
 (6, 57, 19), (6, 58, 20), (6, 7, 21), (6, 8, 22), (6, 9, 23), (6, 10, 24),
 (6, 11, 25), (6, 12, 26), (6, 45, 27), (6, 46, 28), (6, 47, 29), (6, 48, 30);
 
--- Exam 7: Nursing Fundamentals Quiz 1 (10 questions = 10 marks)
+-- Exam 7: Anatomy and Physiology - Quiz 1 (10 questions = 10 marks)
 INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
-(7, 1, 1), (7, 2, 2), (7, 3, 3), (7, 4, 4), (7, 5, 5),
-(7, 6, 6), (7, 31, 7), (7, 32, 8), (7, 33, 9), (7, 34, 10);
+(7, 7, 1), (7, 8, 2), (7, 9, 3), (7, 10, 4), (7, 11, 5),
+(7, 12, 6), (7, 45, 7), (7, 46, 8), (7, 47, 9), (7, 48, 10);
 
--- Exam 8: Anesthesia Basics Quiz 1 (10 questions = 10 marks)
+-- Exam 8: Medical-Surgical Nursing I - Midterm (20 questions = 20 marks) - PENDING
 INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
-(8, 23, 1), (8, 24, 2), (8, 25, 3), (8, 26, 4), (8, 27, 5),
-(8, 91, 6), (8, 92, 7), (8, 93, 8), (8, 94, 9), (8, 95, 10);
+(8, 59, 1), (8, 60, 2), (8, 61, 3), (8, 62, 4), (8, 63, 5),
+(8, 64, 6), (8, 65, 7), (8, 66, 8), (8, 67, 9), (8, 68, 10),
+(8, 69, 11), (8, 70, 12), (8, 59, 13), (8, 60, 14), (8, 61, 15),
+(8, 62, 16), (8, 63, 17), (8, 64, 18), (8, 65, 19), (8, 66, 20);
+
+-- Exam 9: Introduction to Midwifery - Midterm (15 questions = 15 marks)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(9, 13, 1), (9, 14, 2), (9, 15, 3), (9, 16, 4), (9, 17, 5),
+(9, 71, 6), (9, 72, 7), (9, 73, 8), (9, 74, 9), (9, 75, 10),
+(9, 76, 11), (9, 77, 12), (9, 78, 13), (9, 79, 14), (9, 80, 15);
+
+-- Exam 10: Introduction to Midwifery - Final Exam (25 questions = 25 marks)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(10, 13, 1), (10, 14, 2), (10, 15, 3), (10, 16, 4), (10, 17, 5),
+(10, 71, 6), (10, 72, 7), (10, 73, 8), (10, 74, 9), (10, 75, 10),
+(10, 76, 11), (10, 77, 12), (10, 78, 13), (10, 79, 14), (10, 80, 15),
+(10, 13, 16), (10, 14, 17), (10, 15, 18), (10, 16, 19), (10, 17, 20),
+(10, 71, 21), (10, 72, 22), (10, 73, 23), (10, 74, 24), (10, 75, 25);
+
+-- Exam 11: Reproductive Health - Midterm (DRAFT - No questions yet)
+-- No questions for draft exams
+
+-- Exam 12: Introduction to Public Health - Midterm (15 questions = 15 marks)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(12, 18, 1), (12, 19, 2), (12, 20, 3), (12, 21, 4), (12, 22, 5),
+(12, 81, 6), (12, 82, 7), (12, 83, 8), (12, 84, 9), (12, 85, 10),
+(12, 86, 11), (12, 87, 12), (12, 88, 13), (12, 89, 14), (12, 90, 15);
+
+-- Exam 13: Introduction to Public Health - Final Exam (25 questions = 25 marks)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(13, 18, 1), (13, 19, 2), (13, 20, 3), (13, 21, 4), (13, 22, 5),
+(13, 81, 6), (13, 82, 7), (13, 83, 8), (13, 84, 9), (13, 85, 10),
+(13, 86, 11), (13, 87, 12), (13, 88, 13), (13, 89, 14), (13, 90, 15),
+(13, 18, 16), (13, 19, 17), (13, 20, 18), (13, 21, 19), (13, 22, 20),
+(13, 81, 21), (13, 82, 22), (13, 83, 23), (13, 84, 24), (13, 85, 25);
+
+-- Exam 14: Introduction to Public Health - Quiz 1 (10 questions = 10 marks)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(14, 18, 1), (14, 19, 2), (14, 20, 3), (14, 21, 4), (14, 22, 5),
+(14, 81, 6), (14, 82, 7), (14, 83, 8), (14, 84, 9), (14, 85, 10);
+
+-- Exam 15: Fundamentals of Anesthesia - Midterm (15 questions = 15 marks)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(15, 23, 1), (15, 24, 2), (15, 25, 3), (15, 26, 4), (15, 27, 5),
+(15, 91, 6), (15, 92, 7), (15, 93, 8), (15, 94, 9), (15, 95, 10),
+(15, 96, 11), (15, 97, 12), (15, 98, 13), (15, 99, 14), (15, 100, 15);
+
+-- Exam 16: Fundamentals of Anesthesia - Quiz 1 (10 questions = 10 marks)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(16, 23, 1), (16, 24, 2), (16, 25, 3), (16, 26, 4), (16, 27, 5),
+(16, 91, 6), (16, 92, 7), (16, 93, 8), (16, 94, 9), (16, 95, 10);
+
+-- Exam 17: Pharmacology for Anesthesia - Midterm (REJECTED - Has questions but needs revision)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(17, 91, 1), (17, 92, 2), (17, 93, 3), (17, 94, 4), (17, 95, 5),
+(17, 96, 6), (17, 97, 7), (17, 98, 8), (17, 99, 9), (17, 100, 10),
+(17, 91, 11), (17, 92, 12), (17, 93, 13), (17, 94, 14), (17, 95, 15);
+
+-- Exam 18: Clinical Chemistry - Midterm (20 questions = 20 marks) - PENDING
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(18, 28, 1), (18, 29, 2), (18, 30, 3), (18, 101, 4), (18, 102, 5),
+(18, 103, 6), (18, 104, 7), (18, 105, 8), (18, 106, 9), (18, 107, 10),
+(18, 108, 11), (18, 109, 12), (18, 110, 13), (18, 28, 14), (18, 29, 15),
+(18, 30, 16), (18, 101, 17), (18, 102, 18), (18, 103, 19), (18, 104, 20);
+
+-- Exam 19: Hematology - Midterm (DRAFT - No questions yet)
+-- No questions for draft exams
+
+-- Exam 20: Fundamentals of Nursing - Makeup Exam (30 questions = 30 marks)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(20, 1, 1), (20, 2, 2), (20, 3, 3), (20, 4, 4), (20, 5, 5), (20, 6, 6),
+(20, 31, 7), (20, 32, 8), (20, 33, 9), (20, 34, 10), (20, 35, 11), (20, 36, 12),
+(20, 37, 13), (20, 38, 14), (20, 39, 15), (20, 40, 16), (20, 41, 17), (20, 42, 18),
+(20, 43, 19), (20, 44, 20), (20, 1, 21), (20, 2, 22), (20, 3, 23), (20, 4, 24),
+(20, 5, 25), (20, 6, 26), (20, 31, 27), (20, 32, 28), (20, 33, 29), (20, 34, 30);
+
+-- Exam 21: Anatomy and Physiology - Makeup Exam (30 questions = 30 marks)
+INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES
+(21, 7, 1), (21, 8, 2), (21, 9, 3), (21, 10, 4), (21, 11, 5), (21, 12, 6),
+(21, 45, 7), (21, 46, 8), (21, 47, 9), (21, 48, 10), (21, 49, 11), (21, 50, 12),
+(21, 51, 13), (21, 52, 14), (21, 53, 15), (21, 54, 16), (21, 55, 17), (21, 56, 18),
+(21, 57, 19), (21, 58, 20), (21, 7, 21), (21, 8, 22), (21, 9, 23), (21, 10, 24),
+(21, 11, 25), (21, 12, 26), (21, 45, 27), (21, 46, 28), (21, 47, 29), (21, 48, 30);
 
 -- Exam 9: Medical-Surgical Nursing Midterm - Pending (20 questions = 20 marks)
 INSERT IGNORE INTO `exam_questions` (`exam_id`, `question_id`, `question_order`) VALUES

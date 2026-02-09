@@ -55,10 +55,13 @@ $questions = $con->query("SELECT q.*, qt.topic_name
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Exam Details - <?php echo htmlspecialchars($exam['exam_name']); ?></title>
-    <link href="../assets/css/modern-v2.css" rel="stylesheet">
-    <link href="../assets/css/admin-modern-v2.css" rel="stylesheet">
-    <link href="../assets/css/admin-sidebar.css" rel="stylesheet">
+    <link href="../assets/css/modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-modern-v2.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="../assets/css/admin-sidebar.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         .exam-detail-header { background: linear-gradient(135deg, #003366 0%, #0055aa 100%); color: white; padding: 2.5rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 20px rgba(0, 51, 102, 0.2); }
@@ -74,7 +77,7 @@ $questions = $con->query("SELECT q.*, qt.topic_name
         .question-card { background: white; padding: 2rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); border-left: 4px solid #003366; }
         .question-text { font-size: 1.1rem; font-weight: 600; color: #003366; margin-bottom: 1rem; }
         .option { padding: 0.75rem; margin-bottom: 0.5rem; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #e0e0e0; }
-        .option.correct { background: rgba(40, 167, 69, 0.1); border-left-color: #28a745; font-weight: 600; }
+        .option.correct { background: #28a745 !important; border-left-color: #1e7e34 !important; border-left-width: 5px !important; font-weight: 700 !important; color: white !important; }
         .action-section { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); margin-top: 2rem; }
         
         /* Modal Styles */
@@ -193,31 +196,53 @@ $questions = $con->query("SELECT q.*, qt.topic_name
                         </div>
                         
                         <div style="margin-left: 2rem;">
-                            <div class="option <?php echo $q['correct_answer'] == 'A' ? 'correct' : ''; ?>">
+                            <?php 
+                            // Check if this is a True/False question
+                            $isTrueFalse = (strtolower(trim($q['option_a'])) === 'true' && strtolower(trim($q['option_b'])) === 'false') ||
+                                          (strtolower(trim($q['option_a'])) === 'false' && strtolower(trim($q['option_b'])) === 'true');
+                            
+                            // Normalize correct answer - handle both uppercase and lowercase, trim whitespace
+                            $correctAnswer = strtoupper(trim($q['correct_answer']));
+                            
+                            // Display Option A
+                            $isCorrectA = ($correctAnswer === 'A');
+                            ?>
+                            <div class="option <?php echo $isCorrectA ? 'correct' : ''; ?>">
                                 <strong>A.</strong> <?php echo htmlspecialchars($q['option_a']); ?>
-                                <?php if($q['correct_answer'] == 'A'): ?><span style="color: #28a745; float: right;">✓ Correct</span><?php endif; ?>
+                                <?php if($isCorrectA): ?><span style="float: right; font-weight: 700;">✓ Correct</span><?php endif; ?>
                             </div>
-                            <div class="option <?php echo $q['correct_answer'] == 'B' ? 'correct' : ''; ?>">
+                            
+                            <?php 
+                            // Display Option B
+                            $isCorrectB = ($correctAnswer === 'B');
+                            ?>
+                            <div class="option <?php echo $isCorrectB ? 'correct' : ''; ?>">
                                 <strong>B.</strong> <?php echo htmlspecialchars($q['option_b']); ?>
-                                <?php if($q['correct_answer'] == 'B'): ?><span style="color: #28a745; float: right;">✓ Correct</span><?php endif; ?>
+                                <?php if($isCorrectB): ?><span style="float: right; font-weight: 700;">✓ Correct</span><?php endif; ?>
                             </div>
-                            <?php if(!empty($q['option_c'])): ?>
-                            <div class="option <?php echo $q['correct_answer'] == 'C' ? 'correct' : ''; ?>">
+                            
+                            <?php if(!empty($q['option_c'])): 
+                                $isCorrectC = ($correctAnswer === 'C');
+                            ?>
+                            <div class="option <?php echo $isCorrectC ? 'correct' : ''; ?>">
                                 <strong>C.</strong> <?php echo htmlspecialchars($q['option_c']); ?>
-                                <?php if($q['correct_answer'] == 'C'): ?><span style="color: #28a745; float: right;">✓ Correct</span><?php endif; ?>
+                                <?php if($isCorrectC): ?><span style="float: right; font-weight: 700;">✓ Correct</span><?php endif; ?>
                             </div>
                             <?php endif; ?>
-                            <?php if(!empty($q['option_d'])): ?>
-                            <div class="option <?php echo $q['correct_answer'] == 'D' ? 'correct' : ''; ?>">
+                            
+                            <?php if(!empty($q['option_d'])): 
+                                $isCorrectD = ($correctAnswer === 'D');
+                            ?>
+                            <div class="option <?php echo $isCorrectD ? 'correct' : ''; ?>">
                                 <strong>D.</strong> <?php echo htmlspecialchars($q['option_d']); ?>
-                                <?php if($q['correct_answer'] == 'D'): ?><span style="color: #28a745; float: right;">✓ Correct</span><?php endif; ?>
+                                <?php if($isCorrectD): ?><span style="float: right; font-weight: 700;">✓ Correct</span><?php endif; ?>
                             </div>
                             <?php endif; ?>
                         </div>
                         
                         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0; display: flex; gap: 2rem; font-size: 0.9rem; color: #6c757d;">
                             <span><strong>Points:</strong> <?php echo $q['point_value'] ?? 1; ?></span>
-                            <span><strong>Type:</strong> Multiple Choice</span>
+                            <span><strong>Type:</strong> <?php echo $isTrueFalse ? 'True/False' : 'Multiple Choice'; ?></span>
                         </div>
                     </div>
                     <?php $qNum++; endwhile; ?>

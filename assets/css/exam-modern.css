@@ -148,8 +148,10 @@
     color: white;
     padding: 1.5rem 2rem;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
+    text-align: center;
     box-shadow: var(--shadow-lg);
     position: sticky;
     top: 0;
@@ -160,6 +162,7 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+    margin-bottom: 1rem;
 }
 
 .exam-logo {
@@ -184,6 +187,7 @@
 
 .exam-header-center {
     text-align: center;
+    width: 100%;
 }
 
 .course-badge {

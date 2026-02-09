@@ -973,9 +973,6 @@ $topicPerformance = $topicPerformanceQuery->get_result();
                 <button class="tab-btn <?php echo $activeTab === 'students' ? 'active' : ''; ?>" onclick="switchTab('students')">
                     <span>👨‍🎓</span> Students
                 </button>
-                <button class="tab-btn <?php echo $activeTab === 'questions' ? 'active' : ''; ?>" onclick="switchTab('questions')">
-                    <span>❓</span> Questions
-                </button>
             </div>
 
             <!-- Filters Section -->
@@ -1087,39 +1084,6 @@ $topicPerformance = $topicPerformanceQuery->get_result();
                 </div>
 
                 <!-- Grade Distribution -->
-                <?php if(count($gradeDistributionData) > 0): ?>
-                <div class="data-section">
-                    <div class="section-header">
-                        <h2 class="section-title">🎯 Grade Distribution Overview</h2>
-                    </div>
-                    <div class="grade-distribution">
-                        <?php 
-                        $totalGrades = 0;
-                        $gradeData = [];
-                        foreach($gradeDistributionData as $grade) {
-                            $gradeData[$grade['letter_grade']] = $grade;
-                            $totalGrades += intval($grade['count']);
-                        }
-                        
-                        $allGrades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F'];
-                        foreach($allGrades as $letter): 
-                            if(!isset($gradeData[$letter])) continue;
-                            
-                            $gradeCount = intval($gradeData[$letter]['count']);
-                            $percentage = $totalGrades > 0 ? round(($gradeCount / $totalGrades) * 100, 1) : 0;
-                            $gradeBase = substr($letter, 0, 1);
-                            $colorClass = strtolower($gradeBase);
-                        ?>
-                        <div class="grade-item grade-<?php echo $colorClass; ?>">
-                            <div class="grade-letter"><?php echo $letter; ?></div>
-                            <div class="grade-count"><?php echo number_format($gradeCount); ?></div>
-                            <div class="grade-percentage"><?php echo $percentage; ?>% of total</div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-
                 <!-- Charts Grid -->
                 <div class="charts-grid">
                     <!-- Performance Trend Chart -->
@@ -1129,16 +1093,6 @@ $topicPerformance = $topicPerformanceQuery->get_result();
                         </div>
                         <div class="chart-container">
                             <canvas id="performanceTrendChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Grade Distribution Chart -->
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3 class="chart-title">🎯 Grade Distribution Chart</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="gradeDistributionChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -1466,64 +1420,6 @@ $topicPerformance = $topicPerformanceQuery->get_result();
                 </div>
                 <?php endif; ?>
             </div>
-
-            <!-- QUESTIONS TAB -->
-            <div id="questions-tab" class="tab-content <?php echo $activeTab === 'questions' ? 'active' : ''; ?>">
-                <!-- Question Analysis -->
-                <?php if($questionAnalysis->num_rows > 0): ?>
-                <div class="data-section">
-                    <div class="section-header">
-                        <h2 class="section-title">❓ Question Difficulty Analysis</h2>
-                    </div>
-                    
-                    <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 40%;">Question</th>
-                                <th>Topic</th>
-                                <th>Attempts</th>
-                                <th>Success Rate</th>
-                                <th>Analysis</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php 
-                            $questionAnalysis->data_seek(0);
-                            while($question = $questionAnalysis->fetch_assoc()): 
-                                $successRate = round($question['success_rate'], 1);
-                                $successClass = $successRate >= 70 ? 'badge-success' : ($successRate >= 50 ? 'badge-warning' : 'badge-danger');
-                            ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($question['question_text']); ?>...</td>
-                                <td><?php echo htmlspecialchars($question['topic_name'] ?? 'General'); ?></td>
-                                <td><?php echo number_format($question['times_attempted']); ?></td>
-                                <td>
-                                    <span class="badge <?php echo $successClass; ?>">
-                                        <?php echo $successRate; ?>%
-                                    </span>
-                                </td>
-                                <td style="width: 100px;">
-                                    <div class="score-bar">
-                                        <div class="score-fill" style="width: <?php echo $successRate; ?>%"></div>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
-                    </div>
-                </div>
-                <?php else: ?>
-                <div class="data-section">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">❓</div>
-                        <h3>No Question Data Available</h3>
-                        <p>Question analysis will appear here once students start answering questions in exams.</p>
-                    </div>
-                </div>
-                <?php endif; ?>
-            </div>
         </div>
     </div>
 
@@ -1688,126 +1584,6 @@ $topicPerformance = $topicPerformanceQuery->get_result();
                 <div class="empty-state" style="padding: 2rem;">
                     <div class="empty-state-icon">📈</div>
                     <p>No trend data available yet. Exam results will appear here.</p>
-                </div>
-            `;
-            <?php endif; ?>
-        }
-
-        // Grade Distribution Chart
-        const gradeCtx = document.getElementById('gradeDistributionChart');
-        if(gradeCtx) {
-            <?php 
-            $gradeChartData = [];
-            $gradeChartLabels = [];
-            $gradeChartColors = [];
-            $gradeChartHoverColors = [];
-            
-            foreach($gradeDistributionData as $grade) {
-                $gradeChartLabels[] = 'Grade ' . $grade['letter_grade'];
-                $gradeChartData[] = $grade['count'];
-                
-                $firstLetter = substr($grade['letter_grade'], 0, 1);
-                switch($firstLetter) {
-                    case 'A': 
-                        $gradeChartColors[] = 'rgba(40, 167, 69, 0.8)';
-                        $gradeChartHoverColors[] = 'rgba(40, 167, 69, 1)';
-                        break;
-                    case 'B': 
-                        $gradeChartColors[] = 'rgba(23, 162, 184, 0.8)';
-                        $gradeChartHoverColors[] = 'rgba(23, 162, 184, 1)';
-                        break;
-                    case 'C': 
-                        $gradeChartColors[] = 'rgba(255, 193, 7, 0.8)';
-                        $gradeChartHoverColors[] = 'rgba(255, 193, 7, 1)';
-                        break;
-                    case 'D': 
-                        $gradeChartColors[] = 'rgba(253, 126, 20, 0.8)';
-                        $gradeChartHoverColors[] = 'rgba(253, 126, 20, 1)';
-                        break;
-                    case 'F': 
-                        $gradeChartColors[] = 'rgba(220, 53, 69, 0.8)';
-                        $gradeChartHoverColors[] = 'rgba(220, 53, 69, 1)';
-                        break;
-                    default:
-                        $gradeChartColors[] = 'rgba(108, 117, 125, 0.8)';
-                        $gradeChartHoverColors[] = 'rgba(108, 117, 125, 1)';
-                }
-            }
-            ?>
-            
-            <?php if(!empty($gradeDistributionData)): ?>
-            new Chart(gradeCtx.getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: <?php echo json_encode($gradeChartLabels); ?>,
-                    datasets: [{
-                        data: <?php echo json_encode($gradeChartData); ?>,
-                        backgroundColor: <?php echo json_encode($gradeChartColors); ?>,
-                        hoverBackgroundColor: <?php echo json_encode($gradeChartHoverColors); ?>,
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                font: {
-                                    family: 'Poppins',
-                                    size: 12
-                                },
-                                padding: 20,
-                                usePointStyle: true
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleFont: {
-                                family: 'Poppins',
-                                size: 12
-                            },
-                            bodyFont: {
-                                family: 'Poppins',
-                                size: 11
-                            },
-                            padding: 12,
-                            cornerRadius: 6,
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.raw || 0;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = Math.round((value / total) * 100);
-                                    return `${label}: ${value} students (${percentage}%)`;
-                                }
-                            }
-                        },
-                        datalabels: {
-                            color: '#fff',
-                            font: {
-                                family: 'Poppins',
-                                size: 14,
-                                weight: 'bold'
-                            },
-                            formatter: (value, ctx) => {
-                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = Math.round((value / total) * 100);
-                                return percentage > 5 ? percentage + '%' : '';
-                            }
-                        }
-                    },
-                    cutout: '60%'
-                },
-                plugins: [ChartDataLabels]
-            });
-            <?php else: ?>
-            gradeCtx.parentElement.innerHTML = `
-                <div class="empty-state" style="padding: 2rem;">
-                    <div class="empty-state-icon">🎯</div>
-                    <p>No grade distribution data available yet.</p>
                 </div>
             `;
             <?php endif; ?>

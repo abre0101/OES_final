@@ -500,48 +500,6 @@ $pass_rate = $stats['total_results'] > 0 ? round(($stats['passed'] / $stats['tot
                 </div>
             </div>
 
-            <!-- Grade Distribution -->
-  <?php if($stats['total_results'] > 0 && count($gradeDistribution) > 0): ?>
-    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); margin-bottom: 2rem;">
-        <?php 
-        // Calculate total for percentage
-        $totalGrades = array_sum(array_column($gradeDistribution, 'count'));
-        
-        foreach($gradeDistribution as $grade):
-            $letter = $grade['letter_grade'];
-            $count = $grade['count'];
-            $percentage = $totalGrades > 0 ? round(($count / $totalGrades) * 100, 0) : 0;
-            $baseGrade = substr($letter, 0, 1);
-            
-            // Determine color based on grade
-            $colors = [
-                'A' => '#28a745',
-                'B' => '#17a2b8', 
-                'C' => '#ffc107',
-                'D' => '#fd7e14',
-                'F' => '#dc3545'
-            ];
-            $color = $colors[$baseGrade] ?? '#6c757d';
-            
-            // Background colors (lighter versions)
-            $bgColors = [
-                'A' => 'rgba(40, 167, 69, 0.1)',
-                'B' => 'rgba(23, 162, 184, 0.1)', 
-                'C' => 'rgba(255, 193, 7, 0.1)',
-                'D' => 'rgba(253, 126, 20, 0.1)',
-                'F' => 'rgba(220, 53, 69, 0.1)'
-            ];
-            $bgColor = $bgColors[$baseGrade] ?? 'rgba(108, 117, 125, 0.1)';
-        ?>
-        <div class="stat-card" style="border-top-color: <?php echo $color; ?>; background: <?php echo $bgColor; ?>; border-left: 4px solid <?php echo $color; ?>;">
-            <div class="stat-icon" style="color: <?php echo $color; ?>; font-size: 3rem; font-weight: 900;"><?php echo htmlspecialchars($letter); ?></div>
-            <div class="stat-value" style="color: <?php echo $color; ?>;"><?php echo $count; ?></div>
-            <div class="stat-label" style="color: <?php echo $color; ?>; font-weight: 600;"><?php echo $percentage; ?>% of total</div>
-        </div>
-        <?php endforeach; ?>
-    </div>
-<?php endif; ?>
-
             <!-- Filters -->
             <div class="filter-card">
                 <h3>🔍 Filter Results</h3>
@@ -578,19 +536,6 @@ $pass_rate = $stats['total_results'] > 0 ? round(($stats['passed'] / $stats['tot
                         </div>
 
                         <div class="form-group">
-                            <label>Grade</label>
-                            <select name="grade">
-                                <option value="">All Grades</option>
-                                <?php 
-                                $grades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
-                                foreach($grades as $g): 
-                                ?>
-                                <option value="<?php echo $g; ?>" <?php echo $grade_filter == $g ? 'selected' : ''; ?>><?php echo $g; ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
                             <label>Pass Status</label>
                             <select name="pass">
                                 <option value="">All Status</option>
@@ -604,7 +549,7 @@ $pass_rate = $stats['total_results'] > 0 ? round(($stats['passed'] / $stats['tot
                         <button type="submit" class="btn btn-primary">
                             <span>🔍</span> Apply Filters
                         </button>
-                        <?php if($course_filter || $exam_filter || $grade_filter || $pass_filter): ?>
+                        <?php if($course_filter || $exam_filter || $pass_filter): ?>
                         <a href="ResultsOverview.php" class="btn btn-secondary">
                             <span>🔄</span> Clear Filters
                         </a>
@@ -626,7 +571,6 @@ $pass_rate = $stats['total_results'] > 0 ? round(($stats['passed'] / $stats['tot
                             <th>Course</th>
                             <th>Exam</th>
                             <th>Score</th>
-                            <th>Grade</th>
                             <th>Status</th>
                             <th>Correct/Total</th>
                             <th>Date</th>
@@ -637,14 +581,6 @@ $pass_rate = $stats['total_results'] > 0 ? round(($stats['passed'] / $stats['tot
                         <?php while($result = $results->fetch_assoc()): 
                             $score = $result['percentage_score'];
                             $badgeClass = $score >= 85 ? 'badge-excellent' : ($score >= 70 ? 'badge-good' : ($score >= 50 ? 'badge-average' : 'badge-poor'));
-                            
-                            // Determine grade badge class
-                            $grade = $result['letter_grade'];
-                            if(in_array($grade, ['A+', 'A', 'A-'])) $gradeClass = 'grade-a';
-                            elseif(in_array($grade, ['B+', 'B', 'B-'])) $gradeClass = 'grade-b';
-                            elseif(in_array($grade, ['C+', 'C', 'C-'])) $gradeClass = 'grade-c';
-                            elseif($grade == 'D') $gradeClass = 'grade-d';
-                            else $gradeClass = 'grade-f';
                         ?>
                         <tr>
                             <td><strong style="color: #003366;"><?php echo htmlspecialchars($result['student_code']); ?></strong></td>
@@ -652,7 +588,6 @@ $pass_rate = $stats['total_results'] > 0 ? round(($stats['passed'] / $stats['tot
                             <td><?php echo htmlspecialchars($result['course_code']); ?></td>
                             <td><?php echo htmlspecialchars($result['exam_name']); ?></td>
                             <td><span class="score-badge <?php echo $badgeClass; ?>"><?php echo number_format($score, 1); ?>%</span></td>
-                            <td><span class="grade-badge <?php echo $gradeClass; ?>"><?php echo $grade; ?></span></td>
                             <td><span class="status-badge status-<?php echo strtolower($result['pass_status']); ?>"><?php echo $result['pass_status']; ?></span></td>
                             <td><?php echo $result['correct_answers']; ?> / <?php echo $result['total_questions']; ?></td>
                             <td><?php echo date('M d, Y', strtotime($result['exam_submitted_at'])); ?></td>

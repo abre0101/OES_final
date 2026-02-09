@@ -322,6 +322,20 @@ mysqli_close($con);
         </div>
     </div>
 
+    <!-- Custom Alert Modal (doesn't trigger window blur) -->
+    <div class="warning-overlay" id="customAlert" style="background: rgba(255, 193, 7, 0.95);">
+        <div class="warning-content">
+            <div class="warning-icon">⚠️</div>
+            <div class="warning-title">No Answer Selected</div>
+            <div class="warning-message" id="alertMessage">
+                Please select an answer before confirming.
+            </div>
+            <button class="btn btn-light" onclick="closeCustomAlert()" style="margin-top: 2rem; font-size: 1.25rem; padding: 1rem 2rem;">
+                OK
+            </button>
+        </div>
+    </div>
+
     <!-- Exam Locked Overlay -->
     <div class="exam-locked" id="examLocked">
         <div class="locked-content">
@@ -664,7 +678,8 @@ mysqli_close($con);
                 updateSummary();
                 updateQuestionPanel();
             } else {
-                alert('Please select an answer before confirming.');
+                // Use custom alert instead of browser alert to prevent window blur
+                showCustomAlert('Please select an answer before confirming.');
                 return;
             }
             
@@ -673,6 +688,17 @@ mysqli_close($con);
             } else {
                 showNoMoreQuestions();
             }
+        }
+
+        // Show custom alert modal
+        function showCustomAlert(message) {
+            document.getElementById('alertMessage').textContent = message;
+            document.getElementById('customAlert').style.display = 'flex';
+        }
+
+        // Close custom alert modal
+        function closeCustomAlert() {
+            document.getElementById('customAlert').style.display = 'none';
         }
 
         // Skip and next

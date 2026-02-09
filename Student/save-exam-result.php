@@ -55,17 +55,7 @@ $total_points_earned = $correct * 10; // Assuming 10 points per correct answer
 $total_points_possible = $total * 10;
 $percentage_score = ($total_points_possible > 0) ? ($total_points_earned / $total_points_possible) * 100 : 0;
 
-// Determine letter grade and GPA based on grading_config
-$grade_query = "SELECT grade_letter, gpa_value FROM grading_config 
-    WHERE ? BETWEEN min_percentage AND max_percentage AND is_active = 1 LIMIT 1";
-$stmt = $con->prepare($grade_query);
-$stmt->bind_param("d", $percentage_score);
-$stmt->execute();
-$grade_result = $stmt->get_result()->fetch_assoc();
-$stmt->close();
-
-$letter_grade = $grade_result ? $grade_result['grade_letter'] : 'F';
-$gpa = $grade_result ? $grade_result['gpa_value'] : 0.00;
+// Determine pass/fail status
 $pass_status = ($percentage_score >= 50) ? 'Pass' : 'Fail';
 
 // The session ID already contains the student_id from the students table
@@ -108,7 +98,7 @@ if ($existing_result) {
     exit();
 }
 
-// Insert result into exam_results table
+// Insert result into exam_results table (only marks and percentage - no letter grade)
 $insert_query = "INSERT INTO exam_results (
     student_id, 
     exam_id, 
@@ -119,18 +109,16 @@ $insert_query = "INSERT INTO exam_results (
     total_points_earned,
     total_points_possible,
     percentage_score,
-    letter_grade,
-    gpa,
     pass_status,
     exam_started_at,
     exam_submitted_at,
     time_taken_minutes
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)";
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)";
 
 $time_taken = $exam['duration_minutes'] ?? 30; // Default to exam duration
 
 $stmt = $con->prepare($insert_query);
-$stmt->bind_param("iiiiiiddssdsi", 
+$stmt->bind_param("iiiiiiddssi", 
     $student_db_id, 
     $exam_id, 
     $total, 
@@ -140,8 +128,6 @@ $stmt->bind_param("iiiiiiddssdsi",
     $total_points_earned,
     $total_points_possible,
     $percentage_score,
-    $letter_grade,
-    $gpa,
     $pass_status,
     $time_taken
 );
