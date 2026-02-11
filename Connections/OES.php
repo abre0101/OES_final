@@ -2,9 +2,16 @@
 // Database connection configuration
 // Supports both local development and Railway deployment
 
-// Check if running on Railway (environment variables set)
-// Railway provides multiple variable formats: MYSQL_*, MYSQLHOST, DB_*
-if (getenv('MYSQL_HOST') || getenv('MYSQLHOST') || getenv('DB_HOST')) {
+// Check if running on Railway using MYSQL_URL (preferred method)
+if (getenv('MYSQL_URL')) {
+    // Parse MySQL URL: mysql://user:password@host:port/database
+    $url = parse_url(getenv('MYSQL_URL'));
+    $hostname_OES = $url['host'];
+    $database_OES = ltrim($url['path'], '/');
+    $username_OES = $url['user'];
+    $password_OES = $url['pass'];
+    $port_OES = $url['port'] ?? 3306;
+} elseif (getenv('MYSQL_HOST') || getenv('MYSQLHOST') || getenv('DB_HOST')) {
     // Railway MySQL configuration - try all possible variable names
     $hostname_OES = getenv('MYSQL_HOST') ?: getenv('MYSQLHOST') ?: getenv('DB_HOST');
     $database_OES = getenv('MYSQL_DATABASE') ?: getenv('MYSQLDATABASE') ?: getenv('DB_NAME') ?: 'railway';
