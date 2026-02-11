@@ -1,0 +1,60 @@
+========================================
+FINAL RAILWAY DEPLOYMENT STEPS
+========================================
+
+Your Railway files have been pushed to: https://github.com/abre0101/OES_Deploy
+
+STEP 1: Update Railway to use OES_Deploy repository
+----------------------------------------
+1. Go to: https://railway.app/project/ab828ecc-51a1-4382-b193-67ac6c864b77
+2. Click on the "web" service
+3. Click "Settings" tab
+4. Scroll to "Service Source"
+5. Click "Disconnect Source"
+6. Click "Connect Repo"
+7. Select: abre0101/OES_Deploy
+8. Railway will automatically redeploy
+
+STEP 2: Import Database (After deployment completes)
+----------------------------------------
+Visit this URL in your browser:
+https://web-production-08e8e.up.railway.app/setup-database.php?key=dmu2026setup
+
+This will automatically import your database schema.
+
+STEP 3: Verify Deployment
+----------------------------------------
+1. Visit: https://web-production-08e8e.up.railway.app
+2. You should see the homepage
+3. Try logging in:
+   - Student login: student-login.php
+   - Staff login: staff-login.php
+   - Admin credentials: admin / password
+
+STEP 4: Security (IMPORTANT!)
+----------------------------------------
+After successful import:
+1. Delete setup-database.php from the repository
+2. Change admin password immediately
+3. Update any default credentials
+
+========================================
+TROUBLESHOOTING
+========================================
+
+If the app doesn't work:
+1. Check Railway logs: railway logs
+2. Verify MySQL service is running
+3. Check environment variables are set
+4. Ensure database import completed successfully
+
+========================================
+YOUR DEPLOYMENT URLS
+========================================
+
+Application: https://web-production-08e8e.up.railway.app
+Database Setup: https://web-production-08e8e.up.railway.app/setup-database.php?key=dmu2026setup
+Railway Dashboard: https://railway.app/project/ab828ecc-51a1-4382-b193-67ac6c864b77
+GitHub Deploy Repo: https://github.com/abre0101/OES_Deploy
+
+========================================

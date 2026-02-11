@@ -3,14 +3,14 @@
 // Supports both local development and Railway deployment
 
 // Check if running on Railway (environment variables set)
-// Railway can use either MYSQL* or DB_* variable names
-if (getenv('MYSQLHOST') || getenv('DB_HOST')) {
-    // Railway MySQL configuration
-    $hostname_OES = getenv('MYSQLHOST') ?: getenv('DB_HOST');
-    $database_OES = getenv('MYSQLDATABASE') ?: getenv('DB_NAME') ?: 'railway';
+// Railway provides multiple variable formats: MYSQL_*, MYSQLHOST, DB_*
+if (getenv('MYSQL_HOST') || getenv('MYSQLHOST') || getenv('DB_HOST')) {
+    // Railway MySQL configuration - try all possible variable names
+    $hostname_OES = getenv('MYSQL_HOST') ?: getenv('MYSQLHOST') ?: getenv('DB_HOST');
+    $database_OES = getenv('MYSQL_DATABASE') ?: getenv('MYSQLDATABASE') ?: getenv('DB_NAME') ?: 'railway';
     $username_OES = getenv('MYSQLUSER') ?: getenv('DB_USER') ?: 'root';
-    $password_OES = getenv('MYSQLPASSWORD') ?: getenv('DB_PASSWORD') ?: '';
-    $port_OES = getenv('MYSQLPORT') ?: getenv('DB_PORT') ?: 3306;
+    $password_OES = getenv('MYSQL_PASSWORD') ?: getenv('MYSQLPASSWORD') ?: getenv('DB_PASSWORD') ?: '';
+    $port_OES = getenv('MYSQL_PORT') ?: getenv('MYSQLPORT') ?: getenv('DB_PORT') ?: 3306;
 } else {
     // Local development configuration
     $hostname_OES = 'localhost';
@@ -32,7 +32,6 @@ if ($con->connect_error) {
 
 // Set charset to utf8mb4 for better Unicode support
 $con->set_charset("utf8mb4");
-
 // Return connection object
 return $con;
 ?>
