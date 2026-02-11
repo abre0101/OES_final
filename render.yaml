@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: oes-web
+    runtime: php
+    plan: free
+    buildCommand: echo "No build needed"
+    startCommand: php -S 0.0.0.0:$PORT -t .
+    envVars:
+      - key: PHP_VERSION
+        value: 8.2
+      - key: DB_HOST
+        fromDatabase:
+          name: oes-mysql
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: oes-mysql
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: oes-mysql
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: oes-mysql
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: oes-mysql
+          property: password
+      - key: MYSQL_HOST
+        fromDatabase:
+          name: oes-mysql
+          property: host
+      - key: MYSQL_PORT
+        fromDatabase:
+          name: oes-mysql
+          property: port
+      - key: MYSQL_DATABASE
+        fromDatabase:
+          name: oes-mysql
+          property: database
+      - key: MYSQL_USER
+        fromDatabase:
+          name: oes-mysql
+          property: user
+      - key: MYSQL_PASSWORD
+        fromDatabase:
+          name: oes-mysql
+          property: password
+
+databases:
+  - name: oes-mysql
+    databaseName: oes_db
+    plan: free
