@@ -1,0 +1,52 @@
+========================================
+RAILWAY DATABASE IMPORT INSTRUCTIONS
+========================================
+
+Your application is deployed at:
+https://web-production-08e8e.up.railway.app
+
+To complete the setup, import the database using MySQL Workbench:
+
+STEP 1: Open MySQL Workbench
+
+STEP 2: Create New Connection with these details:
+   Connection Name: Railway OES
+   Hostname: yamanote.proxy.rlwy.net
+   Port: 25317
+   Username: root
+   Password: WVfbKCqYyoVFszxfuaEgmGkTdSkxaLWk
+   Default Schema: railway
+
+STEP 3: Test Connection (click "Test Connection" button)
+
+STEP 4: Connect to the database
+
+STEP 5: Import the SQL file:
+   - Go to: Server > Data Import
+   - Select "Import from Self-Contained File"
+   - Browse and select: database\oes_professional.sql
+   - Default Target Schema: railway
+   - Click "Start Import"
+
+STEP 6: Wait for import to complete
+
+STEP 7: Verify your application:
+   Visit: https://web-production-08e8e.up.railway.app
+   
+   Default Admin Login (check your SQL file for credentials):
+   - Usually admin/password or similar
+
+========================================
+ALTERNATIVE: Use Railway Dashboard
+========================================
+
+If MySQL Workbench doesn't work:
+
+1. Go to: https://railway.app/project/ab828ecc-51a1-4382-b193-67ac6c864b77
+2. Click on "MySQL" service
+3. Click "Data" tab
+4. Click "Query" button
+5. Copy and paste contents of database\oes_professional.sql
+6. Execute the query
+
+========================================
