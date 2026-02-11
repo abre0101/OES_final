@@ -1,6 +1,6 @@
 FROM php:8.2-cli
 
-# Install mysqli extension
+# Install MySQL extensions
 RUN docker-php-ext-install mysqli pdo pdo_mysql
 
 # Set working directory
@@ -10,7 +10,7 @@ WORKDIR /app
 COPY . /app
 
 # Expose port
-EXPOSE 10000
+EXPOSE 8080
 
 # Start PHP built-in server
-CMD ["php", "-S", "0.0.0.0:10000", "-t", "."]
+CMD ["php", "-S", "0.0.0.0:8080", "-t", "."]
