@@ -2,8 +2,15 @@
 // Database connection configuration
 // Supports both local development and Railway deployment
 
-// Check if running on Railway - use public URL for external connections
-if (getenv('MYSQL_PUBLIC_URL')) {
+// Check if running on Railway - prioritize internal connection
+if (getenv('MYSQLHOST')) {
+    // Use Railway's internal MySQL host (mysql.railway.internal)
+    $hostname_OES = getenv('MYSQLHOST');
+    $database_OES = getenv('MYSQLDATABASE') ?: 'railway';
+    $username_OES = getenv('MYSQLUSER') ?: 'root';
+    $password_OES = getenv('MYSQLPASSWORD') ?: '';
+    $port_OES = getenv('MYSQLPORT') ?: 3306;
+} elseif (getenv('MYSQL_PUBLIC_URL')) {
     // Parse MySQL PUBLIC URL for external connections
     $url = parse_url(getenv('MYSQL_PUBLIC_URL'));
     $hostname_OES = $url['host'];
@@ -19,13 +26,13 @@ if (getenv('MYSQL_PUBLIC_URL')) {
     $username_OES = $url['user'];
     $password_OES = $url['pass'];
     $port_OES = $url['port'] ?? 3306;
-} elseif (getenv('MYSQL_HOST') || getenv('MYSQLHOST') || getenv('DB_HOST')) {
+} elseif (getenv('MYSQL_HOST') || getenv('DB_HOST')) {
     // Railway MySQL configuration - try all possible variable names
-    $hostname_OES = getenv('MYSQL_HOST') ?: getenv('MYSQLHOST') ?: getenv('DB_HOST');
-    $database_OES = getenv('MYSQL_DATABASE') ?: getenv('MYSQLDATABASE') ?: getenv('DB_NAME') ?: 'railway';
-    $username_OES = getenv('MYSQLUSER') ?: getenv('DB_USER') ?: 'root';
-    $password_OES = getenv('MYSQL_PASSWORD') ?: getenv('MYSQLPASSWORD') ?: getenv('DB_PASSWORD') ?: '';
-    $port_OES = getenv('MYSQL_PORT') ?: getenv('MYSQLPORT') ?: getenv('DB_PORT') ?: 3306;
+    $hostname_OES = getenv('MYSQL_HOST') ?: getenv('DB_HOST');
+    $database_OES = getenv('MYSQL_DATABASE') ?: getenv('DB_NAME') ?: 'railway';
+    $username_OES = getenv('DB_USER') ?: 'root';
+    $password_OES = getenv('MYSQL_PASSWORD') ?: getenv('DB_PASSWORD') ?: '';
+    $port_OES = getenv('MYSQL_PORT') ?: getenv('DB_PORT') ?: 3306;
 } else {
     // Local development configuration
     $hostname_OES = 'localhost';
