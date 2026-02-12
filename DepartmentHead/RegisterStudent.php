@@ -53,6 +53,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_student'])) {
     $full_name = mysqli_real_escape_string($con, $_POST['full_name']);
     $email = mysqli_real_escape_string($con, $_POST['email']);
     $phone = mysqli_real_escape_string($con, $_POST['phone']);
+    $gender = mysqli_real_escape_string($con, $_POST['gender']);
     $username = mysqli_real_escape_string($con, $_POST['username']);
     $password = mysqli_real_escape_string($con, $_POST['password']);
     $academic_year = mysqli_real_escape_string($con, $_POST['academic_year']);
@@ -73,10 +74,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_student'])) {
         $messageType = "error";
     } else {
         // Insert new student
-        $insert_query = "INSERT INTO students (student_code, username, password, full_name, email, phone, department_id, academic_year, semester, is_active) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
+        $insert_query = "INSERT INTO students (student_code, username, password, full_name, email, phone, gender, department_id, academic_year, semester, is_active) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
         $stmt = $con->prepare($insert_query);
-        $stmt->bind_param("ssssssisi", $student_code, $username, $hashed_password, $full_name, $email, $phone, $deptId, $academic_year, $semester);
+        $stmt->bind_param("ssssssssii", $student_code, $username, $hashed_password, $full_name, $email, $phone, $gender, $deptId, $academic_year, $semester);
         
         if($stmt->execute()) {
             $student_id = $con->insert_id;
@@ -103,11 +104,22 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_student'])) {
             
             $message = "Student registered successfully and automatically enrolled in $enrolled_count course(s)!";
             $messageType = "success";
+            
+            // Redirect to clear form and show success message
+            header("Location: RegisterStudent.php?success=1&enrolled=" . $enrolled_count);
+            exit();
         } else {
             $message = "Error registering student: " . $con->error;
             $messageType = "error";
         }
     }
+}
+
+// Check for success message from redirect
+if(isset($_GET['success']) && $_GET['success'] == 1) {
+    $enrolled_count = isset($_GET['enrolled']) ? intval($_GET['enrolled']) : 0;
+    $message = "Student registered successfully and automatically enrolled in $enrolled_count course(s)!";
+    $messageType = "success";
 }
 ?>
 <!DOCTYPE html>
@@ -157,7 +169,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_student'])) {
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Full Name *</label>
-                                    <input type="text" name="full_name" class="form-control" required>
+                                    <input type="text" name="full_name" id="full_name" class="form-control" required>
                                 </div>
                             </div>
                         </div>
@@ -180,19 +192,30 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_student'])) {
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label>Username *</label>
-                                    <input type="text" name="username" class="form-control" required>
+                                    <label>Gender *</label>
+                                    <select name="gender" class="form-control" required>
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                    </select>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Username *</label>
+                                    <input type="text" name="username" id="username" class="form-control" required>
+                                    <small class="form-text text-muted">Auto-suggested based on name, but you can edit it</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Password *</label>
                                     <input type="password" name="password" class="form-control" required>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Academic Year *</label>
@@ -206,6 +229,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_student'])) {
                                     </select>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Semester *</label>
@@ -216,10 +242,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_student'])) {
                                     </select>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Department</label>
                                     <input type="text" class="form-control" value="<?php echo $_SESSION['Dept']; ?>" readonly>
@@ -238,6 +261,56 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_student'])) {
     </div>
 
     <script src="../assets/js/admin-sidebar.js"></script>
+    <script>
+        // Auto-suggest username based on full name
+        const fullNameInput = document.getElementById('full_name');
+        const usernameInput = document.getElementById('username');
+        let manuallyEdited = false;
+        
+        if (fullNameInput && usernameInput) {
+            fullNameInput.addEventListener('input', function() {
+                const fullName = this.value.trim();
+                
+                // Only auto-fill if username hasn't been manually edited
+                if (fullName && !manuallyEdited) {
+                    // Convert name to username format
+                    const nameParts = fullName.toLowerCase().split(' ').filter(part => part.length > 0);
+                    
+                    if (nameParts.length > 0) {
+                        let username = '';
+                        
+                        if (nameParts.length === 1) {
+                            // Single name: use first 6 characters
+                            username = nameParts[0].substring(0, 6);
+                        } else {
+                            // Multiple names: first name + first letter of last name
+                            const firstName = nameParts[0];
+                            const lastInitial = nameParts[nameParts.length - 1].charAt(0);
+                            username = firstName + lastInitial;
+                        }
+                        
+                        // Remove special characters and spaces
+                        username = username.replace(/[^a-z0-9]/g, '');
+                        
+                        // Set the username
+                        usernameInput.value = username;
+                    }
+                }
+            });
+            
+            // Mark as manually edited when user types in username field
+            usernameInput.addEventListener('input', function() {
+                manuallyEdited = true;
+            });
+            
+            // Reset manual edit flag when username is cleared
+            usernameInput.addEventListener('blur', function() {
+                if (!this.value.trim()) {
+                    manuallyEdited = false;
+                }
+            });
+        }
+    </script>
 </body>
 </html>
 

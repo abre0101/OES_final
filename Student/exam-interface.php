@@ -345,7 +345,7 @@ mysqli_close($con);
                 <strong>⏱️ Note:</strong> The exam timer continues while reporting an issue
             </div>
             <div class="warning-message" style="text-align: left;">
-                <form id="issueForm" onsubmit="return submitTechnicalIssue(event);">
+                <form id="issueForm">
                     <div style="margin-bottom: 1rem;">
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Issue Type:</label>
                         <select name="issue_type" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid white; font-size: 1rem; color: #000;">
@@ -369,10 +369,10 @@ mysqli_close($con);
                                   style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid white; font-size: 1rem; resize: vertical; color: #000;"></textarea>
                     </div>
                     <div style="display: flex; gap: 1rem;">
-                        <button type="submit" class="btn btn-light" style="flex: 1; font-size: 1.1rem; padding: 1rem;" onclick="event.stopPropagation();">
+                        <button type="button" id="submitIssueBtn" class="btn btn-light" style="flex: 1; font-size: 1.1rem; padding: 1rem;">
                             📤 Submit Report
                         </button>
-                        <button type="button" onclick="closeIssueModal(); event.stopPropagation(); return false;" class="btn btn-secondary" style="flex: 1; font-size: 1.1rem; padding: 1rem;">
+                        <button type="button" id="cancelIssueBtn" class="btn btn-secondary" style="flex: 1; font-size: 1.1rem; padding: 1rem;">
                             Cancel
                         </button>
                     </div>
@@ -942,8 +942,29 @@ mysqli_close($con);
         // Initialize on load
         window.onload = initExam;
         
-        // Close issue modal when clicking outside
+        // Setup issue modal button handlers
         document.addEventListener('DOMContentLoaded', function() {
+            // Submit issue button
+            const submitIssueBtn = document.getElementById('submitIssueBtn');
+            if (submitIssueBtn) {
+                submitIssueBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    submitTechnicalIssue();
+                });
+            }
+            
+            // Cancel issue button
+            const cancelIssueBtn = document.getElementById('cancelIssueBtn');
+            if (cancelIssueBtn) {
+                cancelIssueBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeIssueModal();
+                });
+            }
+            
+            // Close issue modal when clicking outside
             const issueModal = document.getElementById('issueModal');
             if (issueModal) {
                 issueModal.addEventListener('click', function(e) {
@@ -1014,15 +1035,19 @@ mysqli_close($con);
         }
         
         // Submit technical issue
-        function submitTechnicalIssue(event) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
+        function submitTechnicalIssue() {
+            // Get form and validate
+            const form = document.getElementById('issueForm');
+            const issueType = form.querySelector('[name="issue_type"]').value;
+            const description = form.querySelector('[name="description"]').value;
+            
+            if (!issueType || !description) {
+                showCustomAlert('⚠️ Please fill in all required fields (Issue Type and Description).');
+                return false;
             }
             
             // Disable submit button to prevent double submission
-            const form = document.getElementById('issueForm');
-            const submitBtn = form.querySelector('button[type="submit"]');
+            const submitBtn = document.getElementById('submitIssueBtn');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = '⏳ Submitting...';

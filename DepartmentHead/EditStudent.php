@@ -189,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
 
                         <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
-                            <a href="ViewStudent.php?id=<?php echo $studentId; ?>" class="btn btn-secondary">
+                            <a href="Students.php" class="btn btn-secondary">
                                 Cancel
                             </a>
                             <button type="submit" class="btn btn-primary">

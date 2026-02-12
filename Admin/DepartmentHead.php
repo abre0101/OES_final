@@ -615,6 +615,7 @@ if($Recordsetd->num_rows > 0) {
                 <div class="form-group">
                     <label for="txtUName">Username:</label>
                     <input type="text" name="txtUName" id="txtUName" required placeholder="Enter Username">
+                    <small style="display: block; margin-top: 0.5rem; color: #6c757d; font-size: 0.9rem;">Auto-suggested based on name, but you can edit it</small>
                 </div>
                 
                 <div class="form-group">
@@ -677,6 +678,55 @@ if($Recordsetd->num_rows > 0) {
                 closeCreateModal();
             }
         });
+        
+        // Auto-suggest username based on full name
+        const fullNameInput = document.getElementById('txtName');
+        const usernameInput = document.getElementById('txtUName');
+        let manuallyEdited = false;
+        
+        if (fullNameInput && usernameInput) {
+            fullNameInput.addEventListener('input', function() {
+                const fullName = this.value.trim();
+                
+                // Only auto-fill if username hasn't been manually edited
+                if (fullName && !manuallyEdited) {
+                    // Convert name to username format
+                    const nameParts = fullName.toLowerCase().split(' ').filter(part => part.length > 0);
+                    
+                    if (nameParts.length > 0) {
+                        let username = '';
+                        
+                        if (nameParts.length === 1) {
+                            // Single name: use first 6 characters
+                            username = nameParts[0].substring(0, 6);
+                        } else {
+                            // Multiple names: first name + first letter of last name
+                            const firstName = nameParts[0];
+                            const lastInitial = nameParts[nameParts.length - 1].charAt(0);
+                            username = firstName + lastInitial;
+                        }
+                        
+                        // Remove special characters and spaces
+                        username = username.replace(/[^a-z0-9]/g, '');
+                        
+                        // Set the username
+                        usernameInput.value = username;
+                    }
+                }
+            });
+            
+            // Mark as manually edited when user types in username field
+            usernameInput.addEventListener('input', function() {
+                manuallyEdited = true;
+            });
+            
+            // Reset manual edit flag when username is cleared
+            usernameInput.addEventListener('blur', function() {
+                if (!this.value.trim()) {
+                    manuallyEdited = false;
+                }
+            });
+        }
     </script>
 </body>
 </html>
