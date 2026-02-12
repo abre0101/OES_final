@@ -16,16 +16,33 @@ if (!file_exists($sqlFile)) {
 echo "Found SQL file: $sqlFile\n";
 echo "File size: " . round(filesize($sqlFile) / 1024, 2) . " KB\n\n";
 
+// Drop existing database and recreate
+echo "Dropping existing tables...\n";
+$con->query('SET FOREIGN_KEY_CHECKS=0');
+
+// Get all tables
+$tables = [];
+$result = $con->query("SHOW TABLES");
+if ($result) {
+    while ($row = $result->fetch_array()) {
+        $tables[] = $row[0];
+    }
+}
+
+// Drop all tables
+foreach ($tables as $table) {
+    $con->query("DROP TABLE IF EXISTS `$table`");
+    echo "✓ Dropped table: $table\n";
+}
+
+echo "\nImporting database...\n\n";
+
 // Read SQL content
 $sql = file_get_contents($sqlFile);
-
-echo "Importing database...\n\n";
 
 $success = 0;
 $errors = 0;
 
-// Disable foreign key checks
-$con->query('SET FOREIGN_KEY_CHECKS=0');
 $con->query('SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO"');
 $con->query('SET time_zone = "+00:00"');
 
@@ -52,10 +69,12 @@ if ($con->multi_query($sql)) {
         }
         
         // Move to next result
-        if (!$con->more_results()) {
+        if ($con->more_results()) {
+            $con->next_result();
+        } else {
             break;
         }
-    } while ($con->next_result());
+    } while (true);
 }
 
 // Check for final error
