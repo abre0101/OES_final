@@ -13,10 +13,12 @@ COPY . /var/www/html/
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
-# Copy nginx config and start script
+# Copy nginx config
 COPY docker/nginx.conf /etc/nginx/sites-available/default
+
+# Copy start script and fix line endings
 COPY docker/start.sh /start.sh
-RUN chmod +x /start.sh
+RUN sed -i 's/\r//' /start.sh && chmod +x /start.sh
 
 EXPOSE 8080
 
